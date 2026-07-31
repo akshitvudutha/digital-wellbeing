@@ -1,0 +1,248 @@
+"""
+app_details.py — Detailed Application View for Digital Wellbeing.
+"""
+
+from __future__ import annotations
+
+from typing import Callable, Optional
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtWidgets import (
+    QFrame, QHBoxLayout, QLabel, QPushButton, QScrollArea,
+    QVBoxLayout, QWidget, QGridLayout
+)
+
+from analytics.engine import AnalyticsEngine
+from ui.widgets.charts import HourlyIntensityChart
+from tracker.categorizer import display_name as get_display_name
+from utils.icon_provider import AppIconProvider
+
+
+class StatBox(QFrame):
+    def __init__(self, title: str, value: str, parent=None):
+        super().__init__(parent)
+        self.setObjectName("stat_box")
+        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        
+        self.title_lbl = QLabel(title)
+        self.title_lbl.setObjectName("stat_title")
+        
+        self.val_lbl = QLabel(value)
+        self.val_lbl.setObjectName("stat_val")
+        
+        layout.addWidget(self.title_lbl)
+        layout.addWidget(self.val_lbl)
+        
+        from ui.theme import ThemeManager
+        ThemeManager.instance().theme_changed.connect(self._apply_theme)
+        self._apply_theme(ThemeManager.instance().is_dark)
+
+    def _apply_theme(self, is_dark: bool) -> None:
+        from ui.theme import ThemeManager
+        tm = ThemeManager.instance()
+        
+        self.setStyleSheet(f"""
+            QFrame#stat_box {{
+                background-color: {tm.color('card_bg')};
+                border: 1px solid {tm.color('border')};
+                border-radius: 12px;
+            }}
+            QLabel#stat_title {{ font-size: 13px; color: {tm.color('text_sub')}; font-weight: 600; border: none; background: transparent; }}
+            QLabel#stat_val {{ font-size: 24px; font-weight: 800; color: {tm.color('text_main')}; border: none; background: transparent; }}
+        """)
+
+    def set_value(self, value: str):
+        self.val_lbl.setText(value)
+
+
+class AppDetailsPage(QWidget):
+    """Detailed view for a specific application."""
+
+    back_requested = Signal()
+
+    def __init__(self, on_back: Optional[Callable[[], None]] = None, parent=None) -> None:
+        super().__init__(parent)
+        self._engine = AnalyticsEngine()
+        self._current_app: str = ""
+        self._setup_ui()
+        
+        if on_back:
+            self.back_requested.connect(on_back)
+            
+        from ui.theme import ThemeManager
+        ThemeManager.instance().theme_changed.connect(self._apply_theme)
+        self._apply_theme(ThemeManager.instance().is_dark)
+
+    def _apply_theme(self, is_dark: bool) -> None:
+        from ui.theme import ThemeManager
+        tm = ThemeManager.instance()
+        
+        self.setStyleSheet(f"""
+            QPushButton#btn_back {{
+                background: transparent;
+                color: {tm.color('accent')};
+                font-size: 15px;
+                font-weight: 700;
+                border: none;
+                text-align: left;
+            }}
+            QPushButton#btn_back:hover {{
+                color: {tm.color('accent_hover')};
+                text-decoration: underline;
+            }}
+            QLabel#app_title {{ font-size: 32px; font-weight: 800; color: {tm.color('text_main')}; }}
+            QLabel#app_cat {{ font-size: 15px; font-weight: 600; color: {tm.color('text_sub')}; }}
+        """)
+        
+    def _setup_ui(self) -> None:
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(36, 32, 36, 32)
+        main_layout.setSpacing(0)
+
+        # Top Bar
+        top_bar = QHBoxLayout()
+        back_btn = QPushButton("← Back to Screen Time")
+        back_btn.setObjectName("btn_back")
+        back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        back_btn.clicked.connect(self.back_requested.emit)
+        top_bar.addWidget(back_btn)
+        top_bar.addStretch()
+        main_layout.addLayout(top_bar)
+        
+        main_layout.addSpacing(24)
+
+        # Header
+        header = QHBoxLayout()
+        header.setSpacing(24)
+        
+        self._icon_lbl = QLabel()
+        self._icon_lbl.setFixedSize(64, 64)
+        
+        title_box = QVBoxLayout()
+        title_box.setSpacing(4)
+        
+        self._title_lbl = QLabel("App Name")
+        self._title_lbl.setObjectName("app_title")
+        
+        self._cat_lbl = QLabel("Category")
+        self._cat_lbl.setObjectName("app_cat")
+        
+        title_box.addWidget(self._title_lbl)
+        title_box.addWidget(self._cat_lbl)
+        header.addWidget(self._icon_lbl)
+        header.addLayout(title_box)
+
+        header.addStretch()
+        main_layout.addLayout(header)
+        main_layout.addSpacing(32)
+
+        # Scroll Container
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setStyleSheet("QScrollArea { background: transparent; } QWidget { background: transparent; }")
+        
+        inner = QWidget()
+        self._inner_layout = QVBoxLayout(inner)
+        self._inner_layout.setContentsMargins(0, 0, 0, 0)
+        self._inner_layout.setSpacing(24)
+        scroll.setWidget(inner)
+        main_layout.addWidget(scroll, 1)
+
+        # Stats Grid
+        self._stats_grid = QGridLayout()
+        self._stats_grid.setSpacing(16)
+        
+        self._stat_today = StatBox("Today's Usage", "0m")
+        self._stat_yesterday = StatBox("Yesterday", "0m")
+        self._stat_weekly = StatBox("Weekly Average", "0m")
+        self._stat_sessions = StatBox("Session Count", "0")
+        
+        self._stats_grid.addWidget(self._stat_today, 0, 0)
+        self._stats_grid.addWidget(self._stat_yesterday, 0, 1)
+        self._stats_grid.addWidget(self._stat_weekly, 0, 2)
+        self._stats_grid.addWidget(self._stat_sessions, 0, 3)
+        
+        self._inner_layout.addLayout(self._stats_grid)
+
+        # Timeline Chart
+        self._chart = HourlyIntensityChart()
+        self._inner_layout.addWidget(self._chart)
+        
+        self._inner_layout.addStretch()
+
+    def set_app(self, process_name: str) -> None:
+        self._current_app = process_name
+        self.refresh()
+        
+    def refresh(self) -> None:
+        if not self._current_app:
+            return
+            
+        process_name = self._current_app
+        
+        # Update Icon
+        icon = AppIconProvider().get_icon(process_name)
+        if not icon.isNull():
+            from PySide6.QtCore import QSize
+            self._icon_lbl.setPixmap(icon.pixmap(QSize(64, 64)))
+            
+        # Update Labels
+        self._title_lbl.setText(get_display_name(process_name))
+        
+        # Get Stats
+        import sqlite3
+        import os
+        from core.constants import DB_PATH
+        
+        db_path = str(DB_PATH)
+        today_s = 0.0
+        yesterday_s = 0.0
+        sessions = 0
+        
+        from datetime import date, timedelta
+        today_date = date.today().isoformat()
+        yesterday_date = (date.today() - timedelta(days=1)).isoformat()
+        
+        try:
+            with sqlite3.connect(db_path) as conn:
+                # Today
+                cur = conn.cursor()
+                cur.execute("SELECT SUM(duration_s) FROM app_sessions WHERE process_name=? AND date(start_time)=?", (process_name, today_date))
+                res = cur.fetchone()
+                today_s = res[0] or 0.0
+                
+                # Sessions today
+                cur.execute("SELECT COUNT(*) FROM app_sessions WHERE process_name=? AND date(start_time)=?", (process_name, today_date))
+                res = cur.fetchone()
+                sessions = res[0] or 0
+                
+                # Yesterday
+                cur.execute("SELECT SUM(duration_s) FROM app_sessions WHERE process_name=? AND date(start_time)=?", (process_name, yesterday_date))
+                res = cur.fetchone()
+                yesterday_s = res[0] or 0.0
+                
+                # Hourly today for chart
+                cur.execute("""
+                    SELECT strftime('%H', start_time) as hr, SUM(duration_s)
+                    FROM app_sessions
+                    WHERE process_name=? AND date(start_time)=?
+                    GROUP BY hr
+                """, (process_name, today_date))
+                
+                hourly_data = {str(i).zfill(2): 0.0 for i in range(24)}
+                for row in cur.fetchall():
+                    hourly_data[row[0]] = row[1]
+                    
+                hourly_rows = [{"hour": int(h), "total_s": s} for h, s in hourly_data.items()]
+                self._chart.update_data(hourly_rows)
+                
+        except Exception as e:
+            pass
+            
+        self._stat_today.set_value(AnalyticsEngine.format_duration_short(today_s))
+        self._stat_yesterday.set_value(AnalyticsEngine.format_duration_short(yesterday_s))
+        self._stat_sessions.set_value(str(sessions))
+        # Weekly Average is a placeholder for now, just mock based on today/yesterday
+        self._stat_weekly.set_value(AnalyticsEngine.format_duration_short((today_s + yesterday_s) / 2.0))

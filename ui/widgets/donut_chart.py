@@ -1,0 +1,328 @@
+"""
+donut_chart.py — Responsive Donut Chart and Category Breakdown Card for Digital Wellbeing.
+Solves legend overlapping, auto-wraps long labels, shows Top 5 + Other, and adapts to any window size.
+"""
+
+from __future__ import annotations
+
+import math
+from typing import List, Tuple
+
+from PySide6.QtCore import QPointF, QRectF, Qt, Signal
+from PySide6.QtGui import QColor, QPainter, QPainterPath
+from PySide6.QtWidgets import (
+    QFrame, QHBoxLayout, QLabel, QScrollArea, QSizePolicy, QVBoxLayout, QWidget,
+)
+
+from analytics.engine import AnalyticsEngine
+from core.constants import CATEGORY_COLORS, AppCategory
+from ui.theme import get_theme_tokens
+
+
+class DonutChart(QWidget):
+    """Responsive Antialiased Donut Chart Ring with Center Typography."""
+
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+        self._segments: List[Tuple[str, float, str]] = []
+        self._total: float = 0.0
+        self._center_text: str = ""
+        self._center_subtext: str = ""
+        self.setMinimumSize(180, 180)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        
+        from ui.theme import ThemeManager
+        ThemeManager.instance().theme_changed.connect(self._apply_theme)
+
+    def _apply_theme(self, is_dark: bool) -> None:
+        self.update()
+
+    def set_data(
+        self,
+        segments: List[Tuple[str, float, str]],
+        center_text: str = "",
+        center_subtext: str = "",
+    ) -> None:
+        self._segments = segments
+        self._total = sum(s[1] for s in segments)
+        self._center_text = center_text
+        self._center_subtext = center_subtext
+        self.update()
+
+    def paintEvent(self, event) -> None:
+        if not self._segments or self._total <= 0:
+            return
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        from ui.theme import ThemeManager
+        tm = ThemeManager.instance()
+        
+        track_color = QColor(tm.color("border"))
+        center_bg = QColor(tm.color("card_bg"))
+        text_color = QColor(tm.color("text_main"))
+        subtext_color = QColor(tm.color("text_sub"))
+
+        size = min(self.width(), self.height())
+        margin = 10
+        outer_r = (size - margin * 2) / 2.0
+        inner_r = outer_r * 0.78
+        cx = self.width() / 2.0
+        cy = self.height() / 2.0
+
+        # 1. Background Track Ring
+        painter.setPen(Qt.PenStyle.NoPen)
+        track_path = QPainterPath()
+        track_path.addEllipse(QRectF(cx - outer_r, cy - outer_r, outer_r * 2, outer_r * 2))
+        track_path.addEllipse(QRectF(cx - inner_r, cy - inner_r, inner_r * 2, inner_r * 2))
+        painter.fillPath(track_path, track_color)
+
+        # 2. Color Segments
+        angle = 90.0
+        gap = 1.2 if len(self._segments) > 1 else 0.0
+
+        for label, value, color_str in self._segments:
+            span = (value / self._total) * 360.0
+            if span < 0.5:
+                continue
+
+            path = QPainterPath()
+            path.moveTo(QPointF(
+                cx + outer_r * math.cos(math.radians(-angle)),
+                cy + outer_r * math.sin(math.radians(-angle)),
+            ))
+
+            arc_rect_outer = QRectF(cx - outer_r, cy - outer_r, outer_r * 2, outer_r * 2)
+            arc_rect_inner = QRectF(cx - inner_r, cy - inner_r, inner_r * 2, inner_r * 2)
+
+            path.arcTo(arc_rect_outer, angle, -span + gap)
+            end_rad = math.radians(-(angle - span + gap))
+            path.lineTo(QPointF(
+                cx + inner_r * math.cos(end_rad),
+                cy + inner_r * math.sin(end_rad),
+            ))
+            path.arcTo(arc_rect_inner, angle - span + gap, span - gap)
+            path.closeSubpath()
+
+            painter.fillPath(path, QColor(color_str))
+            angle -= span
+
+        # 3. Center Circle
+        bg_circle = QPainterPath()
+        bg_circle.addEllipse(QRectF(cx - inner_r + 0.5, cy - inner_r + 0.5, (inner_r - 0.5) * 2, (inner_r - 0.5) * 2))
+        painter.fillPath(bg_circle, center_bg)
+
+        # 4. Center Typography
+        if self._center_text:
+            painter.setPen(text_color)
+            font = painter.font()
+            font.setPointSize(max(14, int(inner_r * 0.28)))
+            font.setBold(True)
+            painter.setFont(font)
+            painter.drawText(
+                QRectF(cx - inner_r, cy - inner_r + int(inner_r * 0.15), inner_r * 2, inner_r * 1.1),
+                Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom,
+                self._center_text,
+            )
+
+        if self._center_subtext:
+            painter.setPen(subtext_color)
+            font = painter.font()
+            font.setPointSize(max(8, int(inner_r * 0.13)))
+            font.setBold(False)
+            painter.setFont(font)
+            painter.drawText(
+                QRectF(cx - inner_r, cy + int(inner_r * 0.12), inner_r * 2, inner_r * 0.8),
+                Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop,
+                self._center_subtext.upper(),
+            )
+
+        painter.end()
+
+
+class CategoryLegendWidget(QWidget):
+    """Responsive Category Legend with Top 5 + Other consolidation, auto-wrapping labels, and zero overlapping."""
+
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+        self._layout = QVBoxLayout(self)
+        self._layout.setContentsMargins(0, 4, 0, 4)
+        self._layout.setSpacing(10)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        
+        from ui.theme import ThemeManager
+        ThemeManager.instance().theme_changed.connect(self._apply_theme)
+
+    def _apply_theme(self, is_dark: bool) -> None:
+        from ui.theme import ThemeManager
+        tm = ThemeManager.instance()
+        text_main = tm.color("text_main")
+        text_sub = tm.color("text_sub")
+
+        for i in range(self._layout.count()):
+            item = self._layout.itemAt(i)
+            if item and item.widget() and getattr(item.widget(), "is_legend_row", False):
+                row_widget = item.widget()
+                name_lbl = row_widget.findChild(QLabel, "name_lbl")
+                dur_lbl = row_widget.findChild(QLabel, "dur_lbl")
+                if name_lbl: name_lbl.setStyleSheet(f"color: {text_main}; font-size: 12px; font-weight: 700;")
+                if dur_lbl: dur_lbl.setStyleSheet(f"color: {text_sub}; font-size: 12px; font-weight: 700; font-family: monospace;")
+
+    def set_data(self, category_breakdown: list[dict] | None, active_seconds: float) -> list[tuple[str, float, str]]:
+        """Populate legend items and return consolidated segments for chart rendering."""
+        while self._layout.count():
+            item = self._layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+            elif item.layout():
+                while item.layout().count():
+                    sub = item.layout().takeAt(0)
+                    if sub.widget():
+                        sub.widget().deleteLater()
+                        
+        from ui.theme import ThemeManager
+        tm = ThemeManager.instance()
+
+        if not category_breakdown or active_seconds <= 0:
+            lbl = QLabel("Tracking active applications...")
+            lbl.setStyleSheet(f"color: {tm.color('text_sub')}; font-size: 12px; font-weight: 600;")
+            lbl.setWordWrap(True)
+            self._layout.addWidget(lbl)
+            return [("Active", 1.0, tm.color('accent'))]
+
+        # Sort categories descending by duration
+        sorted_cats = sorted(category_breakdown, key=lambda x: float(x.get("total_s", 0.0)), reverse=True)
+        top_cats = sorted_cats[:5]
+        remaining = sorted_cats[5:]
+
+        consolidated: list[tuple[str, float, str]] = []
+        for item in top_cats:
+            dur = float(item.get("total_s", 0.0))
+            if dur <= 0:
+                continue
+            cat_raw = item.get("category", "").title()
+            try:
+                cat_enum = AppCategory(item.get("category", "").lower())
+                color_hex = CATEGORY_COLORS.get(cat_enum, tm.color('accent'))
+            except ValueError:
+                color_hex = tm.color('accent')
+            consolidated.append((cat_raw, dur, color_hex))
+
+        if remaining:
+            other_dur = sum(float(x.get("total_s", 0.0)) for x in remaining)
+            if other_dur > 0:
+                consolidated.append(("Other", other_dur, tm.color('text_muted')))
+
+        text_main = tm.color("text_main")
+        text_sub = tm.color("text_sub")
+
+        for cat_name, dur, color_hex in consolidated:
+            row_widget = QWidget()
+            row_widget.is_legend_row = True
+            row_layout = QHBoxLayout(row_widget)
+            row_layout.setContentsMargins(0, 2, 0, 2)
+            row_layout.setSpacing(10)
+
+            dot = QLabel("●")
+            dot.setStyleSheet(f"color: {color_hex}; font-size: 14px;")
+            dot.setFixedWidth(16)
+            dot.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
+
+            cpct = max(1, int((dur / active_seconds) * 100))
+            name_lbl = QLabel(f"{cat_name} ({cpct}%)")
+            name_lbl.setObjectName("name_lbl")
+            name_lbl.setStyleSheet(f"color: {text_main}; font-size: 12px; font-weight: 700;")
+            name_lbl.setWordWrap(True)
+            name_lbl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+            dur_lbl = QLabel(AnalyticsEngine.format_duration_short(dur))
+            dur_lbl.setObjectName("dur_lbl")
+            dur_lbl.setStyleSheet(f"color: {text_sub}; font-size: 12px; font-weight: 700; font-family: monospace;")
+            dur_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
+            dur_lbl.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+            dur_lbl.setMinimumWidth(55)
+
+            row_layout.addWidget(dot, 0, Qt.AlignmentFlag.AlignTop)
+            row_layout.addWidget(name_lbl, 1)
+            row_layout.addWidget(dur_lbl, 0, Qt.AlignmentFlag.AlignTop)
+
+            self._layout.addWidget(row_widget)
+
+        self._layout.addStretch()
+        return consolidated
+
+
+class CategoryBreakdownCard(QFrame):
+    """Complete, responsive Category Breakdown Card combining Donut Chart and Legend without overlapping."""
+    category_clicked = Signal(str)
+
+    def __init__(self, title: str = "🍩 Category Breakdown Today", parent=None) -> None:
+        super().__init__(parent)
+        self.setObjectName("v2_card")
+        self._setup_ui(title)
+        
+        from ui.theme import ThemeManager
+        ThemeManager.instance().theme_changed.connect(self._apply_theme)
+        self._apply_theme(ThemeManager.instance().is_dark)
+
+    def _setup_ui(self, title: str) -> None:
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setSpacing(16)
+
+        self._hdr = QLabel(title)
+        self._hdr.setObjectName("section_header")
+        layout.addWidget(self._hdr)
+
+        container_widget = QWidget()
+        container = QHBoxLayout(container_widget)
+        container.setSpacing(20)
+
+        self.donut = DonutChart()
+        self.donut.setMinimumSize(200, 200)
+        container.addWidget(self.donut, 1)
+
+        self.legend = CategoryLegendWidget()
+        
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setWidget(self.legend)
+        scroll.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        container.addWidget(scroll, 1)
+
+        layout.addWidget(container_widget, 1)
+
+    def _apply_theme(self, is_dark: bool) -> None:
+        from ui.theme import ThemeManager
+        tm = ThemeManager.instance()
+        
+        self.setStyleSheet(f"""
+            QLabel#section_header {{ font-size: 14px; font-weight: 700; color: {tm.color('accent')}; letter-spacing: 1.2px; text-transform: uppercase; }}
+        """)
+
+    def mousePressEvent(self, event) -> None:
+        super().mousePressEvent(event)
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.category_clicked.emit("All Categories")
+
+    def set_data(self, category_breakdown: list[dict] | None, active_seconds: float) -> None:
+        """Update legend items and redraw chart ring."""
+        segments = self.legend.set_data(category_breakdown, active_seconds)
+        
+        from ui.theme import ThemeManager
+        tm = ThemeManager.instance()
+        
+        if active_seconds > 0 and segments:
+            self.donut.set_data(
+                segments,
+                center_text=AnalyticsEngine.format_duration_short(active_seconds),
+                center_subtext="Active Time",
+            )
+        else:
+            self.donut.set_data(
+                [("Active", 1.0, tm.color('accent'))],
+                center_text="0m",
+                center_subtext="Active Time",
+            )

@@ -1,0 +1,47 @@
+# Python Caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.pyo
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+
+# PyInstaller / Build
+build/
+dist/
+*.spec
+installer_build/
+innosetup.exe
+issetup.exe
+
+# Local databases & logs
+*.db
+*.db-journal
+*.log
+tracking_report.txt
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+
+# Testing
+.pytest_cache/
+
+# Node / JS
+node_modules/
+
+# Temporary files
+*.tmp
+*.temp
+*~
+*.bak
+*.swp
