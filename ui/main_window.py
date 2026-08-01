@@ -11,7 +11,7 @@ from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QIcon, QKeySequence, QPixmap, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QFrame, QHBoxLayout, QLabel, QPushButton,
-    QScrollArea, QSizePolicy, QVBoxLayout, QWidget, QMainWindow
+    QScrollArea, QSizePolicy, QVBoxLayout, QWidget, QMainWindow, QSystemTrayIcon
 )
 
 from core.constants import APP_NAME, APP_VERSION
@@ -140,13 +140,54 @@ class MainWindow(QMainWindow):
         logger.info(f"[STEP 2 & 3] _show_shutdown_warning_dialog entered. Signal received with countdown_s={countdown_s}")
         dialog = ShutdownCountdownDialog(countdown_seconds=countdown_s, parent=self)
         dialog.shutdown_accepted.connect(self._sleepguard.execute_shutdown)
-        dialog.shutdown_cancelled.connect(self._sleepguard.cancel_warning)
+        # Wrap the dialog.cancel connection to avoid recursive re-entry between UI and controller
+        def _on_dialog_cancel():
+            if getattr(self, "_handling_shutdown_cancel", False):
+                return
+            try:
+                self._handling_shutdown_cancel = True
+                self._sleepguard.cancel_warning()
+            finally:
+                self._handling_shutdown_cancel = False
+
+        dialog.shutdown_cancelled.connect(_on_dialog_cancel)
+
+        # Also connect sleepguard-level cancel notifications back to the dialog so programmatic cancels stop the UI
+        try:
+            self._sleepguard.programmatic_shutdown_cancelled.connect(dialog._on_cancel)
+        except Exception:
+            # defensive: if signal/slot not available, continue without UI cancel sync
+            logger.warning("Failed to connect sleepguard.programmatic_shutdown_cancelled back to dialog")
         logger.info("[STEP 8_pre] Calling dialog.start_countdown()")
+        # Start the dialog timer and show non-blocking so the main event loop continues.
         dialog.start_countdown()
-        logger.info("[STEP 5] Calling dialog.exec()")
-        QTimer.singleShot(100, lambda: logger.info(f"[STEP 6] 100ms after exec(), is dialog visible? {dialog.isVisible()}"))
-        dialog.exec()
-        logger.info("[POST STEP 5] dialog.exec() returned")
+        dialog.setWindowModality(Qt.ApplicationModal)
+        dialog.show()
+        logger.info("[STEP 5_nonblocking] Shutdown dialog shown non-blocking (show())")
+
+        # If app is minimized to tray or hidden, also notify via tray so user can open app to cancel
+        try:
+            from settings.manager import SettingsManager
+            sm = SettingsManager()
+            minimize_to_tray = sm.get_bool("minimize_to_tray", default=False)
+        except Exception:
+            minimize_to_tray = False
+
+        if minimize_to_tray and (not self.isVisible() or self.isMinimized()):
+            if hasattr(self, "_tray") and self._tray:
+                try:
+                    # Inform the user that shutdown is imminent and they can open the app to cancel
+                    self._tray.showMessage(
+                        "SleepGuard — Shutdown Warning",
+                        f"Shutdown in {countdown_s}s — open the app to cancel.",
+                        QSystemTrayIcon.MessageIcon.Warning,
+                        7000,
+                    )
+                except Exception:
+                    logger.warning("Failed to show tray message for SleepGuard countdown")
+
+        # Log visibility shortly after showing
+        QTimer.singleShot(200, lambda: logger.info(f"[STEP_POST_SHOW] is dialog visible? {dialog.isVisible()}"))
 
     def _animate_theme_change(self, new_theme: str) -> None:
         from ui.theme import ThemeManager

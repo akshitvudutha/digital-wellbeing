@@ -72,9 +72,9 @@ class SessionMonitor:
         # and DestroyWindow have completed before the process continues shutdown.
         if self._thread is not None and self._thread.is_alive():
             logger.info("[LIFECYCLE] Waiting for SessionMonitor thread (ident=%s) to exit...", self._thread.ident)
-            self._thread.join(timeout=2.0)
+            self._thread.join(timeout=5.0)
             if self._thread.is_alive():
-                logger.warning("[LIFECYCLE] SessionMonitor thread did not exit within 2 seconds.")
+                logger.warning("[LIFECYCLE] SessionMonitor thread did not exit within 5 seconds.")
             else:
                 logger.info("[LIFECYCLE] SessionMonitor thread exited cleanly.")
         self._thread = None

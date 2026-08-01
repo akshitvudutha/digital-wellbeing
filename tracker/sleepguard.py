@@ -27,6 +27,7 @@ class SleepGuardController(QObject):
     shutdown_warning_triggered = Signal(int)  # countdown_seconds
     media_state_changed = Signal(object)      # MediaInfo
     sleepguard_status_changed = Signal(bool)  # active status
+    programmatic_shutdown_cancelled = Signal()  # emitted when a cancel is performed programmatically
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -40,8 +41,12 @@ class SleepGuardController(QObject):
 
         self._running = False
         self._paused = False
-        self._idle_fired = False
-        self._force_trigger = False
+        # Use threading.Event objects for safe cross-thread signaling
+        self._idle_fired = threading.Event()
+        self._force_trigger = threading.Event()
+        # Protects transient cancel cooldown timestamp
+        self._cancel_block_until = 0.0
+        self._cancel_lock = threading.Lock()
         self._poll_thread: Optional[threading.Thread] = None
 
     def start(self) -> None:
@@ -50,7 +55,8 @@ class SleepGuardController(QObject):
 
         self._running = True
         self._paused = not self._settings.sleepguard_enabled
-        self._idle_fired = False
+        self._idle_fired.clear()
+        self._force_trigger.clear()
 
         self._media_engine.start()
 
@@ -67,7 +73,8 @@ class SleepGuardController(QObject):
         self._running = False
         self._media_engine.stop()
         if self._poll_thread and self._poll_thread.is_alive():
-            self._poll_thread.join(timeout=2.0)
+            # give more time for the thread to exit gracefully
+            self._poll_thread.join(timeout=5.0)
             self._poll_thread = None
         logger.info("SleepGuardController stopped.")
 
@@ -75,7 +82,7 @@ class SleepGuardController(QObject):
         self._settings.sleepguard_enabled = enabled
         self._paused = not enabled
         if enabled:
-            self._idle_fired = False
+            self._idle_fired.clear()
         logger.info("SleepGuard state set to enabled=%s", enabled)
         self.sleepguard_status_changed.emit(enabled)
 
@@ -88,9 +95,25 @@ class SleepGuardController(QObject):
         return self._media_engine.current
 
     def cancel_warning(self) -> None:
-        self._idle_fired = False
+        # Clear the idle-fired event so the poll loop can resume normal operation
+        try:
+            self._idle_fired.clear()
+        except Exception:
+            pass
+        # Prevent immediate retrigger for a short cooldown window
+        cooldown = 30.0  # seconds
+        try:
+            with self._cancel_lock:
+                self._cancel_block_until = time.time() + cooldown
+        except Exception:
+            pass
         self._shutdown_mgr.cancel_shutdown()
-        logger.info("Shutdown warning cancelled by user.")
+        try:
+            # notify UI/dialogs that a cancel occurred so they can stop any active countdown
+            self.programmatic_shutdown_cancelled.emit()
+        except Exception:
+            pass
+        logger.info("Shutdown warning cancelled by user. Applied cooldown=%ss", cooldown)
 
     def execute_shutdown(self) -> bool:
         from datetime import datetime
@@ -98,7 +121,8 @@ class SleepGuardController(QObject):
         return self._shutdown_mgr.shutdown_now()
 
     def force_trigger_idle(self) -> None:
-        self._force_trigger = True
+        # Use an event so the polling loop sees the trigger reliably
+        self._force_trigger.set()
 
     def _on_media_state_change(self, info: MediaInfo) -> None:
         logger.info("SleepGuard media update: playing=%s, app=%s", info.is_playing, info.display_name)
@@ -107,7 +131,8 @@ class SleepGuardController(QObject):
     def _poll_loop(self) -> None:
         while self._running:
             time.sleep(1.0)
-            if not self._running or self._paused or self._idle_fired:
+            # If already triggered, paused, or not running, skip
+            if not self._running or self._paused or self._idle_fired.is_set():
                 continue
 
             idle_s = get_idle_seconds()
@@ -123,13 +148,26 @@ class SleepGuardController(QObject):
                 is_media_playing=media_playing,
                 mode=mode,
                 media_timeout_s=media_timeout_s,
-            ) or self._force_trigger
+            ) or self._force_trigger.is_set()
+
+            # Respect any recent user-cancel cooldown to avoid immediate retrigger
+            try:
+                with self._cancel_lock:
+                    if time.time() < self._cancel_block_until:
+                        # still in cooldown window
+                        continue
+            except Exception:
+                pass
 
             if should_trigger:
-                self._force_trigger = False
+                # consume force trigger if present
+                if self._force_trigger.is_set():
+                    self._force_trigger.clear()
+
                 logger.warning("SleepGuard idle threshold hit (idle: %.0fs, threshold: %ds). Triggering shutdown warning.", idle_s, timeout_s)
-                self._idle_fired = True
-                
+                self._idle_fired.set()
+
                 logger.info(f"[STEP 1] About to emit shutdown_warning_triggered with countdown: {self._settings.countdown_seconds}")
-                
+
+                # Emit a Qt signal — the main thread will show the dialog non-blocking
                 self.shutdown_warning_triggered.emit(self._settings.countdown_seconds)

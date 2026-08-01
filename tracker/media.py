@@ -252,7 +252,7 @@ class MediaDetectionEngine:
         if self._loop and self._stop_event:
             self._loop.call_soon_threadsafe(self._stop_event.set)
         if self._thread and self._thread.is_alive():
-            self._thread.join(timeout=2.0)
+            self._thread.join(timeout=5.0)
             self._thread = None
         logger.info("MediaDetectionEngine stopped.")
 

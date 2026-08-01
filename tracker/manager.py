@@ -98,9 +98,9 @@ class TrackingManager:
         logger.info("[LIFECYCLE] Tracking stopped — waiting for tracking thread to exit...")
 
         if thread is not None and thread.is_alive():
-            thread.join(timeout=3.0)
+            thread.join(timeout=5.0)
             if thread.is_alive():
-                logger.warning("[LIFECYCLE] Tracking thread did not exit within 3 seconds (ident=%s).", thread.ident)
+                logger.warning("[LIFECYCLE] Tracking thread did not exit within 5 seconds (ident=%s).", thread.ident)
             else:
                 logger.info("[LIFECYCLE] Tracking thread exited cleanly.")
 
@@ -156,24 +156,32 @@ class TrackingManager:
     def _tracking_loop(self) -> None:
         poll_s = POLL_INTERVAL_MS / 1000.0
 
-        while self._running:
+        try:
+            while self._running:
+                try:
+                    if not self._paused:
+                        self._tick()
+                        self._consecutive_errors = 0
+                except Exception as exc:
+                    self._consecutive_errors += 1
+                    logger.error(
+                        "Tracking loop error #%d: %s",
+                        self._consecutive_errors,
+                        exc,
+                        exc_info=True,
+                    )
+                    if self._consecutive_errors >= 10:
+                        logger.critical("Too many consecutive errors, pausing tracking for 60s")
+                        time.sleep(60.0)
+                        self._consecutive_errors = 0
+                time.sleep(poll_s)
+        finally:
+            # Ensure the thread's DB connection is closed before thread exit
             try:
-                if not self._paused:
-                    self._tick()
-                    self._consecutive_errors = 0
+                self._repo.close()
+                logger.info("TrackingManager thread closed its DB connection")
             except Exception as exc:
-                self._consecutive_errors += 1
-                logger.error(
-                    "Tracking loop error #%d: %s",
-                    self._consecutive_errors,
-                    exc,
-                    exc_info=True,
-                )
-                if self._consecutive_errors >= 10:
-                    logger.critical("Too many consecutive errors, pausing tracking for 60s")
-                    time.sleep(60.0)
-                    self._consecutive_errors = 0
-            time.sleep(poll_s)
+                logger.warning("Failed to close repository connection in tracking thread: %s", exc)
 
     def _tick(self) -> None:
         now = datetime.now()

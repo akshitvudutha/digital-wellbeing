@@ -807,6 +807,30 @@ class Repository:
             timeline_json=row["timeline_json"] if "timeline_json" in keys else "[]",
         )
 
+    def close(self) -> None:
+        """Close the SQLite connection for the current thread if open.
+        Repository uses thread-local connections; calling close() from the current
+        thread will close that thread's connection.
+        """
+        try:
+            if hasattr(self._local, "conn") and self._local.conn:
+                try:
+                    self._local.conn.close()
+                    logger.info("Closed repository DB connection for thread %s", threading.current_thread().name)
+                except Exception as exc:
+                    logger.warning("Error closing DB connection: %s", exc)
+                finally:
+                    try:
+                        self._local.conn = None
+                    except Exception:
+                        pass
+        except Exception:
+            logger.exception("Unexpected error while closing DB connection")
+
+    # Backwards-compatible alias
+    def close_thread_connection(self) -> None:
+        self.close()
+
     def _cleanup_test_data(self) -> None:
         if Repository._db_path_override is not None:
             return

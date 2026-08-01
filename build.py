@@ -44,6 +44,31 @@ def update_file_version_info(version_str):
         f.write(content)
     print("Done updating file_version_info.txt.")
 
+def update_manifest_version(version_str):
+    """
+    Update app.manifest assemblyIdentity version to match version_str.
+    The manifest expects a four-part version (major.minor.patch.build).
+    """
+    manifest_path = Path("app.manifest")
+    if not manifest_path.exists():
+        print("app.manifest not found; skipping manifest update.")
+        return
+    # Ensure a four-part version
+    parts = version_str.split(".")
+    while len(parts) < 4:
+        parts.append("0")
+    manifest_ver = f"{parts[0]}.{parts[1]}.{parts[2]}.{parts[3]}"
+    content = manifest_path.read_text(encoding="utf-8")
+    def _repl(m):
+        return m.group(1) + manifest_ver + m.group(3)
+    new_content = re.sub(r'(assemblyIdentity[^>]+version=")([^"]+)("\s?)', _repl, content)
+    if new_content == content:
+        # Try alternate pattern without trailing space (fallback)
+        new_content = re.sub(r'(assemblyIdentity[^>]+version=")([^"]+)(")', _repl, content)
+    manifest_path.write_text(new_content, encoding="utf-8")
+    print(f"Updated app.manifest to version {manifest_ver}")
+
+
 def get_signtool():
     paths = glob.glob(r"C:\Program Files (x86)\Windows Kits\10\bin\10.0.*\x64\signtool.exe")
     if paths:
@@ -99,8 +124,23 @@ if __name__ == "__main__":
     v = get_version()
     print(f"--- Starting Release Build for v{v} ---")
     update_file_version_info(v)
+    update_manifest_version(v)
     run_pyinstaller()
     sign_file(Path("dist") / "DigitalWellbeing" / "DigitalWellbeing.exe")
     run_inno_setup()
-    sign_file(Path("dist") / "DigitalWellbeingSetup.exe")
+    # Rename generated installer to include version for updater discoverability
+    inno_out = Path("dist") / "DigitalWellbeingSetup.exe"
+    if inno_out.exists():
+        dest_name = Path(f"DigitalWellbeingSetup-{v}.exe")
+        dest_path = Path("dist") / dest_name
+        try:
+            inno_out.replace(dest_path)
+            print(f"Renamed installer to {dest_path}")
+            sign_file(dest_path)
+        except Exception as exc:
+            print(f"Warning: Failed to rename/sign installer: {exc}")
+            # fallback to signing original
+            sign_file(inno_out)
+    else:
+        print("Warning: Inno Setup did not produce expected installer 'DigitalWellbeingSetup.exe'. Skipping rename.")
     print(f"--- Successfully built release v{v} ---")

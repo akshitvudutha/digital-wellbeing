@@ -172,9 +172,17 @@ def is_idle(
         elif mode == "strict":
             return idle_s >= threshold_s
         else:  # smart
-            if media_timeout_s <= 0:
-                return False
-            return idle_s >= media_timeout_s
+            # Activity-aware multipliers when media is playing (entertainment vs gaming)
+            try:
+                from core.constants import AppCategory as _Cat
+                multiplier = 1.0
+                if current_category == _Cat.GAMING:
+                    multiplier = 2.5
+                elif current_category == _Cat.ENTERTAINMENT:
+                    multiplier = 3.0
+            except Exception:
+                multiplier = 1.0
+            return idle_s >= (threshold_s * multiplier)
 
     if current_category is not None:
         from core.constants import AppCategory as _Cat

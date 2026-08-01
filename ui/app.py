@@ -8,7 +8,7 @@ from PySide6.QtCore import QTimer, Qt
 from PySide6.QtGui import QAction, QIcon
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
-from core.constants import APP_NAME
+from core.constants import APP_NAME, APP_VERSION
 from core.logger import logger
 from settings.manager import SettingsManager
 from tracker.manager import TrackingManager
@@ -110,13 +110,104 @@ class DigitalWellbeingApp:
         if not start_minimized:
             self._window.show()
         else:
-            self._window.show()  # show normally even if start_minimized; close=exit
+            # Start minimized: don't show the main window. Tray icon remains active.
+            logger.info("Starting minimized to tray; main window will not be shown")
+            self._window.hide()
 
         from analytics.engine import AnalyticsEngine
         engine = AnalyticsEngine()
         engine.ensure_historical_snapshots()
         from datetime import date
         self._last_checked_date = date.today()
+
+        # Updater: check GitHub Releases for newer installers (non-blocking)
+        try:
+            from utils.updater import Updater
+            from ui.widgets.update_dialog import UpdateDialog
+
+            self._updater = Updater()
+
+            def _on_update_available(info: dict) -> None:
+                # Respect user's "remind me later" within 24 hours
+                from time import time
+                last_dismiss = self._sm.get("last_update_dismissed_ts", "0")
+                try:
+                    last_ts = float(last_dismiss)
+                except Exception:
+                    last_ts = 0.0
+                if time() - last_ts < 24 * 3600:
+                    logger.info("Update available but user dismissed within 24h. Skipping dialog.")
+                    return
+
+                # Never interrupt active SleepGuard countdown or focus sessions
+                try:
+                    sg_active = getattr(self, "_sleepguard", None) and getattr(self._sleepguard, "_idle_fired", None) and self._sleepguard._idle_fired.is_set()
+                except Exception:
+                    sg_active = False
+                try:
+                    focus_active = False
+                    if hasattr(self, "_window") and self._window and hasattr(self._window, "_wellbeing_page"):
+                        ft = getattr(self._window._wellbeing_page, "_focus_timer", None)
+                        if ft and getattr(ft, "_is_running", False):
+                            focus_active = True
+                except Exception:
+                    focus_active = False
+
+                if sg_active or focus_active:
+                    logger.info("Deferring update dialog due to active SleepGuard or FocusSession; will retry in 30s")
+                    QTimer.singleShot(30_000, lambda: self._updater.check_for_updates())
+                    return
+
+                # Show the update dialog non-blocking
+                try:
+                    dlg = UpdateDialog(current_version=APP_VERSION, new_version=info.get("version"), notes=info.get("notes", ""), parent=self._window or None)
+
+                    def _on_update_now():
+                        # start download, show progress
+                        self._updater.download_installer(info.get("asset_url"), info.get("asset_name"), info.get("asset_id"))
+
+                    def _on_download_progress(pct: int):
+                        try:
+                            dlg.set_progress(pct)
+                        except Exception:
+                            pass
+
+                    def _on_download_complete(path: str):
+                        # launch installer via wrapper and exit app
+                        try:
+                            # Ensure cleanup to close DB handles
+                            self._cleanup()
+                        except Exception:
+                            pass
+                        self._updater.launch_installer_and_exit(path)
+                        # call quit after launching wrapper
+                        try:
+                            self._app.quit()
+                        except Exception:
+                            pass
+
+                    def _on_error(msg: str):
+                        try:
+                            dlg.show_error(msg)
+                        except Exception:
+                            logger.error("Update dialog error: %s", msg)
+
+                    dlg.update_now.connect(_on_update_now)
+                    dlg.later.connect(lambda: self._sm.set("last_update_dismissed_ts", str(time())))
+
+                    self._updater.download_progress.connect(_on_download_progress)
+                    self._updater.download_complete.connect(_on_download_complete)
+                    self._updater.error.connect(_on_error)
+
+                    dlg.show()
+                except Exception as exc:
+                    logger.exception("Failed to show update dialog: %s", exc)
+
+            # Connect and schedule an initial check a few seconds after startup
+            self._updater.update_available.connect(_on_update_available)
+            QTimer.singleShot(5_000, lambda: self._updater.check_for_updates())
+        except Exception as exc:
+            logger.warning("Updater initialization failed: %s", exc)
 
         if os.environ.get("DW_SCREENSHOT_MODE") == "1":
             def take_screenshots():
@@ -284,6 +375,15 @@ class DigitalWellbeingApp:
         if hasattr(self, "_sleepguard") and self._sleepguard:
             logger.info("[LIFECYCLE] Stopping _sleepguard")
             self._sleepguard.stop()
+
+        # 2b. Close repository connections for this (main) thread. Background threads
+        # are responsible for closing their own thread-local connections on exit.
+        try:
+            from database.repository import Repository
+            Repository().close()
+            logger.info("Closed main-thread repository DB connection during cleanup")
+        except Exception as exc:
+            logger.warning("Failed to close main-thread DB connection during cleanup: %s", exc)
 
         # 3. Close the single-instance server so subsequent launches can connect.
         if hasattr(self, "_server") and self._server:
