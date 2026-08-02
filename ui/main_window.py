@@ -97,7 +97,7 @@ class MainWindow(QMainWindow):
         self._screen_time_details_page = ScreenTimeDetailsPage()
         
         from ui.pages.app_details import AppDetailsPage
-        self._app_details_page = AppDetailsPage()
+        self._app_details_page = AppDetailsPage(protection_manager=self._protection_manager)
         
         self._dashboard_page.request_screen_time_details.connect(self._navigate_to_screen_time_details)
         self._dashboard_page.request_focus_session.connect(lambda: self._navigate(2))
@@ -330,19 +330,22 @@ class MainWindow(QMainWindow):
         scroll.setWidget(nav_container)
         layout.addWidget(scroll, 1)
 
-        nav_items = [
-            ("  🏠   Home", 0),
-            ("  📊   Activity & Trends", 1),
-            ("  🧘   Focus & SleepGuard", 2),
+        self._home_btn = QPushButton("  🏠   Home")
+        self._activity_btn = QPushButton("  📈   Activity Trends")
+        self._focus_btn = QPushButton("  🎯   Focus")
+        self._debug_btn = QPushButton("  🐛   Dev Mode")
+
+        self._nav_buttons = [
+            self._home_btn,
+            self._activity_btn,
+            self._focus_btn,
+            self._debug_btn
         ]
 
-        self._nav_buttons: list[QPushButton] = []
-        for label, page_idx in nav_items:
-            btn = QPushButton(label)
+        for i, btn in enumerate(self._nav_buttons):
             btn.setObjectName("nav_btn")
-            btn.clicked.connect(lambda checked, idx=page_idx: self._navigate(idx))
+            btn.clicked.connect(lambda checked, idx=i: self._navigate(idx))
             nav_layout.addWidget(btn)
-            self._nav_buttons.append(btn)
 
         nav_layout.addStretch()
 
@@ -352,13 +355,14 @@ class MainWindow(QMainWindow):
         footer_layout.setContentsMargins(0, 0, 0, 16)
         footer_layout.setSpacing(12)
         
-        # Pinned Settings Button
-        self._settings_btn = QPushButton("  ⚙️   Settings & Data")
+        self._settings_btn = QPushButton("  ⚙️   Settings")
         self._settings_btn.setObjectName("nav_btn")
         self._settings_btn.clicked.connect(lambda: self._navigate(3))
         footer_layout.addWidget(self._settings_btn)
-        self._nav_buttons.append(self._settings_btn) # Still managed for highlighting
-
+        
+        # We append to _nav_buttons list but NOT the nav_layout so it can be managed for highlighting
+        self._nav_buttons.insert(3, self._settings_btn)
+        
         # Status Capsule
         status_widget = QWidget()
         status_layout = QVBoxLayout(status_widget)
@@ -473,15 +477,6 @@ class MainWindow(QMainWindow):
                 self._active_nav_btn = btn
                 
             self._stack.setCurrentIndexAnimated(prev_idx)
-
-    def _show_shutdown_warning_dialog(self, is_media: bool) -> None:
-        if self.isHidden():
-            self.show()
-            self.raise_()
-            self.activateWindow()
-
-        dlg = ShutdownCountdownDialog(is_media=is_media, parent=self)
-        dlg.exec()
 
     def _show_limit_dialog(self, process_name: str, limit_seconds: int) -> None:
         from ui.widgets.limit_dialog import LimitReachedDialog, PinOverrideDialog

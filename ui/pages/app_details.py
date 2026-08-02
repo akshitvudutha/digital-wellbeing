@@ -8,7 +8,7 @@ from typing import Callable, Optional
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QPushButton, QScrollArea,
-    QVBoxLayout, QWidget, QGridLayout
+    QVBoxLayout, QWidget, QGridLayout, QComboBox
 )
 
 from analytics.engine import AnalyticsEngine
@@ -61,9 +61,10 @@ class AppDetailsPage(QWidget):
 
     back_requested = Signal()
 
-    def __init__(self, on_back: Optional[Callable[[], None]] = None, parent=None) -> None:
+    def __init__(self, on_back: Optional[Callable[[], None]] = None, protection_manager=None, parent=None) -> None:
         super().__init__(parent)
         self._engine = AnalyticsEngine()
+        self._protection_manager = protection_manager
         self._current_app: str = ""
         self._setup_ui()
         
@@ -153,11 +154,63 @@ class AppDetailsPage(QWidget):
         
         self._inner_layout.addLayout(self._stats_grid)
 
+        # -----------------------------------------------------
+        # Limits and Restrictions Section
+        # -----------------------------------------------------
+        if self._protection_manager:
+            limits_header = QLabel("Usage Restrictions")
+            limits_header.setObjectName("app_title")
+            limits_header.setStyleSheet("font-size: 20px; font-weight: 700; margin-top: 16px;")
+            self._inner_layout.addWidget(limits_header)
+            
+            limits_container = QFrame()
+            limits_container.setObjectName("stat_box")
+            limits_layout = QVBoxLayout(limits_container)
+            
+            # Daily Limit
+            limit_row = QHBoxLayout()
+            limit_lbl = QLabel("Daily Limit:")
+            limit_lbl.setStyleSheet("font-size: 14px; font-weight: 600;")
+            self._limit_combo = QComboBox()
+            self._limit_combo.setFixedWidth(160)
+            self._limit_combo.addItem("Unlimited", 0)
+            self._limit_combo.addItem("15 min", 15)
+            self._limit_combo.addItem("30 min", 30)
+            self._limit_combo.addItem("45 min", 45)
+            self._limit_combo.addItem("1 hour", 60)
+            self._limit_combo.addItem("2 hours", 120)
+            self._limit_combo.addItem("3 hours", 180)
+            self._limit_combo.currentIndexChanged.connect(self._on_limit_changed)
+            
+            limit_row.addWidget(limit_lbl)
+            limit_row.addWidget(self._limit_combo)
+            limit_row.addStretch()
+            limits_layout.addLayout(limit_row)
+            
+            # Override Status
+            self._override_lbl = QLabel("")
+            self._override_lbl.setStyleSheet("color: #EAB308; font-weight: 600; font-size: 13px; margin-top: 8px;")
+            limits_layout.addWidget(self._override_lbl)
+            
+            self._inner_layout.addWidget(limits_container)
+
+        history_header = QLabel("Usage History")
+        history_header.setObjectName("app_title")
+        history_header.setStyleSheet("font-size: 20px; font-weight: 700; margin-top: 16px;")
+        self._inner_layout.addWidget(history_header)
+
         # Timeline Chart
         self._chart = HourlyIntensityChart()
         self._inner_layout.addWidget(self._chart)
         
         self._inner_layout.addStretch()
+
+    def _on_limit_changed(self, index: int) -> None:
+        if not self._protection_manager or not self._current_app:
+            return
+        mins = self._limit_combo.itemData(index)
+        sec = (mins * 60) if mins > 0 else None
+        self._protection_manager.limits.set_limit(self._current_app, sec)
 
     def set_app(self, process_name: str) -> None:
         self._current_app = process_name
@@ -233,3 +286,25 @@ class AppDetailsPage(QWidget):
         self._stat_sessions.set_value(str(sessions))
         # Weekly Average is a placeholder for now, just mock based on today/yesterday
         self._stat_weekly.set_value(AnalyticsEngine.format_duration_short((today_s + yesterday_s) / 2.0))
+
+        if self._protection_manager:
+            # Block combo box signal during update
+            self._limit_combo.blockSignals(True)
+            try:
+                current_limit = self._protection_manager.limits.get_limit(process_name)
+                current_mins = (current_limit // 60) if current_limit else 0
+                idx = self._limit_combo.findData(current_mins)
+                if idx >= 0:
+                    self._limit_combo.setCurrentIndex(idx)
+                else:
+                    self._limit_combo.setCurrentIndex(0)
+            finally:
+                self._limit_combo.blockSignals(False)
+
+            # Update override status
+            if self._protection_manager.has_active_override(process_name):
+                self._override_lbl.setText("Status: Override active for today.")
+                self._override_lbl.setVisible(True)
+            else:
+                self._override_lbl.setText("")
+                self._override_lbl.setVisible(False)

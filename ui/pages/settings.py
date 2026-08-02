@@ -65,17 +65,9 @@ class SettingsPage(QWidget):
 
         if self._protection_manager:
             from ui.widgets.protection_section import ProtectionSection
-            from ui.widgets.app_limits_section import AppLimitsSection
-
-            # App Limits Section
-            app_limits_section = self._make_section("⏳ App Limits")
-            app_limits_l = app_limits_section.layout()
-            self._app_limits_widget = AppLimitsSection(self._protection_manager)
-            app_limits_l.addWidget(self._app_limits_widget)
-            inner_layout.addWidget(app_limits_section)
             
-            # Protection Section
-            protection_section = self._make_section("🔒 Protection")
+            # Privacy & Security Section
+            protection_section = self._make_section("🔒 Privacy & Security")
             prot_l = protection_section.layout()
             self._protection_widget = ProtectionSection(self._protection_manager)
             prot_l.addWidget(self._protection_widget)
