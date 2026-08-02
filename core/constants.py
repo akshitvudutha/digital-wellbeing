@@ -14,6 +14,7 @@ class AppCategory(str, Enum):
     UTILITIES = "Utilities"
     EDUCATION = "Education"
     SOCIAL = "Social"
+    FINANCE = "Finance"
     OTHER = "Other"
 
 
@@ -45,17 +46,20 @@ DEFAULT_IDLE_THRESHOLD_S = 300
 MAX_SESSION_GAP_S = 30
 
 CATEGORY_COLORS: dict[AppCategory, str] = {
-    AppCategory.BROWSER: "#4FC3F7",
-    AppCategory.PROGRAMMING: "#81C784",
-    AppCategory.GAMING: "#FF8A65",
-    AppCategory.COMMUNICATION: "#CE93D8",
-    AppCategory.PRODUCTIVITY: "#FFD54F",
-    AppCategory.ENTERTAINMENT: "#F48FB1",
-    AppCategory.SYSTEM: "#90A4AE",
-    AppCategory.UTILITIES: "#80CBC4",
-    AppCategory.EDUCATION: "#A5D6A7",
-    AppCategory.SOCIAL: "#FFAB91",
-    AppCategory.OTHER: "#78909C",
+    AppCategory.BROWSER: "#3B82F6",       # Blue
+    AppCategory.OTHER: "#06B6D4",         # Cyan
+    AppCategory.PRODUCTIVITY: "#22C55E",  # Green
+    AppCategory.SYSTEM: "#9CA3AF",        # Gray
+    
+    # Defaults for others to prevent crashes:
+    AppCategory.COMMUNICATION: "#10B981", 
+    AppCategory.ENTERTAINMENT: "#F59E0B", 
+    AppCategory.GAMING: "#8B5CF6",        
+    AppCategory.FINANCE: "#EAB308",       
+    AppCategory.EDUCATION: "#14B8A6",     
+    AppCategory.PROGRAMMING: "#6366F1",   
+    AppCategory.UTILITIES: "#64748B",     
+    AppCategory.SOCIAL: "#EC4899",        
 }
 
 CATEGORY_ICONS: dict[AppCategory, str] = {
@@ -68,6 +72,7 @@ CATEGORY_ICONS: dict[AppCategory, str] = {
     AppCategory.SYSTEM: "⚙️",
     AppCategory.UTILITIES: "🔧",
     AppCategory.EDUCATION: "🎓",
-    AppCategory.SOCIAL: "🌍",
+    AppCategory.SOCIAL: "👥",
+    AppCategory.FINANCE: "💰",
     AppCategory.OTHER: "📌",
 }

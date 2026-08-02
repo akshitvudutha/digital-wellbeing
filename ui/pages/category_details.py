@@ -41,15 +41,21 @@ class CategoryDetailsPage(QWidget):
             QLabel#total_time {{ font-size: 16px; font-weight: 700; color: {tm.color('success_text')}; }}
             QLabel#placeholder {{ color: {tm.color('text_sub')}; padding: 24px; }}
             QPushButton#btn_secondary {{
-                background-color: {tm.color('card_bg')};
-                color: {tm.color('text_main')};
-                border: 1px solid {tm.color('border')};
-                border-radius: 8px;
-                padding: 6px 12px;
-                font-weight: 600;
+                background-color: transparent;
+                border: 1px solid transparent;
+                border-radius: 18px;
+                font-size: 20px;
+                font-weight: 400;
+                color: {tm.color('text_sub')};
+                padding: 0;
             }}
             QPushButton#btn_secondary:hover {{
                 background-color: {tm.color('card_hover')};
+                color: {tm.color('text_main')};
+            }}
+            QPushButton#btn_secondary:pressed {{
+                background-color: {tm.color('border')};
+                color: {tm.color('text_main')};
             }}
         """)
 
@@ -62,9 +68,9 @@ class CategoryDetailsPage(QWidget):
         hdr_row = QHBoxLayout()
         hdr_row.setSpacing(16)
         
-        btn_back = QPushButton("← Back")
+        btn_back = QPushButton("←")
         btn_back.setObjectName("btn_secondary")
-        btn_back.setFixedWidth(80)
+        btn_back.setFixedSize(36, 36)
         btn_back.clicked.connect(self._on_back)
         hdr_row.addWidget(btn_back)
         

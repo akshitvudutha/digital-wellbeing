@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 import threading
 from contextlib import contextmanager
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Generator, List, Optional
 
@@ -205,6 +205,19 @@ class Repository:
             with self._cursor() as cur:
                 cur.execute("DELETE FROM app_sessions")
                 return cur.rowcount
+
+    def cleanup_old_sessions(self, retention_days: int) -> int:
+        if retention_days < 0:
+            return 0
+            
+        cutoff = (datetime.now() - timedelta(days=retention_days)).isoformat()
+        with self._write_lock:
+            with self._cursor() as cur:
+                cur.execute("DELETE FROM app_sessions WHERE start_time < ?", (cutoff,))
+                deleted = cur.rowcount
+                cur.execute("DELETE FROM event_log WHERE timestamp < ?", (cutoff,))
+                deleted += cur.rowcount
+                return deleted
 
     def backup_database(self, dest_path: Path) -> Path:
         with self._write_lock:

@@ -12,9 +12,13 @@ from PySide6.QtWidgets import (
     QVBoxLayout, QWidget,
 )
 
+from datetime import date
+import json
+
 from analytics.engine import AnalyticsEngine
+from database.repository import Repository
 from ui.widgets.charts import HourlyIntensityChart
-from ui.widgets.simple_app_row import SimpleAppRow
+from ui.widgets.app_row import AppUsageRow
 from tracker.categorizer import display_name as get_display_name
 from core.constants import AppCategory
 
@@ -88,10 +92,13 @@ class ExpandableCategoryList(QFrame):
         self._apps_layout.setSpacing(8)
         
         for idx, app in enumerate(self._apps):
-            row = SimpleAppRow(
+            row = AppUsageRow(
+                rank=idx + 1,
                 process_name=app["process_name"],
                 display_name=get_display_name(app["process_name"]),
+                category=AppCategory(app.get("category", "Uncategorized")),
                 duration_s=app["total_s"],
+                max_duration_s=self._max_dur,
             )
             # Make the row clickable for details
             row.mousePressEvent = lambda e, name=app["process_name"]: self.app_clicked.emit(name)
@@ -112,10 +119,12 @@ class ScreenTimeDetailsPage(QWidget):
     """Detailed view of today's screen time, categories, and timeline."""
 
     request_app_details = Signal(str)
+    back_requested = Signal()
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self._engine = AnalyticsEngine()
+        self._repo = Repository()
         self._setup_ui()
         
         from ui.theme import ThemeManager
@@ -142,18 +151,11 @@ class ScreenTimeDetailsPage(QWidget):
         header = QHBoxLayout()
         header.setSpacing(20)
         
-        title_box = QVBoxLayout()
-        title_box.setSpacing(4)
+        from ui.widgets.back_header import BackHeader
+        self._back_header = BackHeader("Screen Time Details", "Today's complete usage breakdown")
+        self._back_header.back_requested.connect(self.back_requested.emit)
         
-        title_lbl = QLabel("Screen Time Details")
-        title_lbl.setObjectName("page_title")
-        
-        self._subtitle_lbl = QLabel("Today's complete usage breakdown")
-        self._subtitle_lbl.setObjectName("page_subtitle")
-        
-        title_box.addWidget(title_lbl)
-        title_box.addWidget(self._subtitle_lbl)
-        header.addLayout(title_box)
+        header.addWidget(self._back_header)
 
         header.addStretch()
         
@@ -203,12 +205,28 @@ class ScreenTimeDetailsPage(QWidget):
         
         self._inner_layout.addStretch()
 
-    def refresh(self) -> None:
-        summary = self._engine.get_today_summary()
-        self._total_time_lbl.setText(self._engine.format_duration(summary.total_screen_time_s))
+    def refresh(self, target_date: Optional[date] = None) -> None:
+        if target_date is None or target_date == date.today():
+            self._back_header._subtitle_lbl.setText("Today's complete usage breakdown")
+            summary = self._engine.get_today_summary()
+            total_time_s = summary.total_screen_time_s
+            top_apps = summary.top_apps
+            hourly = self._engine.get_hourly_chart_data(date.today())
+        else:
+            self._back_header._subtitle_lbl.setText(f"Complete usage breakdown for {target_date.strftime('%B %d, %Y')}")
+            stat = self._repo.get_daily_stat(target_date)
+            if stat:
+                total_time_s = stat.total_screen_time_s
+                top_apps = json.loads(stat.app_usage_json)
+                hourly = self._engine.get_hourly_chart_data(target_date)
+            else:
+                total_time_s = 0
+                top_apps = []
+                hourly = []
+
+        self._total_time_lbl.setText(self._engine.format_duration(total_time_s))
         
         # Update Chart
-        hourly = self._engine.get_today_hourly_distribution()
         self._chart.update_data(hourly)
         
         # Update Top Apps (All)
@@ -217,14 +235,16 @@ class ScreenTimeDetailsPage(QWidget):
             if item.widget():
                 item.widget().deleteLater()
                 
-        top_apps = summary.top_apps
         max_dur = top_apps[0]["total_s"] if top_apps else 1.0
         
-        for idx, app in enumerate(top_apps[:10]):
-            row = SimpleAppRow(
+        for idx, app in enumerate(top_apps):
+            row = AppUsageRow(
+                rank=idx + 1,
                 process_name=app["process_name"],
                 display_name=get_display_name(app["process_name"]),
-                duration_s=app["total_s"]
+                category=AppCategory(app.get("category", "Uncategorized")),
+                duration_s=app["total_s"],
+                max_duration_s=max_dur,
             )
             row.mousePressEvent = lambda e, name=app["process_name"]: self.request_app_details.emit(name)
             self._apps_container.addWidget(row)

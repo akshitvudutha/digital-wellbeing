@@ -52,11 +52,7 @@ class AppUsageRow(QFrame):
         layout.setContentsMargins(12, 10, 12, 10)
         layout.setSpacing(14)
 
-        # Rank
-        self._rank_lbl = QLabel(f"#{rank}")
-        self._rank_lbl.setObjectName("rank_lbl")
-        self._rank_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(self._rank_lbl)
+        # Rank removed per user request
 
         # App Icon
         icon_provider = AppIconProvider()
@@ -81,12 +77,6 @@ class AppUsageRow(QFrame):
         self._name_lbl = QLabel(display_name)
         self._name_lbl.setObjectName("name_lbl")
         name_cat_layout.addWidget(self._name_lbl)
-        
-        cat_str = category.value if hasattr(category, "value") else str(category)
-        
-        self._cat_badge = QLabel(cat_str)
-        self._cat_badge.setObjectName("cat_badge")
-        name_cat_layout.addWidget(self._cat_badge)
         name_cat_layout.addStretch()
         
         center_layout.addLayout(name_cat_layout)
@@ -139,18 +129,10 @@ class AppUsageRow(QFrame):
                 background-color: {tm.color('card_hover')};
             }}
             QLabel#rank_lbl {{ color: {tm.color('text_muted')}; font-size: 13px; font-weight: 600; min-width: 24px; }}
-            QLabel#icon_lbl {{ background-color: {tm.color('border')}; border-radius: 8px; }}
+            QLabel#icon_lbl {{ background-color: transparent; border: none; }}
             QLabel#name_lbl {{ color: {tm.color('text_main')}; font-size: 14px; font-weight: 700; }}
             QLabel#dur_lbl {{ color: {tm.color('text_main')}; font-size: 14px; font-weight: 700; }}
             QLabel#pct_lbl {{ color: {tm.color('text_sub')}; font-size: 11px; }}
             QProgressBar#app_progress {{ background-color: {tm.color('border')}; border-radius: 3px; }}
             QProgressBar#app_progress::chunk {{ background-color: {app_color}; border-radius: 3px; }}
-        """)
-        
-        # Category badge can still use category colors if desired, but let's use app_color for consistency
-        self._cat_badge.setStyleSheet(f"""
-            color: {app_color};
-            background-color: {app_color}1A;
-            border: 1px solid {app_color}33;
-            border-radius: 6px; padding: 2px 6px; font-size: 10px; font-weight: 600;
         """)

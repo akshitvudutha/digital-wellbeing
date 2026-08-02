@@ -11,12 +11,12 @@ QWidget {
 }
 
 QMainWindow, QDialog, QWidget#content_area {
-    background-color: #0D1117;
+    background-color: #000000;
 }
 
 /* ─── Sidebar Navigation Rail (macOS Glass / One UI Rail) ──────────────── */
 QFrame#sidebar {
-    background-color: #161B22;
+    background-color: #000000;
     border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -98,8 +98,8 @@ QLabel#metric_sub {
 
 /* ─── Translucent Floating Cards (One UI + Glassmorphism) ──────────────── */
 QFrame#v2_card, QFrame#apps_container, QFrame#stat_card {
-    background-color: rgba(22, 27, 34, 0.75);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background-color: #121212;
+    border: 1px solid #2A2A2A;
     border-radius: 16px;
 }
 

@@ -86,33 +86,33 @@ class ThemeManager(QObject):
     def _get_tokens(self, dark_mode: bool) -> Dict[str, str]:
         if dark_mode:
             return {
-                "bg": "#000000",
+                "bg": "transparent", # Transparent for Mica / Pure black via palette
                 "card_bg": "#121212",
                 "card_hover": "#1A1A1A",
-                "card_pressed": "#0A0A0A",
+                "card_pressed": "#101010",
                 "border": "#2A2A2A",
-                "border_hover": "#38BDF8",
+                "border_hover": "#3A3A3A",
                 "text_main": "#FFFFFF",
-                "text_sub": "#A0A0A0",
-                "text_muted": "#606060",
-                "accent": "#38BDF8",
-                "accent_hover": "#7dd3fc",
+                "text_sub": "rgba(255, 255, 255, 0.7)",
+                "text_muted": "rgba(255, 255, 255, 0.4)",
+                "accent": "#3B82F6",
+                "accent_hover": "#60A5FA",
                 "track": "rgba(255, 255, 255, 0.05)",
-                "center_circle": "#000000",
+                "center_circle": "transparent",
                 "grid": "rgba(255, 255, 255, 0.05)",
                 
                 # Semantic
-                "success_bg": "rgba(16, 185, 129, 0.15)",
-                "success_border": "rgba(16, 185, 129, 0.3)",
-                "success_text": "#34d399",
+                "success_bg": "rgba(74, 222, 128, 0.15)",
+                "success_border": "rgba(74, 222, 128, 0.3)",
+                "success_text": "#4ADE80",
                 
                 "warning_bg": "rgba(250, 204, 21, 0.15)",
                 "warning_border": "rgba(250, 204, 21, 0.3)",
-                "warning_text": "#facc15",
+                "warning_text": "#FACC15",
                 
                 "danger_bg": "rgba(244, 63, 94, 0.15)",
                 "danger_border": "rgba(244, 63, 94, 0.25)",
-                "danger_text": "#fb7185",
+                "danger_text": "#FB7185",
                 
                 "info_bg": "rgba(56, 189, 248, 0.15)",
                 "info_border": "rgba(56, 189, 248, 0.25)",
@@ -122,86 +122,84 @@ class ThemeManager(QObject):
                 "indigo_border": "rgba(99, 102, 241, 0.2)",
                 "indigo_text": "#818cf8",
                 
-                # Gradients (Replaced with solid colors as per requirements)
-                "window_gradient": "#000000",
-                "primary_btn_gradient": "#38BDF8",
-                "primary_btn_hover": "#7dd3fc",
+                "window_gradient": "transparent",
+                "primary_btn_gradient": "rgba(255, 255, 255, 0.1)",
+                "primary_btn_hover": "rgba(255, 255, 255, 0.15)",
             }
         else:
             return {
-                "bg": "#FFFFFF",
-                "card_bg": "#F8FAFC",
-                "card_hover": "#F1F5F9",
-                "card_pressed": "#E2E8F0",
-                "border": "#E2E8F0",
-                "border_hover": "#0284C7",
-                "text_main": "#0F172A",
-                "text_sub": "#64748B",
-                "text_muted": "#94a3b8",
-                "accent": "#0284C7",
-                "accent_hover": "#0ea5e9",
+                "bg": "transparent",
+                "card_bg": "rgba(255, 255, 255, 0.85)",
+                "card_hover": "rgba(255, 255, 255, 1.0)",
+                "card_pressed": "rgba(255, 255, 255, 0.7)",
+                "border": "rgba(0, 0, 0, 0.08)",
+                "border_hover": "rgba(0, 0, 0, 0.15)",
+                "text_main": "#1C1C1C",
+                "text_sub": "rgba(0, 0, 0, 0.6)",
+                "text_muted": "rgba(0, 0, 0, 0.4)",
+                "accent": "#2563EB",
+                "accent_hover": "#3B82F6",
                 "track": "rgba(0, 0, 0, 0.05)",
-                "center_circle": "#FFFFFF",
+                "center_circle": "transparent",
                 "grid": "rgba(0, 0, 0, 0.05)",
                 
                 # Semantic
-                "success_bg": "rgba(16, 185, 129, 0.2)",
-                "success_border": "rgba(16, 185, 129, 0.4)",
+                "success_bg": "rgba(16, 185, 129, 0.15)",
+                "success_border": "rgba(16, 185, 129, 0.3)",
                 "success_text": "#059669",
                 
-                "warning_bg": "rgba(250, 204, 21, 0.2)",
-                "warning_border": "rgba(250, 204, 21, 0.4)",
+                "warning_bg": "rgba(250, 204, 21, 0.15)",
+                "warning_border": "rgba(250, 204, 21, 0.3)",
                 "warning_text": "#d97706",
                 
-                "danger_bg": "rgba(244, 63, 94, 0.2)",
-                "danger_border": "rgba(244, 63, 94, 0.35)",
+                "danger_bg": "rgba(244, 63, 94, 0.15)",
+                "danger_border": "rgba(244, 63, 94, 0.25)",
                 "danger_text": "#e11d48",
                 
-                "info_bg": "rgba(56, 189, 248, 0.2)",
-                "info_border": "rgba(56, 189, 248, 0.4)",
+                "info_bg": "rgba(56, 189, 248, 0.15)",
+                "info_border": "rgba(56, 189, 248, 0.25)",
                 "info_text": "#0284c7",
                 
-                "indigo_bg": "rgba(99, 102, 241, 0.15)",
-                "indigo_border": "rgba(99, 102, 241, 0.3)",
+                "indigo_bg": "rgba(99, 102, 241, 0.1)",
+                "indigo_border": "rgba(99, 102, 241, 0.2)",
                 "indigo_text": "#4f46e5",
                 
-                # Gradients (Replaced with solid colors)
-                "window_gradient": "#FFFFFF",
-                "primary_btn_gradient": "#0284C7",
-                "primary_btn_hover": "#0ea5e9",
+                "window_gradient": "transparent",
+                "primary_btn_gradient": "rgba(0, 0, 0, 0.05)",
+                "primary_btn_hover": "rgba(0, 0, 0, 0.08)",
             }
 
     def _apply_palette(self, app: QApplication, dark_mode: bool) -> None:
         palette = QPalette()
+        # By setting Window to transparent, we let the native Mica shine through
+        palette.setColor(QPalette.ColorRole.Window, QColor(0, 0, 0, 0))
         if dark_mode:
-            palette.setColor(QPalette.ColorRole.Window, QColor("#000000"))
             palette.setColor(QPalette.ColorRole.WindowText, QColor("#FFFFFF"))
-            palette.setColor(QPalette.ColorRole.Base, QColor("#121212"))
-            palette.setColor(QPalette.ColorRole.AlternateBase, QColor("#1A1A1A"))
-            palette.setColor(QPalette.ColorRole.ToolTipBase, QColor("#121212"))
+            palette.setColor(QPalette.ColorRole.Base, QColor(0, 0, 0, 0))
+            palette.setColor(QPalette.ColorRole.AlternateBase, QColor(255, 255, 255, 10))
+            palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(30, 30, 30, 230))
             palette.setColor(QPalette.ColorRole.ToolTipText, QColor("#FFFFFF"))
             palette.setColor(QPalette.ColorRole.Text, QColor("#FFFFFF"))
-            palette.setColor(QPalette.ColorRole.Button, QColor("#2A2A2A"))
+            palette.setColor(QPalette.ColorRole.Button, QColor(255, 255, 255, 15))
             palette.setColor(QPalette.ColorRole.ButtonText, QColor("#FFFFFF"))
             palette.setColor(QPalette.ColorRole.BrightText, QColor("#ffffff"))
-            palette.setColor(QPalette.ColorRole.Link, QColor("#38BDF8"))
-            palette.setColor(QPalette.ColorRole.Highlight, QColor("#38BDF8"))
-            palette.setColor(QPalette.ColorRole.HighlightedText, QColor("#ffffff"))
-            palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, QColor("#606060"))
-            palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor("#606060"))
+            palette.setColor(QPalette.ColorRole.Link, QColor("#60CDFF"))
+            palette.setColor(QPalette.ColorRole.Highlight, QColor("#60CDFF"))
+            palette.setColor(QPalette.ColorRole.HighlightedText, QColor("#000000"))
+            palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, QColor(255, 255, 255, 100))
+            palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor(255, 255, 255, 100))
         else:
-            palette.setColor(QPalette.ColorRole.Window, QColor("#FFFFFF"))
-            palette.setColor(QPalette.ColorRole.WindowText, QColor("#0F172A"))
-            palette.setColor(QPalette.ColorRole.Base, QColor(255, 255, 255, 180))
-            palette.setColor(QPalette.ColorRole.AlternateBase, QColor(255, 255, 255, 120))
-            palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(255, 255, 255, 240))
-            palette.setColor(QPalette.ColorRole.ToolTipText, QColor("#0F172A"))
-            palette.setColor(QPalette.ColorRole.Text, QColor("#0F172A"))
-            palette.setColor(QPalette.ColorRole.Button, QColor(255, 255, 255, 180))
-            palette.setColor(QPalette.ColorRole.ButtonText, QColor("#0F172A"))
+            palette.setColor(QPalette.ColorRole.WindowText, QColor("#1C1C1C"))
+            palette.setColor(QPalette.ColorRole.Base, QColor(255, 255, 255, 0))
+            palette.setColor(QPalette.ColorRole.AlternateBase, QColor(0, 0, 0, 10))
+            palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(255, 255, 255, 230))
+            palette.setColor(QPalette.ColorRole.ToolTipText, QColor("#1C1C1C"))
+            palette.setColor(QPalette.ColorRole.Text, QColor("#1C1C1C"))
+            palette.setColor(QPalette.ColorRole.Button, QColor(0, 0, 0, 15))
+            palette.setColor(QPalette.ColorRole.ButtonText, QColor("#1C1C1C"))
             palette.setColor(QPalette.ColorRole.BrightText, QColor("#000000"))
-            palette.setColor(QPalette.ColorRole.Link, QColor("#0284C7"))
-            palette.setColor(QPalette.ColorRole.Highlight, QColor("#0284C7"))
+            palette.setColor(QPalette.ColorRole.Link, QColor("#005FB8"))
+            palette.setColor(QPalette.ColorRole.Highlight, QColor("#005FB8"))
             palette.setColor(QPalette.ColorRole.HighlightedText, QColor("#ffffff"))
             palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, QColor(0, 0, 0, 100))
             palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor(0, 0, 0, 100))
@@ -212,24 +210,49 @@ class ThemeManager(QObject):
         scroll_hover = "rgba(255, 255, 255, 0.3)" if dark_mode else "rgba(0, 0, 0, 0.3)"
         
         glass_styles = f"""
-        * {{ font-family: 'Segoe UI Variable', 'Segoe UI', 'San Francisco', -apple-system, sans-serif; }}
-        QMainWindow {{
-            background: {self.color("window_gradient")};
+        * {{ font-family: 'Segoe UI Variable Display', 'Segoe UI Variable', 'Segoe UI', 'San Francisco', sans-serif; outline: none; }}
+        QMainWindow, QWidget#content_area {{
+            background: transparent;
         }}
         QScrollArea {{ border: none; background: transparent; }}
-        QWidget#content_area {{ background: transparent; }}
-        QScrollBar:vertical {{ border: none; background: transparent; width: 8px; margin: 0px; }}
-        QScrollBar::handle:vertical {{ background: {scroll_handle}; min-height: 30px; border-radius: 4px; }}
+        QScrollBar:vertical {{ border: none; background: transparent; width: 6px; margin: 0px; }}
+        QScrollBar::handle:vertical {{ background: {scroll_handle}; min-height: 30px; border-radius: 3px; }}
         QScrollBar::handle:vertical:hover {{ background: {scroll_hover}; }}
         QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0px; }}
         """
 
-        # Also load the base static stylesheet from assets
         base_dir = Path(__file__).parent.parent
         qss_path = base_dir / "assets" / "styles" / ("dark_theme.qss" if dark_mode else "light_theme.qss")
         static_qss = qss_path.read_text(encoding="utf-8") if qss_path.exists() else ""
         
         app.setStyleSheet(glass_styles + "\n" + static_qss)
+
+def apply_mica(hwnd: int, dark_mode: bool = True) -> None:
+    """Applies Windows 11 Mica backdrop to the specified window handle."""
+    try:
+        import ctypes
+        from ctypes.wintypes import DWORD, BOOL, HWND
+        import sys
+        
+        if sys.platform != "win32":
+            return
+            
+        DWMWA_USE_IMMERSIVE_DARK_MODE = 20
+        DWMWA_SYSTEMBACKDROP_TYPE = 38
+        DWMSBT_MAINWINDOW = 2 # Mica
+        
+        set_window_attribute = ctypes.windll.dwmapi.DwmSetWindowAttribute
+        
+        # Enable dark mode context
+        value = ctypes.c_int(1 if dark_mode else 0)
+        set_window_attribute(HWND(hwnd), DWORD(DWMWA_USE_IMMERSIVE_DARK_MODE), ctypes.byref(value), ctypes.sizeof(value))
+        
+        # Enable Mica
+        backdrop = ctypes.c_int(DWMSBT_MAINWINDOW)
+        set_window_attribute(HWND(hwnd), DWORD(DWMWA_SYSTEMBACKDROP_TYPE), ctypes.byref(backdrop), ctypes.sizeof(backdrop))
+    except Exception as e:
+        from core.logger import logger
+        logger.warning(f"Failed to apply Mica backdrop: {e}")
 
 
 # Legacy bindings mapped to ThemeManager for compatibility

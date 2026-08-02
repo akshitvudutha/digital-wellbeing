@@ -14,7 +14,7 @@ class AnimatedStackedWidget(QStackedWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._is_animating: bool = False
-        self._duration: int = 220
+        self._duration: int = 150
 
     def setCurrentIndexAnimated(self, index: int) -> None:
         if index == self.currentIndex() or self._is_animating or index < 0 or index >= self.count():

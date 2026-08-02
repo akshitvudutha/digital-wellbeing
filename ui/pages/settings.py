@@ -243,6 +243,28 @@ class SettingsPage(QWidget):
         data_section = self._make_section("🗄️ Data Management")
         data_layout = data_section.layout()
 
+        # History Retention row
+        retention_row = QHBoxLayout()
+        retention_col = QVBoxLayout()
+        retention_lbl = QLabel("History Retention")
+        retention_lbl.setObjectName("setting_label")
+        retention_desc = QLabel("Automatically delete raw tracking data older than this duration (daily summaries are kept forever)")
+        retention_desc.setObjectName("setting_desc")
+        retention_col.addWidget(retention_lbl)
+        retention_col.addWidget(retention_desc)
+        retention_row.addLayout(retention_col, 1)
+
+        self._retention_combo = QComboBox()
+        self._retention_combo.addItem("30 Days", 30)
+        self._retention_combo.addItem("90 Days", 90)
+        self._retention_combo.addItem("1 Year", 365)
+        self._retention_combo.addItem("Unlimited", -1)
+        self._retention_combo.setFixedWidth(160)
+        retention_row.addWidget(self._retention_combo)
+        data_layout.addLayout(retention_row)
+
+        data_layout.addWidget(self._separator())
+
         # CSV Export row
         export_row = QHBoxLayout()
         export_col = QVBoxLayout()
@@ -261,8 +283,9 @@ class SettingsPage(QWidget):
         self._export_range_combo.addItem("This Month", 99)
         export_row.addWidget(self._export_range_combo)
 
-        export_btn = QPushButton("📄 Export CSV")
-        export_btn.setFixedWidth(110)
+        from ui.widgets.fluent import FluentButton
+        export_btn = FluentButton("📄 Export CSV", primary=False)
+        export_btn.setFixedWidth(130)
         export_btn.clicked.connect(self._on_export_csv)
         export_row.addWidget(export_btn)
         data_layout.addLayout(export_row)
@@ -280,13 +303,13 @@ class SettingsPage(QWidget):
         db_col.addWidget(db_desc)
         db_row.addLayout(db_col, 1)
 
-        backup_btn = QPushButton("💾 Backup")
-        backup_btn.setFixedWidth(90)
+        backup_btn = FluentButton("💾 Backup", primary=False)
+        backup_btn.setFixedWidth(100)
         backup_btn.clicked.connect(self._on_backup_db)
         db_row.addWidget(backup_btn)
 
-        restore_btn = QPushButton("📂 Restore")
-        restore_btn.setFixedWidth(90)
+        restore_btn = FluentButton("📂 Restore", primary=False)
+        restore_btn.setFixedWidth(100)
         restore_btn.clicked.connect(self._on_restore_db)
         db_row.addWidget(restore_btn)
         data_layout.addLayout(db_row)
@@ -304,9 +327,9 @@ class SettingsPage(QWidget):
         clear_col.addWidget(clear_desc)
         clear_row.addLayout(clear_col, 1)
 
-        self._clear_btn = QPushButton("🗑️ Clear History")
+        self._clear_btn = FluentButton("🗑️ Clear History", primary=False)
         self._clear_btn.setObjectName("danger_btn")
-        self._clear_btn.setFixedWidth(130)
+        self._clear_btn.setFixedWidth(140)
         self._clear_btn.clicked.connect(self._on_clear_history)
         clear_row.addWidget(self._clear_btn)
         data_layout.addLayout(clear_row)
@@ -317,9 +340,26 @@ class SettingsPage(QWidget):
 
         inner_layout.addWidget(data_section)
 
+        # 5. About Section
+        about_section = self._make_section("ℹ️ About")
+        about_layout = about_section.layout()
+        
+        from core.constants import APP_NAME, APP_VERSION
+        app_lbl = QLabel(f"{APP_NAME} v{APP_VERSION}")
+        app_lbl.setObjectName("setting_label")
+        app_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        dev_lbl = QLabel("Premium Digital Wellbeing & Screen Time Tracker for Windows")
+        dev_lbl.setObjectName("setting_desc")
+        dev_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        about_layout.addWidget(app_lbl)
+        about_layout.addWidget(dev_lbl)
+        inner_layout.addWidget(about_section)
+
         save_row = QHBoxLayout()
         save_row.addStretch()
-        save_btn = QPushButton("💾 Save Settings")
+        save_btn = FluentButton("💾 Save Settings", primary=True)
         save_btn.setMinimumWidth(160)
         save_btn.clicked.connect(self._save)
         save_row.addWidget(save_btn)
@@ -370,15 +410,39 @@ class SettingsPage(QWidget):
         tm = ThemeManager.instance()
         
         self.setStyleSheet(f"""
-            QLabel#page_title {{ font-size: 24px; font-weight: 800; color: {tm.color('text_main')}; }}
-            QLabel#page_subtitle {{ font-size: 13px; color: {tm.color('text_sub')}; }}
-            QLabel#section_header {{ font-size: 14px; font-weight: 700; color: {tm.color('accent')}; letter-spacing: 1.2px; text-transform: uppercase; }}
-            QLabel#setting_label {{ color: {tm.color('text_main')}; font-weight: 700; }}
-            QLabel#setting_desc {{ color: {tm.color('text_sub')}; font-size: 11px; }}
+            QLabel#page_title {{ font-size: 28px; font-weight: 800; color: {tm.color('text_main')}; }}
+            QLabel#page_subtitle {{ font-size: 14px; color: {tm.color('text_sub')}; }}
+            QLabel#section_header {{ font-size: 15px; font-weight: 700; color: {tm.color('accent')}; letter-spacing: 0.5px; }}
+            QLabel#setting_label {{ color: {tm.color('text_main')}; font-size: 15px; font-weight: 600; }}
+            QLabel#setting_desc {{ color: {tm.color('text_sub')}; font-size: 13px; }}
             QFrame#apps_container {{ background: {tm.color('card_bg')}; border-radius: 12px; border: 1px solid {tm.color('border')}; }}
             QFrame#separator {{ background: {tm.color('border')}; }}
-            QPushButton#danger_btn {{ background-color: {tm.color('danger_text')}; color: white; }}
-            QPushButton#danger_btn:hover {{ background-color: {tm.color('danger_text')}; opacity: 0.8; }}
+            
+            QComboBox, QSpinBox {{
+                background-color: {tm.color('primary_btn_gradient')};
+                border: 1px solid {tm.color('border')};
+                border-radius: 6px;
+                padding: 6px 12px;
+                color: {tm.color('text_main')};
+                font-size: 14px;
+                font-weight: 500;
+            }}
+            QComboBox:hover, QSpinBox:hover {{
+                border: 1px solid {tm.color('border_hover')};
+                background-color: {tm.color('primary_btn_hover')};
+            }}
+            QComboBox::drop-down, QSpinBox::up-button, QSpinBox::down-button {{
+                border: none;
+                background: transparent;
+            }}
+            QComboBox QAbstractItemView {{
+                background-color: {tm.color('card_bg')};
+                border: 1px solid {tm.color('border')};
+                selection-background-color: {tm.color('accent')};
+                selection-color: white;
+                border-radius: 6px;
+                outline: none;
+            }}
         """)
         
         # We need to manually set these if they change dynamically
@@ -427,6 +491,11 @@ class SettingsPage(QWidget):
         else:
             self._sg_media_timeout_combo.setCurrentIndex(3)  # default 15 min
             
+        retention = self._sm.get_int("history_retention_days", 30)
+        idx3 = self._retention_combo.findData(retention)
+        if idx3 >= 0:
+            self._retention_combo.setCurrentIndex(idx3)
+
         self._on_sg_mode_changed()
 
     def _on_export_csv(self) -> None:
@@ -544,6 +613,17 @@ class SettingsPage(QWidget):
         media_timeout_val = self._sg_media_timeout_combo.currentData()
         if media_timeout_val is not None:
             self._sm.media_idle_timeout_minutes = media_timeout_val
+
+        ret_val = self._retention_combo.currentData()
+        if ret_val is not None:
+            self._sm.set_int("history_retention_days", ret_val)
+            # Trigger cleanup immediately when saved
+            if ret_val > 0:
+                from analytics.engine import AnalyticsEngine
+                try:
+                    AnalyticsEngine().run_cleanup(ret_val)
+                except Exception as e:
+                    print(f"Cleanup error: {e}")
 
         if self._autostart_check.isChecked():
             try:

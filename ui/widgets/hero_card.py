@@ -83,7 +83,9 @@ class CategoryProportionBar(QWidget):
         painter.restore()
 
 
-class HeroCard(QFrame):
+from ui.widgets.fluent import FluentCard
+
+class HeroCard(FluentCard):
     """Hero card displaying today's screen time, goal progress, multi-color category split, and delta vs yesterday."""
 
     focus_requested = Signal()
@@ -92,7 +94,6 @@ class HeroCard(QFrame):
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setObjectName("v2_card")
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self._setup_ui()
         
@@ -169,8 +170,8 @@ class HeroCard(QFrame):
         self._badge.setObjectName("hero_badge")
         self._badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self._focus_btn = QPushButton("🧘 Start 25m Focus Session")
-        self._focus_btn.setObjectName("btn_primary")
+        from ui.widgets.fluent import FluentButton
+        self._focus_btn = FluentButton("🧘 Start 25m Focus Session", primary=True)
         self._focus_btn.setMinimumHeight(46)
         self._focus_btn.clicked.connect(self.focus_requested.emit)
 
@@ -188,23 +189,12 @@ class HeroCard(QFrame):
             QLabel#hero_legend {{ font-size: 12px; font-weight: 600; color: {tm.color('text_sub')}; }}
             QLabel#hero_goal {{ font-size: 13px; font-weight: 600; color: {tm.color('text_sub')}; }}
             QLabel#hero_pct {{ font-size: 13px; font-weight: 800; color: {tm.color('accent')}; }}
-            QProgressBar#hero_progress {{ background-color: {tm.color('border')}; border-radius: 4px; }}
+            QProgressBar#hero_progress {{ background-color: {tm.color('border')}; border-radius: 4px; border: none; }}
             QProgressBar#hero_progress::chunk {{ background-color: {tm.color('accent')}; border-radius: 4px; }}
-            QPushButton#btn_primary {{
-                background-color: {tm.color('accent')};
-                color: #ffffff;
-                font-weight: 700;
-                font-size: 14px;
-                border-radius: 16px;
-                padding: 10px 22px;
-                border: 1px solid {tm.color('border')};
-            }}
-            QPushButton#btn_primary:hover {{
-                background-color: {tm.color('accent_hover')};
-            }}
         """)
         
-        self._update_badge_style(getattr(self, "_last_delta_pct", 0.0), getattr(self, "_last_is_decrease", False))
+        if hasattr(self, "_badge"):
+            self._update_badge_style(getattr(self, "_last_delta_pct", 0.0), getattr(self, "_last_is_decrease", False))
 
     def _update_badge_style(self, delta_pct: float, is_decrease: bool) -> None:
         from ui.theme import ThemeManager
@@ -253,8 +243,10 @@ class HeroCard(QFrame):
         rem_s = max(0.0, target_seconds - active_seconds)
         rem_h = int(rem_s // 3600)
         rem_m = int((rem_s % 3600) // 60)
-        if active_seconds >= target_seconds:
-            self._goal_lbl.setText(f"Target limit ({target_h}h) reached! Time to take a break.")
+        if active_seconds > target_seconds:
+            self._goal_lbl.setText("You exceeded your goal")
+        elif active_seconds == target_seconds:
+            self._goal_lbl.setText("Goal achieved")
         else:
             self._goal_lbl.setText(f"{rem_h}h {rem_m:02d}m remaining under daily target of {target_h}h 00m")
 

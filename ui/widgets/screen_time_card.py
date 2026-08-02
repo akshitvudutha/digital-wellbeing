@@ -17,18 +17,18 @@ from analytics.engine import AnalyticsEngine
 from tracker.categorizer import display_name as get_display_name
 from core.constants import AppCategory
 from ui.widgets.simple_app_row import SimpleAppRow
-from ui.widgets.simple_category_row import SimpleCategoryRow
 from ui.widgets.donut_chart import DonutChart
 
 
-class ActiveScreenTimeCard(QFrame):
+from ui.widgets.fluent import FluentCard
+
+class ActiveScreenTimeCard(FluentCard):
     """Large interactive card displaying today's screen time, donut chart, and top apps."""
 
     card_clicked = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setObjectName("v2_card")
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self._setup_ui()
         
@@ -48,8 +48,8 @@ class ActiveScreenTimeCard(QFrame):
 
         # Header
         header_layout = QHBoxLayout()
-        self._title = QLabel("Today's Active Screen Time")
-        self._title.setObjectName("st_title")
+        from ui.widgets.fluent import FluentLabel
+        self._title = FluentLabel("Today's Active Screen Time", FluentLabel.Style.HEADING)
         
         header_layout.addWidget(self._title)
         header_layout.addStretch()
@@ -57,11 +57,11 @@ class ActiveScreenTimeCard(QFrame):
 
         # Content Row (Donut + Top Apps)
         content_row = QHBoxLayout()
-        content_row.setSpacing(32)
+        content_row.setSpacing(12)
 
         # Left: Donut Chart & Total Time
         self._donut = DonutChart()
-        self._donut.setMinimumSize(140, 140)
+        self._donut.setMinimumSize(220, 220)
         content_row.addWidget(self._donut, 0, Qt.AlignmentFlag.AlignCenter)
 
         # Right: Lists
@@ -80,13 +80,7 @@ class ActiveScreenTimeCard(QFrame):
         layout.addLayout(content_row)
 
     def _apply_theme(self, is_dark: bool) -> None:
-        from ui.theme import ThemeManager
-        tm = ThemeManager.instance()
-        
-        self.setStyleSheet(f"""
-            QLabel#st_title {{ font-size: 16px; font-weight: 700; color: {tm.color('text_main')}; }}
-            QLabel#st_placeholder {{ color: {tm.color('text_sub')}; font-size: 14px; }}
-        """)
+        pass
 
     def set_data(self, active_s: float, category_breakdown: List[dict], top_apps: List[dict]) -> None:
         from ui.theme import ThemeManager
@@ -94,9 +88,9 @@ class ActiveScreenTimeCard(QFrame):
         
         # Colors matching Android Wellbeing
         color_top1 = "#3B82F6" # Blue
-        color_top2 = "#06B6D4" # Cyan
-        color_top3 = "#10B981" # Green
-        color_other = "#6B7280" # Grey
+        color_top2 = "#38BDF8" # Cyan
+        color_top3 = "#4ADE80" # Green
+        color_other = "#9CA3AF" # Grey
         colors = [color_top1, color_top2, color_top3]
         
         segments = []
@@ -126,8 +120,8 @@ class ActiveScreenTimeCard(QFrame):
                 item.widget().deleteLater()
                 
         if not top_apps:
-            placeholder = QLabel("No application usage recorded today.")
-            placeholder.setObjectName("st_placeholder")
+            from ui.widgets.fluent import FluentLabel
+            placeholder = FluentLabel("No application usage recorded today.", FluentLabel.Style.MUTED)
             self._apps_layout.addWidget(placeholder)
         else:
             for idx, s in enumerate(top_apps[:3]):
@@ -137,5 +131,5 @@ class ActiveScreenTimeCard(QFrame):
                     duration_s=s["total_s"],
                     legend_color=colors[idx]
                 )
-                row.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+                row.clicked.connect(lambda process_name=s["process_name"]: self.card_clicked.emit())
                 self._apps_layout.addWidget(row)

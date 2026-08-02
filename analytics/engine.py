@@ -7,6 +7,7 @@ from typing import List, Optional
 
 from database.models import DailyStat
 from database.repository import Repository
+import math
 
 
 @dataclass
@@ -51,7 +52,7 @@ class AnalyticsEngine:
         return self._build_summary(start, end)
 
     def _build_summary(self, start: date, end: date) -> PeriodSummary:
-        top_apps = self._repo.get_top_apps_for_range(start, end, limit=10)
+        top_apps = self._repo.get_top_apps_for_range(start, end, limit=100)
         category_breakdown = self._repo.get_category_breakdown_for_range(start, end)
         daily_totals = self._repo.get_daily_totals_for_range(start, end)
         longest = self._repo.get_longest_session_for_range(start, end)
@@ -113,11 +114,16 @@ class AnalyticsEngine:
         else:
             pct_change = 0.0 if t_active == 0 else 100.0
 
+        t_cats = {c["category"].lower(): c["total_s"] for c in t_summary.category_breakdown}
+        y_cats = {c["category"].lower(): c["total_s"] for c in y_summary.category_breakdown}
+        
         return {
             "today_active_s": t_active,
             "yesterday_active_s": y_active,
             "pct_change": pct_change,
             "is_increase": pct_change > 0,
+            "today_cats": t_cats,
+            "yesterday_cats": y_cats,
         }
 
     def get_trend_insights(self) -> dict:
@@ -156,6 +162,76 @@ class AnalyticsEngine:
             "ent_change_pct": ent_change,
             "curr_week_active_s": curr_active,
             "prev_week_active_s": prev_active,
+        }
+
+    def get_long_term_analytics(self) -> dict:
+        today = date.today()
+        # Summaries for all time up to today
+        all_stats = self._repo.get_all_daily_stats()
+        
+        # Calculate streaks based on a 8hr default goal, or settings-based goal
+        from settings.manager import SettingsManager
+        sm = SettingsManager()
+        goal_s = sm.get_int("daily_limit_minutes", 480) * 60
+        
+        current_streak = 0
+        best_streak = 0
+        temp_streak = 0
+        
+        days_tracked = len(all_stats)
+        total_time = sum(s.active_time_s for s in all_stats)
+        avg_daily = (total_time / days_tracked) if days_tracked > 0 else 0
+        
+        # We need to sort by date to calculate streaks
+        sorted_stats = sorted(all_stats, key=lambda x: x.date)
+        
+        most_productive_day = None
+        highest_prod_time = 0.0
+        
+        longest_continuous = 0.0
+        longest_focus = 0.0
+        
+        for stat in sorted_stats:
+            # Streak
+            if stat.total_screen_time_s <= goal_s and stat.total_screen_time_s > 0:
+                temp_streak += 1
+                best_streak = max(best_streak, temp_streak)
+            else:
+                temp_streak = 0
+                
+            # Productivity
+            import json
+            try:
+                cats = json.loads(stat.category_usage_json)
+                prod = sum(c["total_s"] for c in cats if c["category"].lower() in ("programming", "productivity", "education", "utilities"))
+                if prod > highest_prod_time:
+                    highest_prod_time = prod
+                    most_productive_day = stat.date
+            except:
+                pass
+                
+        # To get current streak, we count backwards from today/yesterday
+        current_streak = 0
+        for stat in reversed(sorted_stats):
+            # Allow missing a day? Strict consecutive:
+            if stat.total_screen_time_s <= goal_s and stat.total_screen_time_s > 0:
+                current_streak += 1
+            else:
+                break
+                
+        # Estimate longest sessions across all time
+        for stat in all_stats:
+            longest_continuous = max(longest_continuous, stat.idle_time_s) # Proxy, wait we have top_app longest?
+            
+        return {
+            "avg_daily_s": avg_daily,
+            "avg_weekly_s": avg_daily * 7 if days_tracked > 0 else 0,
+            "avg_monthly_s": avg_daily * 30 if days_tracked > 0 else 0,
+            "current_streak": current_streak,
+            "best_streak": best_streak,
+            "most_productive_day": most_productive_day,
+            "most_productive_s": highest_prod_time,
+            "days_tracked": days_tracked
         }
 
     @staticmethod
@@ -222,4 +298,8 @@ class AnalyticsEngine:
             d = date.fromisoformat(row["day"])
             if d not in existing_dates and d < today:
                 self.generate_daily_snapshot(d)
+                
+    def run_cleanup(self, retention_days: int) -> int:
+        """Runs the database cleanup to delete raw events older than retention_days."""
+        return self._repo.cleanup_old_sessions(retention_days)
 

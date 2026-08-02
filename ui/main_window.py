@@ -17,13 +17,11 @@ from PySide6.QtWidgets import (
 from core.constants import APP_NAME, APP_VERSION
 from tracker.manager import TrackingManager
 from tracker.sleepguard import SleepGuardController
-from ui.pages.about import AboutPage
 from ui.pages.activity import ActivityPage
 from ui.pages.dashboard import DashboardPage
 from ui.pages.debug import DebugPage
 from ui.pages.settings import SettingsPage
 from ui.pages.wellbeing import WellbeingPage
-from ui.pages.history import HistoryPage
 from ui.widgets.animated_stacked_widget import AnimatedStackedWidget
 from ui.widgets.countdown_dialog import ShutdownCountdownDialog
 
@@ -55,6 +53,7 @@ class MainWindow(QMainWindow):
 
         self.data_changed_signal.connect(self._refresh_current_page)
         self._active_nav_btn: Optional[QPushButton] = None
+        self._navigation_history: list[int] = []
         self._setup_ui()
         self._connect_tracker()
         self._setup_shortcuts()
@@ -71,6 +70,11 @@ class MainWindow(QMainWindow):
 
         central_widget = QWidget(self)
         self.setCentralWidget(central_widget)
+
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        from ui.theme import ThemeManager, apply_mica
+        apply_mica(int(self.winId()), ThemeManager.instance().is_dark)
+        ThemeManager.instance().theme_changed.connect(lambda is_dark: apply_mica(int(self.winId()), is_dark))
 
         root_layout = QHBoxLayout(central_widget)
         root_layout.setContentsMargins(0, 0, 0, 0)
@@ -92,29 +96,29 @@ class MainWindow(QMainWindow):
         self._app_details_page = AppDetailsPage()
         
         self._dashboard_page.request_screen_time_details.connect(self._navigate_to_screen_time_details)
-        self._dashboard_page.request_focus_session.connect(lambda: self._navigate(3))
+        self._dashboard_page.request_focus_session.connect(lambda: self._navigate(2))
+        
         self._screen_time_details_page.request_app_details.connect(self._navigate_to_app_details)
-        self._app_details_page.back_requested.connect(self._navigate_to_screen_time_details)
+        self._screen_time_details_page.back_requested.connect(self._navigate_back)
+        
+        self._app_details_page.back_requested.connect(self._navigate_back)
         
         self._activity_page = ActivityPage()
-        self._history_page = HistoryPage()
+        self._activity_page.request_historical_details.connect(self._navigate_to_screen_time_details)
         self._wellbeing_page = WellbeingPage(sleepguard=self._sleepguard)
         self._wellbeing_page.focus_completed.connect(self.focus_completed.emit)
         self._settings_page = SettingsPage(tracker=self._tracker)
         self._settings_page.settings_changed.connect(self._on_settings_changed)
         self._settings_page.theme_changed_req.connect(self._animate_theme_change)
-        self._about_page = AboutPage()
         self._debug_page = DebugPage(tracker=self._tracker)
 
         self._stack.addWidget(self._dashboard_page)  # 0: Home
         self._stack.addWidget(self._activity_page)   # 1: Activity & Trends
-        self._stack.addWidget(self._history_page)    # 2: History
-        self._stack.addWidget(self._wellbeing_page)  # 3: Focus & SleepGuard
-        self._stack.addWidget(self._settings_page)   # 4: Settings & Data
-        self._stack.addWidget(self._about_page)      # 5: About
-        self._stack.addWidget(self._debug_page)      # 6: Dev Mode (Hidden)
-        self._stack.addWidget(self._screen_time_details_page) # 7: Screen Time Details
-        self._stack.addWidget(self._app_details_page)         # 8: App Details
+        self._stack.addWidget(self._wellbeing_page)  # 2: Focus & SleepGuard
+        self._stack.addWidget(self._settings_page)   # 3: Settings & Data
+        self._stack.addWidget(self._debug_page)      # 4: Dev Mode (Hidden)
+        self._stack.addWidget(self._screen_time_details_page) # 5: Screen Time Details
+        self._stack.addWidget(self._app_details_page)         # 6: App Details
 
         root_layout.addWidget(self._stack, 1)
         if self._nav_buttons:
@@ -130,11 +134,24 @@ class MainWindow(QMainWindow):
 
         self._refresh_shortcut = QShortcut(QKeySequence("Ctrl+R"), self)
         self._refresh_shortcut.activated.connect(self.refresh_all_pages)
+        
+        self._backspace_shortcut = QShortcut(QKeySequence(Qt.Key.Key_Backspace), self)
+        self._backspace_shortcut.activated.connect(self._navigate_back)
+        
+        self._alt_left_shortcut = QShortcut(QKeySequence("Alt+Left"), self)
+        self._alt_left_shortcut.activated.connect(self._navigate_back)
+
+    def mousePressEvent(self, event) -> None:
+        if event.button() == Qt.MouseButton.BackButton or event.button() == Qt.MouseButton.XButton1:
+            self._navigate_back()
+            event.accept()
+        else:
+            super().mousePressEvent(event)
 
     def _toggle_dev_mode(self) -> None:
         from core.logger import logger
         logger.info("[DEV MODE] Hidden developer shortcut Ctrl+Shift+D activated")
-        self._navigate(6)
+        self._navigate(4)
 
     def _show_shutdown_warning_dialog(self, countdown_s: int) -> None:
         from core.logger import logger
@@ -247,13 +264,19 @@ class MainWindow(QMainWindow):
                     logger.warning("Error refreshing %s: %s", type(page).__name__, exc)
         logger.info("[REFRESH] Global refresh complete.")
 
-    def _navigate_to_screen_time_details(self) -> None:
-        self._screen_time_details_page.refresh()
-        self._navigate(7)
+    def _navigate_to_screen_time_details(self, target_date=None) -> None:
+        from datetime import date
+        if isinstance(target_date, date):
+            # Need to clear history so Back button goes back to Activity Trends
+            self._screen_time_details_page.refresh(target_date)
+            self._navigate(5)
+        else:
+            self._screen_time_details_page.refresh()
+            self._navigate(5)
 
     def _navigate_to_app_details(self, process_name: str) -> None:
         self._app_details_page.set_app(process_name)
-        self._navigate(8)
+        self._navigate(6)
 
     def _build_sidebar(self) -> QFrame:
         sidebar = QFrame()
@@ -267,8 +290,8 @@ class MainWindow(QMainWindow):
         # Brand Header
         logo_widget = QWidget()
         logo_layout = QHBoxLayout(logo_widget)
-        logo_layout.setContentsMargins(20, 24, 20, 16)
-        logo_layout.setSpacing(12)
+        logo_layout.setContentsMargins(20, 32, 20, 24)
+        logo_layout.setSpacing(14)
 
         icon_lbl = QLabel()
         icon_path = Path(__file__).parent.parent / "assets" / "icons" / "app_logo.png"
@@ -300,18 +323,15 @@ class MainWindow(QMainWindow):
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         nav_container = QWidget()
         nav_layout = QVBoxLayout(nav_container)
-        nav_layout.setContentsMargins(0, 12, 0, 12)
-        nav_layout.setSpacing(4)
+        nav_layout.setContentsMargins(0, 16, 0, 16)
+        nav_layout.setSpacing(6)
         scroll.setWidget(nav_container)
         layout.addWidget(scroll, 1)
 
         nav_items = [
             ("  🏠   Home", 0),
             ("  📊   Activity & Trends", 1),
-            ("  🗓️   History", 2),
-            ("  🧘   Focus & SleepGuard", 3),
-            ("  ⚙️   Settings & Data", 4),
-            ("  ℹ️   About", 5),
+            ("  🧘   Focus & SleepGuard", 2),
         ]
 
         self._nav_buttons: list[QPushButton] = []
@@ -324,16 +344,31 @@ class MainWindow(QMainWindow):
 
         nav_layout.addStretch()
 
-        # Footer Status Capsule
+        # Footer Area (Pinned to bottom)
+        footer_widget = QWidget()
+        footer_layout = QVBoxLayout(footer_widget)
+        footer_layout.setContentsMargins(0, 0, 0, 16)
+        footer_layout.setSpacing(12)
+        
+        # Pinned Settings Button
+        self._settings_btn = QPushButton("  ⚙️   Settings & Data")
+        self._settings_btn.setObjectName("nav_btn")
+        self._settings_btn.clicked.connect(lambda: self._navigate(3))
+        footer_layout.addWidget(self._settings_btn)
+        self._nav_buttons.append(self._settings_btn) # Still managed for highlighting
+
+        # Status Capsule
         status_widget = QWidget()
         status_layout = QVBoxLayout(status_widget)
-        status_layout.setContentsMargins(16, 12, 16, 20)
+        status_layout.setContentsMargins(16, 0, 16, 8)
 
         self._tracking_status = QLabel("● Engine Active")
         self._tracking_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         status_layout.addWidget(self._tracking_status)
-        layout.addWidget(status_widget)
+        footer_layout.addWidget(status_widget)
+        
+        layout.addWidget(footer_widget)
 
         return sidebar
 
@@ -341,42 +376,49 @@ class MainWindow(QMainWindow):
         from ui.theme import ThemeManager
         tm = ThemeManager.instance()
         
+        # OLED Black appearance with very subtle Mica bleed
+        sidebar_bg = "rgba(0, 0, 0, 0.4)" if tm.is_dark else "rgba(255, 255, 255, 0.4)"
+        hover_bg = "rgba(255, 255, 255, 0.05)" if tm.is_dark else "rgba(0, 0, 0, 0.04)"
+        active_bg = "rgba(255, 255, 255, 0.08)" if tm.is_dark else "rgba(0, 0, 0, 0.08)"
+        active_border = "rgba(255, 255, 255, 0.12)" if tm.is_dark else "rgba(0, 0, 0, 0.15)"
+        
         self._sidebar.setStyleSheet(f"""
             QFrame#sidebar {{
-                background: {tm.color('card_bg')};
+                background: {sidebar_bg};
                 border-right: 1px solid {tm.color('border')};
             }}
             QPushButton#nav_btn {{
                 background: transparent;
                 color: {tm.color('text_sub')};
                 border: 1px solid transparent;
-                border-radius: 12px;
-                padding: 12px 16px;
+                border-radius: 8px;
+                padding: 10px 16px;
                 text-align: left;
                 font-size: 14px;
                 font-weight: 600;
-                margin: 0px 12px;
+                margin: 2px 16px;
             }}
             QPushButton#nav_btn:hover {{
-                background: {tm.color('card_hover')};
+                background: {hover_bg};
                 color: {tm.color('text_main')};
-                border: 1px solid {tm.color('border')};
+                border: 1px solid transparent;
             }}
             QPushButton#nav_btn[active="true"] {{
-                background: {tm.color('info_bg')};
-                color: {tm.color('info_text')};
-                border: 1px solid {tm.color('info_border')};
+                background: {active_bg};
+                color: {tm.color('text_main')};
+                border: 1px solid {active_border};
             }}
         """)
         
-        self._logo_lbl.setStyleSheet(f"font-size: 16px; font-weight: 700; color: {tm.color('text_main')}; letter-spacing: -0.5px;")
-        self._subtitle_lbl.setStyleSheet(f"font-size: 11px; font-weight: 700; color: {tm.color('text_sub')}; letter-spacing: 0.5px;")
+        self._logo_lbl.setStyleSheet(f"font-size: 16px; font-weight: 700; color: {tm.color('text_main')}; letter-spacing: -0.2px;")
+        self._subtitle_lbl.setStyleSheet(f"font-size: 11px; font-weight: 800; color: {tm.color('text_sub')}; letter-spacing: 0.5px;")
         self._separator.setStyleSheet(f"background: {tm.color('border')}; margin: 0 16px;")
         
+        # Modern Pill Style for Engine Active
         self._tracking_status.setStyleSheet(
             f"color: {tm.color('success_text')}; background-color: {tm.color('success_bg')}; "
-            f"border: 1px solid {tm.color('success_border')}; border-radius: 12px; "
-            "font-size: 12px; font-weight: 700; padding: 10px 12px;"
+            f"border: 1px solid {tm.color('success_border')}; border-radius: 16px; "
+            "font-size: 12px; font-weight: 700; padding: 6px 16px; letter-spacing: 0.3px;"
         )
         
         # Repolish active button
@@ -385,11 +427,23 @@ class MainWindow(QMainWindow):
             self._active_nav_btn.style().polish(self._active_nav_btn)
 
     def _navigate(self, page_idx: int) -> None:
+        curr_idx = self._stack.currentIndex()
+        if curr_idx == page_idx:
+            return
+
+        if page_idx < 5:
+            # Main sidebar navigation, clear history
+            self._navigation_history.clear()
+        else:
+            # Drilling down into a detail page, push current index
+            self._navigation_history.append(curr_idx)
+
         if self._active_nav_btn:
             self._active_nav_btn.setProperty("active", False)
             self._active_nav_btn.style().unpolish(self._active_nav_btn)
             self._active_nav_btn.style().polish(self._active_nav_btn)
 
+        # Highlight sidebar if applicable
         if 0 <= page_idx < len(self._nav_buttons):
             btn = self._nav_buttons[page_idx]
             btn.setProperty("active", True)
@@ -400,15 +454,31 @@ class MainWindow(QMainWindow):
         self._stack.setCurrentIndexAnimated(page_idx)
         self._refresh_current_page()
 
+    def _navigate_back(self) -> None:
+        if self._navigation_history:
+            prev_idx = self._navigation_history.pop()
+            
+            if self._active_nav_btn:
+                self._active_nav_btn.setProperty("active", False)
+                self._active_nav_btn.style().unpolish(self._active_nav_btn)
+                self._active_nav_btn.style().polish(self._active_nav_btn)
+
+            if 0 <= prev_idx < len(self._nav_buttons):
+                btn = self._nav_buttons[prev_idx]
+                btn.setProperty("active", True)
+                btn.style().unpolish(btn)
+                btn.style().polish(btn)
+                self._active_nav_btn = btn
+                
+            self._stack.setCurrentIndexAnimated(prev_idx)
+
     def _refresh_current_page(self) -> None:
         idx = self._stack.currentIndex()
         pages = [
             self._dashboard_page,
             self._activity_page,
-            self._history_page,
             self._wellbeing_page,
             self._settings_page,
-            self._about_page,
             self._debug_page,
         ]
         if 0 <= idx < len(pages):

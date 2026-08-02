@@ -13,12 +13,14 @@ from analytics.engine import AnalyticsEngine
 from tracker.categorizer import display_name as get_display_name
 
 
-class SmartInsightsCard(QFrame):
+from ui.widgets.fluent import FluentCard
+
+class SmartInsightsCard(FluentCard):
     """Smart Digital Wellbeing Insights card with personalized health suggestions."""
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
-        self.setObjectName("v2_card")
+        self.setObjectName("fluent_card")
         self._engine = AnalyticsEngine()
         self._setup_ui()
         
@@ -75,22 +77,23 @@ class SmartInsightsCard(QFrame):
 
         for tip, icon, color in tips:
             row = QFrame()
+            # Glassmorphism styling with colored accent strip
             row.setStyleSheet(
-                f"background-color: {tm.color('card_hover')}; "
-                f"border: 1px solid {tm.color('border')}; "
+                f"background-color: rgba(255, 255, 255, 0.03); "
+                f"border: 1px solid rgba(255, 255, 255, 0.05); "
                 f"border-left: 4px solid {color}; "
-                f"border-radius: 12px;"
+                f"border-radius: 8px;"
             )
             rl = QHBoxLayout(row)
             rl.setContentsMargins(14, 12, 14, 12)
-            rl.setSpacing(12)
+            rl.setSpacing(16)
 
             # Icon circle pill
             ic_box = QLabel(icon)
-            ic_box.setFixedSize(36, 36)
+            ic_box.setFixedSize(32, 32)
             ic_box.setAlignment(Qt.AlignmentFlag.AlignCenter)
             ic_box.setStyleSheet(
-                f"background-color: {color}18; color: {color}; border: 1px solid {color}30; border-radius: 10px; font-size: 16px;"
+                f"background-color: {color}18; color: {color}; border: 1px solid {color}30; border-radius: 8px; font-size: 14px;"
             )
 
             t_lbl = QLabel(tip)
@@ -113,31 +116,45 @@ class SmartInsightsCard(QFrame):
             tips.append(("Tracking has started. Your screen time insights and personalized habits will update automatically as you use applications today.", "🌱", tm.color('accent')))
             return tips
 
-        # Productive time ratio calculation
-        productive_s = 0.0
-        for item in summary.category_breakdown:
-            cat_name = item["category"].lower()
-            if cat_name in ("programming", "productivity", "education", "utilities"):
-                productive_s += item["total_s"]
+        comp = self._engine.get_yesterday_comparison()
+        
+        # Compare Productivity vs Yesterday
+        prod_today = sum(c for k, c in comp["today_cats"].items() if k in ("programming", "productivity", "education", "utilities"))
+        prod_yest = sum(c for k, c in comp["yesterday_cats"].items() if k in ("programming", "productivity", "education", "utilities"))
+        
+        if prod_yest > 0:
+            pct_prod = ((prod_today - prod_yest) / prod_yest) * 100
+            if pct_prod > 10:
+                tips.append((f"Productivity increased by {int(pct_prod)}% compared to yesterday.", "🚀", tm.color('success_text')))
+            elif pct_prod < -20:
+                tips.append((f"Productivity dropped by {int(abs(pct_prod))}% compared to yesterday.", "📉", tm.color('warning_text')))
 
-        if active_s > 0:
-            prod_pct = (productive_s / active_s) * 100
-            if prod_pct >= 60:
-                tips.append((f"Great productivity flow today! {prod_pct:.0f}% of your screen time is focused high-value work.", "🎯", tm.color('success_text')))
-            elif prod_pct < 30 and active_s > 1800:
-                tips.append(("High entertainment/social load detected. Consider starting a 25-minute Pomodoro focus session to recalibrate.", "⌛", tm.color('warning_text')))
+        # Compare Browsers
+        browser_today = comp["today_cats"].get("browser", 0)
+        browser_yest = comp["yesterday_cats"].get("browser", 0)
+        
+        if browser_yest > 0:
+            pct_browser = ((browser_today - browser_yest) / browser_yest) * 100
+            if pct_browser < -15:
+                tips.append((f"You spent {int(abs(pct_browser))}% less time on browsers than yesterday.", "🌐", tm.color('info_text')))
+            elif pct_browser > 30 and browser_today > 1800:
+                tips.append((f"Browser usage is {int(pct_browser)}% higher than yesterday. Consider a focus session.", "⌛", tm.color('warning_text')))
 
-        # Screen time total threshold
-        if total_s > 6 * 3600:
-            tips.append(("Screen time exceeded 6 hours today. Remember to follow the 20-20-20 eye rest rule: look 20 feet away for 20 seconds.", "👀", tm.color('danger_text')))
-        elif total_s < 2 * 3600:
-            tips.append(("Moderate screen time today. Perfectly balanced digital routine detected.", "✨", tm.color('accent')))
-
-        # Top app highlight
-        if summary.top_apps:
+        # Streak calculation
+        long_term = self._engine.get_long_term_analytics()
+        streak = long_term.get("current_streak", 0)
+        
+        if streak >= 3:
+            tips.append((f"You achieved your screen time goal for {streak} consecutive days.", "🔥", tm.color('accent')))
+            
+        # Top app highlight (fallback)
+        if len(tips) < 3 and summary.top_apps:
             top_app_name = get_display_name(summary.top_apps[0]["process_name"])
             top_app_dur = AnalyticsEngine.format_duration_short(summary.top_apps[0]["total_s"])
-            tips.append((f"Primary daily focus right now is {top_app_name} with {top_app_dur} of active engagement.", "📊", tm.color('info_text')))
+            tips.append((f"{top_app_name} is your most active application today with {top_app_dur} usage.", "📊", tm.color('info_text')))
+            
+        if not tips:
+             tips.append(("Moderate screen time today. Perfectly balanced digital routine detected.", "✨", tm.color('accent')))
 
         return tips[:3]
 

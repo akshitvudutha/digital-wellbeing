@@ -17,9 +17,9 @@ from PySide6.QtWidgets import (
 from analytics.engine import AnalyticsEngine
 from ui.widgets.hero_card import HeroCard
 from ui.widgets.screen_time_card import ActiveScreenTimeCard
-from ui.widgets.simple_category_row import SimpleCategoryRow
+from ui.widgets.simple_category_row import ClickableCategoryCard
 
-class ClickableCategoryRow(SimpleCategoryRow):
+class ClickableCategoryRow(ClickableCategoryCard):
     clicked = Signal(str)
     def mousePressEvent(self, event):
         super().mousePressEvent(event)
@@ -64,11 +64,10 @@ class DashboardPage(QWidget):
         title_box = QVBoxLayout()
         title_box.setSpacing(4)
         
-        self._greeting_label = QLabel("Welcome Back")
-        self._greeting_label.setObjectName("page_title")
+        from ui.widgets.fluent import FluentLabel, FluentButton
         
-        self._date_label = QLabel("")
-        self._date_label.setObjectName("page_subtitle")
+        self._greeting_label = FluentLabel("Welcome Back", FluentLabel.Style.TITLE)
+        self._date_label = FluentLabel("", FluentLabel.Style.SUBHEADING)
         
         title_box.addWidget(self._greeting_label)
         title_box.addWidget(self._date_label)
@@ -82,8 +81,7 @@ class DashboardPage(QWidget):
         self._score_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
         header.addWidget(self._score_badge)
 
-        self._refresh_btn = QPushButton("⚡ Refresh")
-        self._refresh_btn.setObjectName("refresh_btn")
+        self._refresh_btn = FluentButton("⚡ Refresh", primary=False)
         self._refresh_btn.setFixedWidth(120)
         self._refresh_btn.setMinimumHeight(38)
         self._refresh_btn.clicked.connect(self._trigger_refresh)
@@ -120,14 +118,15 @@ class DashboardPage(QWidget):
         self._inner_layout.addSpacing(16)
 
         # 3. Most Used Categories (Android style)
-        self._cats_label = QLabel("Most Used Categories")
-        self._cats_label.setObjectName("section_header")
+        from ui.widgets.fluent import FluentLabel
+        self._cats_label = FluentLabel("Most Used Categories", FluentLabel.Style.HEADING)
         self._inner_layout.addWidget(self._cats_label)
 
         self._cats_container = QWidget()
         self._cats_layout = QHBoxLayout(self._cats_container)
         self._cats_layout.setContentsMargins(0, 0, 0, 0)
         self._cats_layout.setSpacing(16)
+        self._cats_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self._inner_layout.addWidget(self._cats_container)
 
         self._inner_layout.addStretch()
@@ -137,20 +136,8 @@ class DashboardPage(QWidget):
         tm = ThemeManager.instance()
         
         # Apply standard label styles
+        # Apply standard label styles
         self.setStyleSheet(f"""
-            QLabel#page_title {{ font-size: 28px; font-weight: 800; color: {tm.color('text_main')}; }}
-            QLabel#page_subtitle {{ font-size: 15px; font-weight: 600; color: {tm.color('text_sub')}; }}
-            QPushButton#refresh_btn {{
-                background-color: {tm.color('card_bg')};
-                color: {tm.color('text_main')};
-                border: 1px solid {tm.color('border')};
-                border-radius: 12px;
-                font-weight: 600;
-            }}
-            QPushButton#refresh_btn:hover {{
-                background-color: {tm.color('card_hover')};
-                border-color: {tm.color('border_hover')};
-            }}
         """)
         
         # Apply semantic style to score badge
@@ -166,8 +153,6 @@ class DashboardPage(QWidget):
             border: 1px solid {border}; border-radius: 20px;
             font-size: 13px; font-weight: 800; padding: 8px 18px;
         """)
-        
-        self._cats_label.setStyleSheet(f"font-size: 14px; font-weight: 700; color: {tm.color('text_muted')}; text-transform: uppercase; letter-spacing: 0.5px;")
 
     def _trigger_refresh(self) -> None:
         self._refresh_btn.setEnabled(False)
@@ -262,7 +247,7 @@ class DashboardPage(QWidget):
                         duration_s=dur
                     )
                     row2.clicked.connect(self.request_category_details.emit)
-                    self._cats_layout.addWidget(row2, 1)
+                    self._cats_layout.addWidget(row2)
 
     def on_data_changed(self) -> None:
         self._refresh()

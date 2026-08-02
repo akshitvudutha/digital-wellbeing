@@ -79,18 +79,6 @@ class AppDetailsPage(QWidget):
         tm = ThemeManager.instance()
         
         self.setStyleSheet(f"""
-            QPushButton#btn_back {{
-                background: transparent;
-                color: {tm.color('accent')};
-                font-size: 15px;
-                font-weight: 700;
-                border: none;
-                text-align: left;
-            }}
-            QPushButton#btn_back:hover {{
-                color: {tm.color('accent_hover')};
-                text-decoration: underline;
-            }}
             QLabel#app_title {{ font-size: 32px; font-weight: 800; color: {tm.color('text_main')}; }}
             QLabel#app_cat {{ font-size: 15px; font-weight: 600; color: {tm.color('text_sub')}; }}
         """)
@@ -102,11 +90,10 @@ class AppDetailsPage(QWidget):
 
         # Top Bar
         top_bar = QHBoxLayout()
-        back_btn = QPushButton("← Back to Screen Time")
-        back_btn.setObjectName("btn_back")
-        back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        back_btn.clicked.connect(self.back_requested.emit)
-        top_bar.addWidget(back_btn)
+        from ui.widgets.back_header import BackHeader
+        self._back_header = BackHeader("App Details", "Detailed statistics and timeline")
+        self._back_header.back_requested.connect(self.back_requested.emit)
+        top_bar.addWidget(self._back_header)
         top_bar.addStretch()
         main_layout.addLayout(top_bar)
         
@@ -194,9 +181,9 @@ class AppDetailsPage(QWidget):
         # Get Stats
         import sqlite3
         import os
-        from core.constants import DB_PATH
+        from database.repository import _get_db_path
         
-        db_path = str(DB_PATH)
+        db_path = str(_get_db_path())
         today_s = 0.0
         yesterday_s = 0.0
         sessions = 0

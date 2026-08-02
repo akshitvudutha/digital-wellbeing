@@ -7,8 +7,7 @@ from __future__ import annotations
 import json
 from datetime import date, timedelta, datetime
 from typing import Optional
-
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QPushButton,
     QScrollArea, QStackedWidget, QVBoxLayout, QWidget, QProgressBar
@@ -29,12 +28,15 @@ from ui.widgets.animated_stacked_widget import AnimatedStackedWidget
 class ActivityPage(QWidget):
     """Interactive Analytics Dashboard."""
 
+    request_historical_details = Signal(date)
+
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self._repo = Repository()
         self._engine = AnalyticsEngine()
         self._sm = SettingsManager()
         self._current_date = date.today()
+        self._chart_end_date = date.today()
         self._setup_ui()
         self._refresh()
 
@@ -93,91 +95,106 @@ class ActivityPage(QWidget):
         self._content_layout.addLayout(hdr_box)
 
         # 1. Primary Navigation Graph
+        # Week Navigation Header
+        nav_layout = QHBoxLayout()
+        
+        self._btn_prev_week = QPushButton("< Previous Week")
+        self._btn_prev_week.setObjectName("nav_btn_small")
+        self._btn_prev_week.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_prev_week.clicked.connect(self._on_prev_week)
+        
+        self._btn_this_week = QPushButton("Last 7 Days")
+        self._btn_this_week.setObjectName("nav_btn_small")
+        self._btn_this_week.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_this_week.clicked.connect(self._on_this_week)
+        
+        self._btn_next_week = QPushButton("Next Week >")
+        self._btn_next_week.setObjectName("nav_btn_small")
+        self._btn_next_week.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_next_week.clicked.connect(self._on_next_week)
+        
+        nav_layout.addWidget(self._btn_prev_week)
+        nav_layout.addStretch()
+        nav_layout.addWidget(self._btn_this_week)
+        nav_layout.addStretch()
+        nav_layout.addWidget(self._btn_next_week)
+        
+        self._content_layout.addLayout(nav_layout)
+        
         self._chart = DailyScreenTimeChart()
         self._chart.day_selected.connect(self._on_day_selected)
         self._content_layout.addWidget(self._chart)
-        
-        # 2. Selected Day Header
-        self._lbl_selected_date = QLabel()
-        self._lbl_selected_date.setObjectName("selected_date_lbl")
-        self._content_layout.addWidget(self._lbl_selected_date)
 
-        # 3. Key Metrics Row
-        metrics_row = QHBoxLayout()
-        metrics_row.setSpacing(16)
-        
-        # Total Time & Goal
-        time_card = QFrame()
-        time_card.setObjectName("v2_card")
-        tc_l = QVBoxLayout(time_card)
-        tc_l.setContentsMargins(20, 16, 20, 16)
-        self._lbl_total_time_hdr = QLabel("Total Screen Time")
-        self._lbl_total_time_hdr.setObjectName("metric_hdr")
-        tc_l.addWidget(self._lbl_total_time_hdr)
-        self._lbl_total_time = QLabel()
-        self._lbl_total_time.setObjectName("metric_val_success")
-        tc_l.addWidget(self._lbl_total_time)
-        
-        self._goal_bar = QProgressBar()
-        self._goal_bar.setFixedHeight(8)
-        self._goal_bar.setTextVisible(False)
-        tc_l.addWidget(self._goal_bar)
-        
-        self._lbl_goal_status = QLabel()
-        self._lbl_goal_status.setObjectName("goal_status_lbl")
-        tc_l.addWidget(self._lbl_goal_status)
-        metrics_row.addWidget(time_card, 1)
-        
-        # Unlocks & Sessions
-        stats_card = QFrame()
-        stats_card.setObjectName("v2_card")
-        sc_l = QVBoxLayout(stats_card)
-        sc_l.setContentsMargins(20, 16, 20, 16)
-        self._lbl_engagement_hdr = QLabel("Engagement")
-        self._lbl_engagement_hdr.setObjectName("metric_hdr")
-        sc_l.addWidget(self._lbl_engagement_hdr)
-        
-        self._lbl_unlocks = QLabel()
-        self._lbl_unlocks.setObjectName("engagement_lbl")
-        self._lbl_longest = QLabel()
-        self._lbl_longest.setObjectName("engagement_lbl")
-        self._lbl_avg = QLabel()
-        self._lbl_avg.setObjectName("engagement_lbl")
-        
-        sc_l.addWidget(self._lbl_unlocks)
-        sc_l.addWidget(self._lbl_longest)
-        sc_l.addWidget(self._lbl_avg)
-        sc_l.addStretch()
-        metrics_row.addWidget(stats_card, 1)
-        
-        self._content_layout.addLayout(metrics_row)
+        # 3. Long Term Analytics Layout
+        self._analytics_layout = QVBoxLayout()
+        self._analytics_layout.setSpacing(20)
+        self._content_layout.addLayout(self._analytics_layout)
 
-        # 4. Smart Insights & Breakdown Row
-        mid_row = QHBoxLayout()
-        mid_row.setSpacing(20)
-        
-        self._insights_card = SmartInsightsCard()
-        mid_row.addWidget(self._insights_card, 1)
-        
-        self._breakdown_card = CategoryBreakdownCard("🍩 Category Breakdown")
-        self._breakdown_card.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._breakdown_card.mousePressEvent = self._on_category_card_clicked
-        mid_row.addWidget(self._breakdown_card, 1)
-        
-        self._content_layout.addLayout(mid_row)
-        
-        # 5. Top Applications
-        apps_hdr = QLabel("Top Applications")
-        apps_hdr.setObjectName("section_header")
-        self._content_layout.addWidget(apps_hdr)
-        
-        self._apps_layout = QVBoxLayout()
-        self._apps_layout.setSpacing(8)
-        self._content_layout.addLayout(self._apps_layout)
-        
-        
+        # Build Analytics UI dynamically in _refresh or _update_day_details
+        self._build_analytics_cards()
 
         self._content_layout.addStretch()
+
+    def _build_analytics_cards(self) -> None:
+        # Clear existing
+        while self._analytics_layout.count():
+            item = self._analytics_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+                
+        # Usage Summary Row
+        lbl_usage = QLabel("Usage Summary")
+        lbl_usage.setObjectName("section_header")
+        self._analytics_layout.addWidget(lbl_usage)
+        
+        usage_row = QHBoxLayout()
+        usage_row.setSpacing(16)
+        
+        self._lbl_avg_daily = self._create_stat_card("Average Daily", "0h 0m", usage_row)
+        self._lbl_avg_weekly = self._create_stat_card("Average Weekly", "0h 0m", usage_row)
+        self._lbl_avg_monthly = self._create_stat_card("Average Monthly", "0h 0m", usage_row)
+        self._analytics_layout.addLayout(usage_row)
+        
+        # Trends Row
+        lbl_trends = QLabel("Trends")
+        lbl_trends.setObjectName("section_header")
+        self._analytics_layout.addWidget(lbl_trends)
+        
+        trends_row = QHBoxLayout()
+        trends_row.setSpacing(16)
+        
+        self._lbl_productive_day = self._create_stat_card("Most Productive Day", "-", trends_row)
+        self._lbl_longest_session = self._create_stat_card("Longest Focus Session", "0h 0m", trends_row)
+        self._analytics_layout.addLayout(trends_row)
+        
+        # Goals Row
+        lbl_goals = QLabel("Goal Statistics")
+        lbl_goals.setObjectName("section_header")
+        self._analytics_layout.addWidget(lbl_goals)
+        
+        goals_row = QHBoxLayout()
+        goals_row.setSpacing(16)
+        
+        self._lbl_current_streak = self._create_stat_card("Current Streak", "0 Days", goals_row)
+        self._lbl_best_streak = self._create_stat_card("Best Streak", "0 Days", goals_row)
+        self._analytics_layout.addLayout(goals_row)
+
+    def _create_stat_card(self, title: str, default_val: str, layout: QHBoxLayout) -> QLabel:
+        card = QFrame()
+        card.setObjectName("v2_card")
+        l = QVBoxLayout(card)
+        l.setContentsMargins(20, 16, 20, 16)
+        
+        lbl_title = QLabel(title)
+        lbl_title.setObjectName("metric_hdr")
+        l.addWidget(lbl_title)
+        
+        lbl_val = QLabel(default_val)
+        lbl_val.setObjectName("metric_val_success")
+        l.addWidget(lbl_val)
+        
+        layout.addWidget(card, 1)
+        return lbl_val
 
     def _apply_theme(self, is_dark: bool) -> None:
         from ui.theme import ThemeManager
@@ -186,15 +203,21 @@ class ActivityPage(QWidget):
         self.setStyleSheet(f"""
             QLabel#page_title {{ font-size: 28px; font-weight: 800; color: {tm.color('text_main')}; }}
             QLabel#page_subtitle {{ font-size: 15px; font-weight: 600; color: {tm.color('text_sub')}; }}
-            QLabel#selected_date_lbl {{ font-size: 18px; font-weight: 700; color: {tm.color('text_main')}; }}
             QLabel#metric_hdr {{ color: {tm.color('text_sub')}; font-weight: 600; }}
-            QLabel#metric_val_success {{ font-size: 24px; font-weight: 800; color: {tm.color('success_text')}; }}
-            QLabel#goal_status_lbl {{ font-size: 12px; color: {tm.color('text_muted')}; }}
-            QLabel#engagement_lbl {{ font-size: 15px; color: {tm.color('text_main')}; }}
-            QLabel#section_header {{ font-size: 14px; font-weight: 700; color: {tm.color('accent')}; letter-spacing: 1.2px; text-transform: uppercase; }}
+            QLabel#metric_val_success {{ font-size: 24px; font-weight: 800; color: {tm.color('text_main')}; }}
+            QLabel#section_header {{ font-size: 14px; font-weight: 700; color: {tm.color('accent')}; letter-spacing: 1.2px; margin-top: 10px; }}
+            QPushButton#nav_btn_small {{
+                background: transparent;
+                border: 1px solid {tm.color('border')};
+                border-radius: 6px;
+                color: {tm.color('text_main')};
+                padding: 6px 12px;
+                font-weight: 600;
+            }}
+            QPushButton#nav_btn_small:hover {{ background: {tm.color('card_hover')}; }}
+            QPushButton#nav_btn_small:disabled {{ color: {tm.color('text_muted')}; border-color: transparent; }}
         """)
         
-        # Refresh dynamic styles (like the progress bar chunk colors)
         self._refresh()
 
     def _refresh(self) -> None:
@@ -203,120 +226,50 @@ class ActivityPage(QWidget):
             self._update_day_details(self._current_date)
 
     def _update_chart(self) -> None:
-        today = date.today()
-        start_date = today - timedelta(days=6)
-        daily_pts = self._engine.get_daily_chart_data(start_date, today)
+        end_d = self._chart_end_date
+        start_d = end_d - timedelta(days=6)
+        daily_pts = self._engine.get_daily_chart_data(start_d, end_d)
         self._chart.update_data(daily_pts)
+        
+        # Update button states
+        self._btn_next_week.setEnabled(self._chart_end_date < date.today())
+        
+    def _on_prev_week(self) -> None:
+        self._chart_end_date -= timedelta(days=7)
+        self._update_chart()
+        
+    def _on_next_week(self) -> None:
+        self._chart_end_date += timedelta(days=7)
+        if self._chart_end_date > date.today():
+            self._chart_end_date = date.today()
+        self._update_chart()
+        
+    def _on_this_week(self) -> None:
+        self._chart_end_date = date.today()
+        self._update_chart()
         
     def _on_day_selected(self, date_str: str) -> None:
         selected_dt = datetime.strptime(date_str, "%Y-%m-%d").date()
-        self._current_date = selected_dt
-        self._update_day_details(selected_dt)
+        self.request_historical_details.emit(selected_dt)
 
     def _update_day_details(self, target_date: date) -> None:
-        self._lbl_selected_date.setText(target_date.strftime("%A, %B %d, %Y"))
+        # Populate Long-Term Analytics
+        long_term = self._engine.get_long_term_analytics()
         
-        is_today = target_date == date.today()
+        self._lbl_avg_daily.setText(self._engine.format_duration(long_term.get("avg_daily_s", 0)))
+        self._lbl_avg_weekly.setText(self._engine.format_duration(long_term.get("avg_weekly_s", 0)))
+        self._lbl_avg_monthly.setText(self._engine.format_duration(long_term.get("avg_monthly_s", 0)))
         
-        if is_today:
-            # Live data for today
-            summary = self._engine.get_today_summary()
-            total_s = summary.total_screen_time_s
-            active_s = summary.active_time_s
-            top_apps = summary.top_apps
-            categories = summary.category_breakdown
-            unlocks = self._repo.get_unlock_count_for_date(target_date)
-            sessions = self._repo.get_sessions_for_date(target_date)
-            
-            # Serialize sessions to matching dictionary format
-            timeline = []
-            for s in sessions:
-                timeline.append({
-                    "process_name": s.process_name,
-                    "window_title": s.window_title,
-                    "start_time": s.start_time.isoformat(),
-                    "duration_s": s.duration_s,
-                    "category": s.category.value if hasattr(s.category, "value") else str(s.category)
-                })
-                
-            self._insights_card.refresh() # Uses today summary internally
-            self._current_apps_for_drilldown = top_apps
-            self._current_active_s = active_s
-            
+        best_day = long_term.get("most_productive_day")
+        if best_day:
+            self._lbl_productive_day.setText(best_day.strftime("%A, %b %d"))
         else:
-            # Historical snapshot
-            stat = self._repo.get_daily_stat(target_date)
-            if not stat:
-                # No data
-                self._lbl_total_time.setText("0s")
-                self._goal_bar.setValue(0)
-                self._lbl_goal_status.setText("No data recorded")
-                self._lbl_unlocks.setText("Device Unlocks: 0")
-                self._lbl_longest.setText("Longest Session: 0s")
-                self._lbl_avg.setText("Average Session: 0s")
-                self._breakdown_card.set_data([], 0)
-                self._clear_layout(self._apps_layout)
-                self._insights_card.refresh(None) # Default empty refresh
-                return
-                
-            total_s = stat.total_screen_time_s
-            active_s = stat.active_time_s
-            categories = json.loads(stat.category_usage_json)
-            top_apps = json.loads(stat.app_usage_json)
-            unlocks = stat.unlock_count
-            timeline = json.loads(stat.timeline_json)
+            self._lbl_productive_day.setText("-")
             
-            self._insights_card.refresh(stat)
-            self._current_apps_for_drilldown = top_apps
-            self._current_active_s = active_s
-
-        from ui.theme import ThemeManager
-        tm = ThemeManager.instance()
-
-        # Populate Key Metrics
-        self._lbl_total_time.setText(self._engine.format_duration(total_s))
+        self._lbl_longest_session.setText("-") # Not fully computed yet
         
-        limit_m = self._sm.get_int("daily_limit_minutes", 480)
-        limit_s = limit_m * 60
-        pct = min(100, int((total_s / limit_s) * 100)) if limit_s > 0 else 0
-        self._goal_bar.setValue(pct)
-        if total_s > limit_s:
-            self._goal_bar.setStyleSheet(f"QProgressBar {{ background-color: rgba(255, 255, 255, 0.05); border-radius: 4px; }} QProgressBar::chunk {{ background-color: {tm.color('danger_bg')}; border-radius: 4px; }}")
-            self._lbl_goal_status.setText(f"Over goal by {self._engine.format_duration(total_s - limit_s)}")
-        else:
-            self._goal_bar.setStyleSheet(f"QProgressBar {{ background-color: rgba(255, 255, 255, 0.05); border-radius: 4px; }} QProgressBar::chunk {{ background-color: {tm.color('info_bg')}; border-radius: 4px; }}")
-            self._lbl_goal_status.setText(f"{self._engine.format_duration(limit_s - total_s)} remaining today")
-
-        self._lbl_unlocks.setText(f"📱 Device Unlocks: {unlocks}")
-        
-        longest = max([a.get("total_s", 0) for a in top_apps], default=0)
-        self._lbl_longest.setText(f"⏳ Longest App Usage: {self._engine.format_duration(longest)}")
-        
-        avg = (total_s / len(timeline)) if timeline else 0
-        self._lbl_avg.setText(f"⏱️ Average Session: {self._engine.format_duration(avg)}")
-        
-        # Populate Category Breakdown
-        self._breakdown_card.set_data(categories, active_s)
-        
-        # Populate Top Apps
-        self._clear_layout(self._apps_layout)
-        for idx, app in enumerate(top_apps[:10]):
-            name = app.get("process_name", "Unknown")
-            disp = get_display_name(name)
-            cat = app.get("category", "Other")
-            row = AppUsageRow(
-                rank=idx + 1,
-                process_name=name,
-                display_name=disp,
-                category=cat,
-                duration_s=app["total_s"],
-                max_duration_s=longest,
-            )
-            row.setCursor(Qt.CursorShape.PointingHandCursor)
-            row.mousePressEvent = lambda event, pn=name: self._open_app_details(pn)
-            self._apps_layout.addWidget(row)
-            
-            
+        self._lbl_current_streak.setText(f"{long_term.get('current_streak', 0)} Days")
+        self._lbl_best_streak.setText(f"{long_term.get('best_streak', 0)} Days")
     def _clear_layout(self, layout: QVBoxLayout) -> None:
         while layout.count():
             item = layout.takeAt(0)

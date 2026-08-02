@@ -212,7 +212,7 @@ class CategoryLegendWidget(QWidget):
         if remaining:
             other_dur = sum(float(x.get("total_s", 0.0)) for x in remaining)
             if other_dur > 0:
-                consolidated.append(("Other", other_dur, tm.color('text_muted')))
+                consolidated.append(("Other", other_dur, CATEGORY_COLORS.get(AppCategory.OTHER, tm.color('text_muted'))))
 
         text_main = tm.color("text_main")
         text_sub = tm.color("text_sub")
@@ -277,10 +277,10 @@ class CategoryBreakdownCard(QFrame):
 
         container_widget = QWidget()
         container = QHBoxLayout(container_widget)
-        container.setSpacing(20)
+        container.setSpacing(10)
 
         self.donut = DonutChart()
-        self.donut.setMinimumSize(200, 200)
+        self.donut.setMinimumSize(240, 240)
         container.addWidget(self.donut, 1)
 
         self.legend = CategoryLegendWidget()
@@ -299,7 +299,7 @@ class CategoryBreakdownCard(QFrame):
         tm = ThemeManager.instance()
         
         self.setStyleSheet(f"""
-            QLabel#section_header {{ font-size: 14px; font-weight: 700; color: {tm.color('accent')}; letter-spacing: 1.2px; text-transform: uppercase; }}
+            QLabel#section_header {{ font-size: 14px; font-weight: 700; color: {tm.color('accent')}; letter-spacing: 1.2px; }}
         """)
 
     def mousePressEvent(self, event) -> None:

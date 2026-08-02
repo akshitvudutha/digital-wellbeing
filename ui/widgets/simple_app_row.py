@@ -4,7 +4,7 @@ simple_app_row.py — Minimalist application row for the redesigned dashboard.
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtCore import Qt, QSize, Signal
 from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel
@@ -15,6 +15,8 @@ from analytics.engine import AnalyticsEngine
 
 class SimpleAppRow(QFrame):
     """A minimal row widget representing app usage with icon, name, and duration only."""
+    
+    clicked = Signal(str)
 
     def __init__(
         self,
@@ -35,6 +37,11 @@ class SimpleAppRow(QFrame):
         from ui.theme import ThemeManager
         ThemeManager.instance().theme_changed.connect(self._apply_theme)
         self._apply_theme(ThemeManager.instance().is_dark)
+
+    def mousePressEvent(self, event) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit(self.process_name)
+        super().mousePressEvent(event)
 
     def _setup_ui(self, display_name: str, duration_s: float) -> None:
         layout = QHBoxLayout(self)
@@ -71,16 +78,16 @@ class SimpleAppRow(QFrame):
         from ui.theme import ThemeManager
         tm = ThemeManager.instance()
         
-        icon_bg = f"{self._legend_color}1A" if self._legend_color else tm.color('border')
-        icon_border = f"1px solid {self._legend_color}4D" if self._legend_color else "none"
+        icon_bg = "transparent"
+        icon_border = "none"
         
         self.setStyleSheet(f"""
-            SimpleAppRow#simple_app_row {{
+            SimpleAppRow {{
                 background-color: transparent;
-                border-radius: 12px;
+                border-radius: 6px;
                 transition: background-color 0.2s;
             }}
-            SimpleAppRow#simple_app_row:hover {{
+            SimpleAppRow:hover {{
                 background-color: {tm.color('card_hover')};
             }}
             QLabel#icon_lbl {{ 
@@ -88,6 +95,6 @@ class SimpleAppRow(QFrame):
                 border: {icon_border};
                 border-radius: 8px; 
             }}
-            QLabel#name_lbl {{ color: {tm.color('text_main')}; font-size: 16px; font-weight: 500; letter-spacing: 0.3px; }}
-            QLabel#dur_lbl {{ color: {tm.color('text_sub')}; font-size: 15px; font-weight: 500; }}
+            QLabel#name_lbl {{ color: {tm.color('text_main')}; font-size: 15px; font-weight: 500; letter-spacing: 0.2px; }}
+            QLabel#dur_lbl {{ color: {tm.color('text_sub')}; font-size: 14px; font-weight: 500; }}
         """)
