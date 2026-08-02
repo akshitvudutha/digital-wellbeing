@@ -56,11 +56,15 @@ class TrackingManager:
         self._shutdown_mode: str = self._sm.shutdown_mode
         self._media_idle_timeout_s: float = self._sm.media_idle_timeout_minutes * 60.0
         self._data_changed_callbacks: list[Callable[[], None]] = []
+        self._on_active_tick_callbacks: list[Callable[[str, float], None]] = []
 
     # ─── Public API ───────────────────────────────────────────────────────────
 
     def add_data_changed_callback(self, cb: Callable[[], None]) -> None:
         self._data_changed_callbacks.append(cb)
+
+    def add_active_tick_callback(self, cb: Callable[[str, float], None]) -> None:
+        self._on_active_tick_callbacks.append(cb)
 
     def start(self) -> None:
         with self._state_lock:
@@ -160,7 +164,7 @@ class TrackingManager:
             while self._running:
                 try:
                     if not self._paused:
-                        self._tick()
+                        self._tick(poll_s)
                         self._consecutive_errors = 0
                 except Exception as exc:
                     self._consecutive_errors += 1
@@ -183,7 +187,7 @@ class TrackingManager:
             except Exception as exc:
                 logger.warning("Failed to close repository connection in tracking thread: %s", exc)
 
-    def _tick(self) -> None:
+    def _tick(self, delta_s: float) -> None:
         now = datetime.now()
 
         # Pre-sleep time-skip guard (e.g. system hibernate/suspend without event firing)
@@ -221,6 +225,14 @@ class TrackingManager:
         self._grace_app = None
         self._grace_timer = None
         self._current_is_fullscreen = is_window_fullscreen(fg.hwnd)
+        
+        # Dispatch active tick for limits/timers
+        if not idle:
+            for cb in self._on_active_tick_callbacks:
+                try:
+                    cb(fg.process_name, delta_s)
+                except Exception as exc:
+                    logger.warning(f"Active tick callback failed: {exc}")
 
         same_process = self._current_app is not None and fg.process_name == self._current_app.process_name
         title_changed = self._current_app is not None and fg.window_title != self._current_app.window_title

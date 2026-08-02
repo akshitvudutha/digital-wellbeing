@@ -103,7 +103,12 @@ class DigitalWellbeingApp:
         self._tracker.start()
         self._sleepguard.start()
 
-        self._window = MainWindow(self._tracker, self._sleepguard)
+        from database.repository import Repository
+        from protection.core import ProtectionManager
+        self._protection_manager = ProtectionManager(Repository())
+        self._tracker.add_active_tick_callback(self._protection_manager.tick)
+
+        self._window = MainWindow(self._tracker, self._sleepguard, self._protection_manager)
         # Connect the window's quit request signal to our controlled shutdown method.
         self._window.quit_requested.connect(self._quit)
         self._window.focus_completed.connect(self._on_focus_completed)

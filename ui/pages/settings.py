@@ -23,10 +23,11 @@ class SettingsPage(QWidget):
     settings_changed = Signal()
     theme_changed_req = Signal(str)
 
-    def __init__(self, tracker=None, parent=None) -> None:
+    def __init__(self, tracker=None, protection_manager=None, parent=None) -> None:
         super().__init__(parent)
         self._sm = SettingsManager()
         self._tracker = tracker
+        self._protection_manager = protection_manager
         self._setup_ui()
         self._load_values()
         
@@ -61,6 +62,24 @@ class SettingsPage(QWidget):
         inner_layout.setSpacing(20)
         scroll.setWidget(inner)
         layout.addWidget(scroll, 1)
+
+        if self._protection_manager:
+            from ui.widgets.protection_section import ProtectionSection
+            from ui.widgets.app_limits_section import AppLimitsSection
+
+            # App Limits Section
+            app_limits_section = self._make_section("⏳ App Limits")
+            app_limits_l = app_limits_section.layout()
+            self._app_limits_widget = AppLimitsSection(self._protection_manager)
+            app_limits_l.addWidget(self._app_limits_widget)
+            inner_layout.addWidget(app_limits_section)
+            
+            # Protection Section
+            protection_section = self._make_section("🔒 Protection")
+            prot_l = protection_section.layout()
+            self._protection_widget = ProtectionSection(self._protection_manager)
+            prot_l.addWidget(self._protection_widget)
+            inner_layout.addWidget(protection_section)
 
         # 1. Appearance Section
         appearance_section = self._make_section("🎨 Appearance & Theme")

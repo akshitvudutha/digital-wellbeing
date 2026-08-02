@@ -42,14 +42,18 @@ class MainWindow(QMainWindow):
     quit_requested = Signal()
     focus_completed = Signal()
 
-    def __init__(self, tracker: TrackingManager, sleepguard: Optional[SleepGuardController] = None, parent=None) -> None:
+    def __init__(self, tracker: TrackingManager, sleepguard: Optional[SleepGuardController] = None, protection_manager=None, parent=None) -> None:
         super().__init__(parent)
         self._tracker = tracker
+        self._protection_manager = protection_manager
         self._owns_sleepguard = sleepguard is None
         self._sleepguard = sleepguard or SleepGuardController(self)
         if self._owns_sleepguard:
             self._sleepguard.start()
         self._sleepguard.shutdown_warning_triggered.connect(self._show_shutdown_warning_dialog)
+        
+        if self._protection_manager:
+            self._protection_manager.notifications.show_limit_dialog.connect(self._show_limit_dialog)
 
         self.data_changed_signal.connect(self._refresh_current_page)
         self._active_nav_btn: Optional[QPushButton] = None
@@ -107,7 +111,7 @@ class MainWindow(QMainWindow):
         self._activity_page.request_historical_details.connect(self._navigate_to_screen_time_details)
         self._wellbeing_page = WellbeingPage(sleepguard=self._sleepguard)
         self._wellbeing_page.focus_completed.connect(self.focus_completed.emit)
-        self._settings_page = SettingsPage(tracker=self._tracker)
+        self._settings_page = SettingsPage(tracker=self._tracker, protection_manager=self._protection_manager)
         self._settings_page.settings_changed.connect(self._on_settings_changed)
         self._settings_page.theme_changed_req.connect(self._animate_theme_change)
         self._debug_page = DebugPage(tracker=self._tracker)
@@ -248,10 +252,8 @@ class MainWindow(QMainWindow):
         pages = [
             self._dashboard_page,
             self._activity_page,
-            self._history_page,
             self._wellbeing_page,
             self._settings_page,
-            self._about_page,
             self._debug_page,
             self._screen_time_details_page,
             self._app_details_page,
@@ -471,6 +473,37 @@ class MainWindow(QMainWindow):
                 self._active_nav_btn = btn
                 
             self._stack.setCurrentIndexAnimated(prev_idx)
+
+    def _show_shutdown_warning_dialog(self, is_media: bool) -> None:
+        if self.isHidden():
+            self.show()
+            self.raise_()
+            self.activateWindow()
+
+        dlg = ShutdownCountdownDialog(is_media=is_media, parent=self)
+        dlg.exec()
+
+    def _show_limit_dialog(self, process_name: str, limit_seconds: int) -> None:
+        from ui.widgets.limit_dialog import LimitReachedDialog, PinOverrideDialog
+        
+        if self.isHidden():
+            self.show()
+            self.raise_()
+            self.activateWindow()
+            
+        dlg = LimitReachedDialog(process_name, limit_seconds, self)
+        
+        def on_close_app(pname: str):
+            self._protection_manager.force_close(pname)
+            
+        def on_override(pname: str):
+            pin_dlg = PinOverrideDialog(pname, self._protection_manager.pin, self)
+            pin_dlg.override_granted.connect(self._protection_manager.add_override)
+            pin_dlg.exec()
+            
+        dlg.close_app_requested.connect(on_close_app)
+        dlg.override_requested.connect(on_override)
+        dlg.exec()
 
     def _refresh_current_page(self) -> None:
         idx = self._stack.currentIndex()
