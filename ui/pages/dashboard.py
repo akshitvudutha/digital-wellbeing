@@ -33,6 +33,7 @@ class DashboardPage(QWidget):
     request_screen_time_details = Signal()
     request_focus_session = Signal()
     request_category_details = Signal(str)
+    request_app_details = Signal(str)
 
     def __init__(self, on_global_refresh: Optional[Callable[[], None]] = None, navigate_callback: Optional[Callable[[int], None]] = None, parent=None) -> None:
         super().__init__(parent)
@@ -113,6 +114,7 @@ class DashboardPage(QWidget):
         # 2. Large Interactive Screen Time Card
         self._screen_time_card = ActiveScreenTimeCard()
         self._screen_time_card.card_clicked.connect(self.request_screen_time_details.emit)
+        self._screen_time_card.app_clicked.connect(self.request_app_details.emit)
         self._inner_layout.addWidget(self._screen_time_card)
 
         self._inner_layout.addSpacing(16)

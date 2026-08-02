@@ -30,8 +30,9 @@ class ActivityPage(QWidget):
 
     request_historical_details = Signal(date)
 
-    def __init__(self, parent=None) -> None:
+    def __init__(self, protection_manager=None, parent=None) -> None:
         super().__init__(parent)
+        self._protection_manager = protection_manager
         self._repo = Repository()
         self._engine = AnalyticsEngine()
         self._sm = SettingsManager()
@@ -62,7 +63,7 @@ class ActivityPage(QWidget):
         self._main_stack.addWidget(self._category_page)
         
         # 2: App Details
-        self._app_page = AppDetailsPage(on_back=self._navigate_back)
+        self._app_page = AppDetailsPage(on_back=self._navigate_back, protection_manager=self._protection_manager)
         self._main_stack.addWidget(self._app_page)
         
         self._navigation_history: list[int] = []

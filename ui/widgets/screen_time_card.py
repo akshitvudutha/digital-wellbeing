@@ -26,6 +26,7 @@ class ActiveScreenTimeCard(FluentCard):
     """Large interactive card displaying today's screen time, donut chart, and top apps."""
 
     card_clicked = Signal()
+    app_clicked = Signal(str)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -131,5 +132,5 @@ class ActiveScreenTimeCard(FluentCard):
                     duration_s=s["total_s"],
                     legend_color=colors[idx]
                 )
-                row.clicked.connect(lambda process_name=s["process_name"]: self.card_clicked.emit())
+                row.clicked.connect(lambda pname=s["process_name"]: self.app_clicked.emit(pname))
                 self._apps_layout.addWidget(row)

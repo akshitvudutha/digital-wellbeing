@@ -100,6 +100,7 @@ class MainWindow(QMainWindow):
         self._app_details_page = AppDetailsPage(protection_manager=self._protection_manager)
         
         self._dashboard_page.request_screen_time_details.connect(self._navigate_to_screen_time_details)
+        self._dashboard_page.request_app_details.connect(self._navigate_to_app_details)
         self._dashboard_page.request_focus_session.connect(lambda: self._navigate(2))
         
         self._screen_time_details_page.request_app_details.connect(self._navigate_to_app_details)
@@ -107,7 +108,7 @@ class MainWindow(QMainWindow):
         
         self._app_details_page.back_requested.connect(self._navigate_back)
         
-        self._activity_page = ActivityPage()
+        self._activity_page = ActivityPage(protection_manager=self._protection_manager)
         self._activity_page.request_historical_details.connect(self._navigate_to_screen_time_details)
         self._wellbeing_page = WellbeingPage(sleepguard=self._sleepguard)
         self._wellbeing_page.focus_completed.connect(self.focus_completed.emit)
@@ -333,7 +334,11 @@ class MainWindow(QMainWindow):
         self._home_btn = QPushButton("  🏠   Home")
         self._activity_btn = QPushButton("  📈   Activity Trends")
         self._focus_btn = QPushButton("  🎯   Focus")
+        
+        # Dev Mode button is intentionally removed from the production UI.
+        # It remains accessible via Ctrl+Shift+D shortcut.
         self._debug_btn = QPushButton("  🐛   Dev Mode")
+        self._debug_btn.setVisible(False)
 
         self._nav_buttons = [
             self._home_btn,
