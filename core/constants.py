@@ -57,3 +57,17 @@ CATEGORY_COLORS: dict[AppCategory, str] = {
     AppCategory.SOCIAL: "#FFAB91",
     AppCategory.OTHER: "#78909C",
 }
+
+CATEGORY_ICONS: dict[AppCategory, str] = {
+    AppCategory.BROWSER: "🌐",
+    AppCategory.PROGRAMMING: "💻",
+    AppCategory.GAMING: "🎮",
+    AppCategory.COMMUNICATION: "💬",
+    AppCategory.PRODUCTIVITY: "📊",
+    AppCategory.ENTERTAINMENT: "🎬",
+    AppCategory.SYSTEM: "⚙️",
+    AppCategory.UTILITIES: "🔧",
+    AppCategory.EDUCATION: "🎓",
+    AppCategory.SOCIAL: "🌍",
+    AppCategory.OTHER: "📌",
+}

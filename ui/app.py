@@ -106,6 +106,7 @@ class DigitalWellbeingApp:
         self._window = MainWindow(self._tracker, self._sleepguard)
         # Connect the window's quit request signal to our controlled shutdown method.
         self._window.quit_requested.connect(self._quit)
+        self._window.focus_completed.connect(self._on_focus_completed)
 
         if not start_minimized:
             self._window.show()
@@ -314,6 +315,15 @@ class DigitalWellbeingApp:
             self._toggle_tracking_action.setText("Pause Tracking")
             if self._tray:
                 self._tray.showMessage(APP_NAME, "Tracking resumed.", QSystemTrayIcon.MessageIcon.Information, 2000)
+
+    def _on_focus_completed(self) -> None:
+        if self._tray and self._sm.get_bool("notifications_enabled", True):
+            self._tray.showMessage(
+                "Focus Session Complete",
+                "Great job! Take a well-deserved break.",
+                QSystemTrayIcon.MessageIcon.Information,
+                5000,
+            )
 
     def _on_daily_check_timer(self) -> None:
         from datetime import date

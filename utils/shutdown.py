@@ -48,21 +48,7 @@ class ShutdownManager:
     def _execute_shutdown() -> bool:
         from datetime import datetime
         logger.info(f"[INSTRUMENTATION] _execute_shutdown() invoking shutdown.exe at {datetime.now().isoformat()}")
-        
-        from settings.manager import SettingsManager
-        if SettingsManager().debug_tracking:
-            logger.info("Shutdown would have executed now.")
-            try:
-                from PySide6.QtWidgets import QMessageBox
-                msg = QMessageBox()
-                msg.setIcon(QMessageBox.Icon.Information)
-                msg.setWindowTitle("SleepGuard Debug")
-                msg.setText("DEBUG: Shutdown cancelled. Countdown completed successfully.")
-                msg.setStandardButtons(QMessageBox.StandardButton.Ok)
-                msg.exec()
-            except Exception as e:
-                logger.error(f"Failed to show debug msgbox: {e}")
-            return True
+
 
         try:
             subprocess.run(

@@ -1,0 +1,93 @@
+"""
+simple_app_row.py — Minimalist application row for the redesigned dashboard.
+"""
+
+from __future__ import annotations
+
+from PySide6.QtCore import Qt, QSize
+from PySide6.QtGui import QCursor
+from PySide6.QtWidgets import (
+    QFrame, QHBoxLayout, QLabel
+)
+
+from utils.icon_provider import AppIconProvider
+from analytics.engine import AnalyticsEngine
+
+class SimpleAppRow(QFrame):
+    """A minimal row widget representing app usage with icon, name, and duration only."""
+
+    def __init__(
+        self,
+        process_name: str,
+        display_name: str,
+        duration_s: float,
+        legend_color: str | None = None,
+        parent=None,
+    ) -> None:
+        super().__init__(parent)
+        self.process_name = process_name
+        self._legend_color = legend_color
+        self.setObjectName("simple_app_row")
+        
+        self._setup_ui(display_name, duration_s)
+        self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        
+        from ui.theme import ThemeManager
+        ThemeManager.instance().theme_changed.connect(self._apply_theme)
+        self._apply_theme(ThemeManager.instance().is_dark)
+
+    def _setup_ui(self, display_name: str, duration_s: float) -> None:
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(16, 12, 16, 12)
+        layout.setSpacing(20)
+
+        # App Icon
+        icon_provider = AppIconProvider()
+        icon = icon_provider.get_icon(self.process_name)
+        
+        self._icon_lbl = QLabel()
+        self._icon_lbl.setFixedSize(36, 36)
+        if not icon.isNull():
+            pixmap = icon.pixmap(QSize(36, 36))
+            self._icon_lbl.setPixmap(pixmap)
+            
+        self._icon_lbl.setObjectName("icon_lbl")
+        self._icon_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self._icon_lbl)
+
+        # Center Column (Name)
+        self._name_lbl = QLabel(display_name)
+        self._name_lbl.setObjectName("name_lbl")
+        layout.addWidget(self._name_lbl, 1)
+        
+        # Right Column (Duration)
+        engine = AnalyticsEngine()
+        self._dur_lbl = QLabel(engine.format_duration_short(duration_s))
+        self._dur_lbl.setObjectName("dur_lbl")
+        self._dur_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        layout.addWidget(self._dur_lbl)
+
+    def _apply_theme(self, is_dark: bool) -> None:
+        from ui.theme import ThemeManager
+        tm = ThemeManager.instance()
+        
+        icon_bg = f"{self._legend_color}1A" if self._legend_color else tm.color('border')
+        icon_border = f"1px solid {self._legend_color}4D" if self._legend_color else "none"
+        
+        self.setStyleSheet(f"""
+            SimpleAppRow#simple_app_row {{
+                background-color: transparent;
+                border-radius: 12px;
+                transition: background-color 0.2s;
+            }}
+            SimpleAppRow#simple_app_row:hover {{
+                background-color: {tm.color('card_hover')};
+            }}
+            QLabel#icon_lbl {{ 
+                background-color: {icon_bg}; 
+                border: {icon_border};
+                border-radius: 8px; 
+            }}
+            QLabel#name_lbl {{ color: {tm.color('text_main')}; font-size: 16px; font-weight: 500; letter-spacing: 0.3px; }}
+            QLabel#dur_lbl {{ color: {tm.color('text_sub')}; font-size: 15px; font-weight: 500; }}
+        """)

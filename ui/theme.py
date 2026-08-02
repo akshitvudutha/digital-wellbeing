@@ -86,19 +86,19 @@ class ThemeManager(QObject):
     def _get_tokens(self, dark_mode: bool) -> Dict[str, str]:
         if dark_mode:
             return {
-                "bg": "transparent",
-                "card_bg": "rgba(255, 255, 255, 0.04)",
-                "card_hover": "rgba(255, 255, 255, 0.08)",
-                "card_pressed": "rgba(255, 255, 255, 0.02)",
-                "border": "rgba(255, 255, 255, 0.12)",
-                "border_hover": "rgba(56, 189, 248, 0.4)",
-                "text_main": "#F8FAFC",
-                "text_sub": "#94A3B8",
-                "text_muted": "#64748b",
+                "bg": "#000000",
+                "card_bg": "#121212",
+                "card_hover": "#1A1A1A",
+                "card_pressed": "#0A0A0A",
+                "border": "#2A2A2A",
+                "border_hover": "#38BDF8",
+                "text_main": "#FFFFFF",
+                "text_sub": "#A0A0A0",
+                "text_muted": "#606060",
                 "accent": "#38BDF8",
                 "accent_hover": "#7dd3fc",
                 "track": "rgba(255, 255, 255, 0.05)",
-                "center_circle": "rgba(20, 24, 38, 0.85)",
+                "center_circle": "#000000",
                 "grid": "rgba(255, 255, 255, 0.05)",
                 
                 # Semantic
@@ -122,26 +122,26 @@ class ThemeManager(QObject):
                 "indigo_border": "rgba(99, 102, 241, 0.2)",
                 "indigo_text": "#818cf8",
                 
-                # Gradients
-                "window_gradient": "qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #0B0F19, stop:0.4 #1A1C2C, stop:1 #2D2A4A)",
-                "primary_btn_gradient": "qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 rgba(47, 129, 247, 0.8), stop:1 rgba(99, 102, 241, 0.8))",
-                "primary_btn_hover": "qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 rgba(59, 140, 248, 0.9), stop:1 rgba(129, 140, 248, 0.9))",
+                # Gradients (Replaced with solid colors as per requirements)
+                "window_gradient": "#000000",
+                "primary_btn_gradient": "#38BDF8",
+                "primary_btn_hover": "#7dd3fc",
             }
         else:
             return {
-                "bg": "transparent",
-                "card_bg": "rgba(255, 255, 255, 0.6)",
-                "card_hover": "rgba(255, 255, 255, 0.8)",
-                "card_pressed": "rgba(255, 255, 255, 0.4)",
-                "border": "rgba(255, 255, 255, 0.8)",
-                "border_hover": "rgba(2, 132, 199, 0.4)",
+                "bg": "#FFFFFF",
+                "card_bg": "#F8FAFC",
+                "card_hover": "#F1F5F9",
+                "card_pressed": "#E2E8F0",
+                "border": "#E2E8F0",
+                "border_hover": "#0284C7",
                 "text_main": "#0F172A",
                 "text_sub": "#64748B",
                 "text_muted": "#94a3b8",
                 "accent": "#0284C7",
                 "accent_hover": "#0ea5e9",
                 "track": "rgba(0, 0, 0, 0.05)",
-                "center_circle": "rgba(255, 255, 255, 0.95)",
+                "center_circle": "#FFFFFF",
                 "grid": "rgba(0, 0, 0, 0.05)",
                 
                 # Semantic
@@ -165,32 +165,32 @@ class ThemeManager(QObject):
                 "indigo_border": "rgba(99, 102, 241, 0.3)",
                 "indigo_text": "#4f46e5",
                 
-                # Gradients
-                "window_gradient": "qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #F1F5F9, stop:0.5 #E2E8F0, stop:1 #CBD5E1)",
-                "primary_btn_gradient": "qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 rgba(14, 165, 233, 0.8), stop:1 rgba(99, 102, 241, 0.8))",
-                "primary_btn_hover": "qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 rgba(2, 132, 199, 0.9), stop:1 rgba(79, 70, 229, 0.9))",
+                # Gradients (Replaced with solid colors)
+                "window_gradient": "#FFFFFF",
+                "primary_btn_gradient": "#0284C7",
+                "primary_btn_hover": "#0ea5e9",
             }
 
     def _apply_palette(self, app: QApplication, dark_mode: bool) -> None:
         palette = QPalette()
         if dark_mode:
-            palette.setColor(QPalette.ColorRole.Window, QColor("#0B0F19"))
-            palette.setColor(QPalette.ColorRole.WindowText, QColor("#F8FAFC"))
-            palette.setColor(QPalette.ColorRole.Base, QColor(255, 255, 255, 10))
-            palette.setColor(QPalette.ColorRole.AlternateBase, QColor(255, 255, 255, 5))
-            palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(20, 25, 35, 240))
-            palette.setColor(QPalette.ColorRole.ToolTipText, QColor("#F8FAFC"))
-            palette.setColor(QPalette.ColorRole.Text, QColor("#F8FAFC"))
-            palette.setColor(QPalette.ColorRole.Button, QColor(255, 255, 255, 20))
-            palette.setColor(QPalette.ColorRole.ButtonText, QColor("#F8FAFC"))
+            palette.setColor(QPalette.ColorRole.Window, QColor("#000000"))
+            palette.setColor(QPalette.ColorRole.WindowText, QColor("#FFFFFF"))
+            palette.setColor(QPalette.ColorRole.Base, QColor("#121212"))
+            palette.setColor(QPalette.ColorRole.AlternateBase, QColor("#1A1A1A"))
+            palette.setColor(QPalette.ColorRole.ToolTipBase, QColor("#121212"))
+            palette.setColor(QPalette.ColorRole.ToolTipText, QColor("#FFFFFF"))
+            palette.setColor(QPalette.ColorRole.Text, QColor("#FFFFFF"))
+            palette.setColor(QPalette.ColorRole.Button, QColor("#2A2A2A"))
+            palette.setColor(QPalette.ColorRole.ButtonText, QColor("#FFFFFF"))
             palette.setColor(QPalette.ColorRole.BrightText, QColor("#ffffff"))
             palette.setColor(QPalette.ColorRole.Link, QColor("#38BDF8"))
             palette.setColor(QPalette.ColorRole.Highlight, QColor("#38BDF8"))
             palette.setColor(QPalette.ColorRole.HighlightedText, QColor("#ffffff"))
-            palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, QColor(255, 255, 255, 100))
-            palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor(255, 255, 255, 100))
+            palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, QColor("#606060"))
+            palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor("#606060"))
         else:
-            palette.setColor(QPalette.ColorRole.Window, QColor("#F8FAFC"))
+            palette.setColor(QPalette.ColorRole.Window, QColor("#FFFFFF"))
             palette.setColor(QPalette.ColorRole.WindowText, QColor("#0F172A"))
             palette.setColor(QPalette.ColorRole.Base, QColor(255, 255, 255, 180))
             palette.setColor(QPalette.ColorRole.AlternateBase, QColor(255, 255, 255, 120))
@@ -240,4 +240,44 @@ def get_theme_tokens(dark_mode: Optional[bool] = None) -> dict[str, str]:
     # Used strictly by old code, redirect to ThemeManager tokens
     is_dark = dark_mode if dark_mode is not None else ThemeManager.instance().is_dark
     return ThemeManager.instance()._get_tokens(is_dark)
+
+def get_app_color(app_name: str) -> str:
+    """Returns a deterministic accent color for a given application."""
+    if not app_name:
+        return "#7dd3fc"
+        
+    name = app_name.lower().replace(".exe", "")
+    
+    brand_colors = {
+        "brave": "#FB542B",
+        "chrome": "#4285F4",
+        "spotify": "#1DB954",
+        "code": "#007ACC",
+        "github": "#777777",
+        "discord": "#5865F2",
+        "steam": "#171A21",
+        "chatgpt": "#10A37F",
+        "explorer": "#5C8BA6",
+        "msedge": "#0078D7",
+        "firefox": "#FF7139",
+    }
+    
+    if name in brand_colors:
+        return brand_colors[name]
+        
+    # Generate deterministic color from hash (avoid purple/oversaturated, use HSL)
+    import hashlib
+    hash_val = int(hashlib.md5(name.encode()).hexdigest(), 16)
+    
+    # Restrict hue to avoid pure purple (260-290 roughly). 
+    # Let's map 0-360, but if it falls in 260-290, shift it.
+    hue = hash_val % 360
+    if 260 <= hue <= 290:
+        hue = (hue + 50) % 360
+        
+    sat = 60 + (hash_val % 20) # 60-80% saturation (vibrant but not oversaturated)
+    light = 50 + (hash_val % 10) # 50-60% lightness
+    
+    # Convert HSL to HEX
+    return QColor.fromHsl(hue, int(sat * 2.55), int(light * 2.55)).name()
 

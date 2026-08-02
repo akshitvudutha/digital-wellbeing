@@ -42,6 +42,7 @@ class DataUpdateThread(QThread):
 class MainWindow(QMainWindow):
     data_changed_signal = Signal()
     quit_requested = Signal()
+    focus_completed = Signal()
 
     def __init__(self, tracker: TrackingManager, sleepguard: Optional[SleepGuardController] = None, parent=None) -> None:
         super().__init__(parent)
@@ -98,6 +99,7 @@ class MainWindow(QMainWindow):
         self._activity_page = ActivityPage()
         self._history_page = HistoryPage()
         self._wellbeing_page = WellbeingPage(sleepguard=self._sleepguard)
+        self._wellbeing_page.focus_completed.connect(self.focus_completed.emit)
         self._settings_page = SettingsPage(tracker=self._tracker)
         self._settings_page.settings_changed.connect(self._on_settings_changed)
         self._settings_page.theme_changed_req.connect(self._animate_theme_change)

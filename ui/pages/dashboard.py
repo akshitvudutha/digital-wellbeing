@@ -17,6 +17,14 @@ from PySide6.QtWidgets import (
 from analytics.engine import AnalyticsEngine
 from ui.widgets.hero_card import HeroCard
 from ui.widgets.screen_time_card import ActiveScreenTimeCard
+from ui.widgets.simple_category_row import SimpleCategoryRow
+
+class ClickableCategoryRow(SimpleCategoryRow):
+    clicked = Signal(str)
+    def mousePressEvent(self, event):
+        super().mousePressEvent(event)
+        cat_name = self._category.value if hasattr(self._category, "value") else str(self._category)
+        self.clicked.emit(cat_name)
 
 
 class DashboardPage(QWidget):
@@ -24,6 +32,7 @@ class DashboardPage(QWidget):
 
     request_screen_time_details = Signal()
     request_focus_session = Signal()
+    request_category_details = Signal(str)
 
     def __init__(self, on_global_refresh: Optional[Callable[[], None]] = None, navigate_callback: Optional[Callable[[int], None]] = None, parent=None) -> None:
         super().__init__(parent)
@@ -108,6 +117,19 @@ class DashboardPage(QWidget):
         self._screen_time_card.card_clicked.connect(self.request_screen_time_details.emit)
         self._inner_layout.addWidget(self._screen_time_card)
 
+        self._inner_layout.addSpacing(16)
+
+        # 3. Most Used Categories (Android style)
+        self._cats_label = QLabel("Most Used Categories")
+        self._cats_label.setObjectName("section_header")
+        self._inner_layout.addWidget(self._cats_label)
+
+        self._cats_container = QWidget()
+        self._cats_layout = QHBoxLayout(self._cats_container)
+        self._cats_layout.setContentsMargins(0, 0, 0, 0)
+        self._cats_layout.setSpacing(16)
+        self._inner_layout.addWidget(self._cats_container)
+
         self._inner_layout.addStretch()
 
     def _apply_theme(self, is_dark: bool) -> None:
@@ -144,6 +166,8 @@ class DashboardPage(QWidget):
             border: 1px solid {border}; border-radius: 20px;
             font-size: 13px; font-weight: 800; padding: 8px 18px;
         """)
+        
+        self._cats_label.setStyleSheet(f"font-size: 14px; font-weight: 700; color: {tm.color('text_muted')}; text-transform: uppercase; letter-spacing: 0.5px;")
 
     def _trigger_refresh(self) -> None:
         self._refresh_btn.setEnabled(False)
@@ -216,6 +240,29 @@ class DashboardPage(QWidget):
             category_breakdown=summary.category_breakdown,
             top_apps=summary.top_apps
         )
+        
+        # Update Top Categories
+        while self._cats_layout.count():
+            item = self._cats_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+                
+        category_breakdown = summary.category_breakdown
+        if not category_breakdown:
+            placeholder2 = QLabel("No category data recorded today.")
+            placeholder2.setStyleSheet(f"color: {ThemeManager.instance().color('text_sub')}; font-size: 14px;")
+            self._cats_layout.addWidget(placeholder2)
+        else:
+            sorted_cats2 = sorted(category_breakdown, key=lambda x: float(x.get("total_s", 0.0)), reverse=True)
+            for item in sorted_cats2[:3]:
+                dur = float(item.get("total_s", 0.0))
+                if dur > 0:
+                    row2 = ClickableCategoryRow(
+                        category=item["category"],
+                        duration_s=dur
+                    )
+                    row2.clicked.connect(self.request_category_details.emit)
+                    self._cats_layout.addWidget(row2, 1)
 
     def on_data_changed(self) -> None:
         self._refresh()

@@ -28,6 +28,7 @@ VersionInfoCopyright=Copyright (C) 2026 Akshit Vudutha. All rights reserved.
 VersionInfoProductName=Digital Wellbeing Platform
 VersionInfoProductVersion={#MyAppVersion}
 CloseApplications=yes
+UninstallDisplayIcon={app}\DigitalWellbeing.exe
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -40,9 +41,9 @@ Name: "startup"; Description: "Start Digital Wellbeing automatically when Window
 Source: "dist\DigitalWellbeing\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\Digital Wellbeing"; Filename: "{app}\DigitalWellbeing.exe"; IconFilename: "{app}\assets\icons\app_icon.ico"
-Name: "{userdesktop}\Digital Wellbeing"; Filename: "{app}\DigitalWellbeing.exe"; IconFilename: "{app}\assets\icons\app_icon.ico"; Tasks: desktopicon
-Name: "{userstartup}\Digital Wellbeing"; Filename: "{app}\DigitalWellbeing.exe"; Parameters: "--background"; IconFilename: "{app}\assets\icons\app_icon.ico"; Tasks: startup
+Name: "{group}\Digital Wellbeing"; Filename: "{app}\DigitalWellbeing.exe"
+Name: "{userdesktop}\Digital Wellbeing"; Filename: "{app}\DigitalWellbeing.exe"; Tasks: desktopicon
+Name: "{userstartup}\Digital Wellbeing"; Filename: "{app}\DigitalWellbeing.exe"; Parameters: "--background"; Tasks: startup
 
 [Run]
 Filename: "{app}\DigitalWellbeing.exe"; Description: "{cm:LaunchProgram,Digital Wellbeing}"; Flags: nowait postinstall skipifsilent

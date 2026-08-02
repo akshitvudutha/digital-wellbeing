@@ -13,6 +13,7 @@ class FocusTimerWidget(QFrame):
     """Focus Session / Pomodoro Timer widget with quick duration chips."""
 
     card_clicked = Signal()
+    focus_completed = Signal()
 
     DEFAULT_FOCUS_M = 25
 
@@ -182,6 +183,7 @@ class FocusTimerWidget(QFrame):
             self._start_btn.setText("▶ Start Focus")
             self._status_lbl.setText("Session complete! Take a break 🎉")
             self._update_display_color()
+            self.focus_completed.emit()
 
     def _toggle_timer(self) -> None:
         if self._is_running:

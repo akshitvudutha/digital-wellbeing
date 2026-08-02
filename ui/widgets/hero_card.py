@@ -107,8 +107,8 @@ class HeroCard(QFrame):
 
     def _setup_ui(self) -> None:
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(36, 32, 36, 32)
-        layout.setSpacing(32)
+        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setSpacing(16)
 
         # Left Column: Primary Screen Time Story & Category Bar
         left_col = QVBoxLayout()

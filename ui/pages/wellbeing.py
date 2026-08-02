@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QFrame, QHBoxLayout, QLabel, QMessageBox,
     QPushButton, QScrollArea, QSlider, QSpinBox, QVBoxLayout, QWidget,
@@ -18,6 +18,8 @@ from ui.widgets.focus_timer import FocusTimerWidget
 
 class WellbeingPage(QWidget):
     """Unified Focus Session Timer & SleepGuard Protection Suite."""
+
+    focus_completed = Signal()
 
     def __init__(self, sleepguard: Optional[SleepGuardController] = None, parent=None) -> None:
         super().__init__(parent)
@@ -56,6 +58,7 @@ class WellbeingPage(QWidget):
 
         # 1. Left Card: Focus Timer Widget
         self._focus_timer = FocusTimerWidget()
+        self._focus_timer.focus_completed.connect(self.focus_completed.emit)
         inner_layout.addWidget(self._focus_timer, 1)
 
         # 2. Right Card: SleepGuard Bedtime Protection Card
@@ -168,7 +171,8 @@ class WellbeingPage(QWidget):
         if self._sleepguard:
             self._sleepguard.force_trigger_idle()
         else:
-            QMessageBox.information(self, "SleepGuard Test", "Shutdown countdown warning triggered for 30s.")
+            from core.logger import logger
+            logger.info("SleepGuard Test: Shutdown countdown warning triggered for 30s.")
 
     def on_data_changed(self) -> None:
         from ui.theme import ThemeManager

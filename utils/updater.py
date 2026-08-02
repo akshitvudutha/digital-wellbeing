@@ -215,7 +215,7 @@ class Updater(QObject):
             ps1 = tmp_dir / f"{APP_NAME.replace(' ','_')}_run_update.ps1"
 
             # PowerShell script: start installer and wait, then cleanup and relaunch app
-            ps_contents = f"Start-Process -FilePath '{str(p)}' -Wait\nStart-Sleep -Seconds 1\nTry {{ Remove-Item -LiteralPath '{str(p)}' -Force -ErrorAction SilentlyContinue }} Catch {{}}\nTry {{ Remove-Item -LiteralPath $PSCommandPath -Force -ErrorAction SilentlyContinue }} Catch {{}}\nStart-Process -FilePath '{app_exec}'\n"
+            ps_contents = f"Start-Process -FilePath '{str(p)}' -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait\nStart-Sleep -Seconds 1\nTry {{ Remove-Item -LiteralPath '{str(p)}' -Force -ErrorAction SilentlyContinue }} Catch {{}}\nTry {{ Remove-Item -LiteralPath $PSCommandPath -Force -ErrorAction SilentlyContinue }} Catch {{}}\nStart-Process -FilePath '{app_exec}'\n"
 
             with open(ps1, "w", encoding="utf-8") as f:
                 f.write(ps_contents)

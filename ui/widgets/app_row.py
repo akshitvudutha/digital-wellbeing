@@ -122,11 +122,13 @@ class AppUsageRow(QFrame):
         layout.addLayout(right_layout)
 
     def _apply_theme(self, is_dark: bool) -> None:
-        from ui.theme import ThemeManager
+        from ui.theme import ThemeManager, get_app_color
         tm = ThemeManager.instance()
         
         cat_enum = self._category if isinstance(self._category, AppCategory) else None
-        cat_color = CATEGORY_COLORS.get(cat_enum, tm.color('accent')) if cat_enum else tm.color('accent')
+        
+        # Use deterministic app color
+        app_color = get_app_color(self.process_name)
         
         self.setStyleSheet(f"""
             AppUsageRow#app_row {{
@@ -142,12 +144,13 @@ class AppUsageRow(QFrame):
             QLabel#dur_lbl {{ color: {tm.color('text_main')}; font-size: 14px; font-weight: 700; }}
             QLabel#pct_lbl {{ color: {tm.color('text_sub')}; font-size: 11px; }}
             QProgressBar#app_progress {{ background-color: {tm.color('border')}; border-radius: 3px; }}
-            QProgressBar#app_progress::chunk {{ background-color: {cat_color}; border-radius: 3px; }}
+            QProgressBar#app_progress::chunk {{ background-color: {app_color}; border-radius: 3px; }}
         """)
         
+        # Category badge can still use category colors if desired, but let's use app_color for consistency
         self._cat_badge.setStyleSheet(f"""
-            color: {cat_color};
-            background-color: {cat_color}1A;
-            border: 1px solid {cat_color}33;
+            color: {app_color};
+            background-color: {app_color}1A;
+            border: 1px solid {app_color}33;
             border-radius: 6px; padding: 2px 6px; font-size: 10px; font-weight: 600;
         """)

@@ -34,6 +34,17 @@ def run_headless_service() -> None:
 
 def main() -> None:
     _setup_path()
+    
+    # Set AppUserModelID for proper Windows Taskbar grouping
+    import platform
+    if platform.system() == "Windows":
+        try:
+            import ctypes
+            app_id = "AkshitVudutha.DigitalWellbeing.App.2"
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
+        except Exception as e:
+            from core.logger import logger
+            logger.warning(f"Could not set AppUserModelID: {e}")
 
     parser = argparse.ArgumentParser(description="Digital Wellbeing Windows Tracker")
     parser.add_argument(
@@ -65,22 +76,12 @@ def main() -> None:
         import datetime
         import sys
         import os
-        from PySide6.QtWidgets import QMessageBox
+        import os
         
         logger.info(f"[DEBUG BUILD] Build timestamp: {datetime.datetime.now().isoformat()}")
         logger.info(f"EXECUTABLE PATH: {sys.executable}")
         logger.info(f"FILE PATH: {__file__}")
         logger.info(f"CWD: {os.getcwd()}")
-        
-        try:
-            msg = QMessageBox()
-            msg.setIcon(QMessageBox.Icon.Information)
-            msg.setWindowTitle("SleepGuard Debug")
-            msg.setText("DEBUG BUILD ACTIVE")
-            msg.setStandardButtons(QMessageBox.StandardButton.Ok)
-            msg.exec()
-        except Exception as e:
-            logger.error(f"Failed to show debug msgbox: {e}")
         
         logger.info("[LIFECYCLE] Entering QApplication.exec()")
         log_lifecycle_state("main.py: before QApplication.exec()")
