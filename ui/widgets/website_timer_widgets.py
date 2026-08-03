@@ -1,8 +1,9 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, 
-    QFrame, QDialog, QLineEdit, QComboBox
+    QFrame, QDialog, QLineEdit, QComboBox, QGraphicsDropShadowEffect, QSizePolicy, QSpacerItem
 )
 from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QColor, QFont
 from ui.widgets.fluent import FluentLabel
 from analytics.engine import AnalyticsEngine
 
@@ -16,69 +17,83 @@ class WebsiteTimerItem(QFrame):
         self.limit_s = limit_s
         self.used_s = used_s
         self.setObjectName("website_item")
-        self.setFixedHeight(80)
+        # Removing absolute height, let it size automatically
+        self.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
         self.setup_ui()
         self._apply_theme()
 
     def setup_ui(self):
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setContentsMargins(20, 16, 20, 16)
+        layout.setSpacing(16)
         
         info_layout = QVBoxLayout()
         info_layout.setSpacing(4)
         
         self.domain_lbl = QLabel(self.domain)
-        self.domain_lbl.setStyleSheet("font-size: 15px; font-weight: bold;")
+        self.domain_lbl.setStyleSheet("font-size: 16px; font-weight: 700; color: #FFFFFF;")
         
         limit_str = AnalyticsEngine.format_duration_short(self.limit_s)
         used_str = AnalyticsEngine.format_duration_short(self.used_s)
         self.stats_lbl = QLabel(f"Used {used_str} of {limit_str}")
-        self.stats_lbl.setStyleSheet("font-size: 12px; color: #888888;")
+        self.stats_lbl.setStyleSheet("font-size: 13px; color: #A0A0A5;")
         
         info_layout.addWidget(self.domain_lbl)
         info_layout.addWidget(self.stats_lbl)
         
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(8)
+        
         self.btn_edit = QPushButton("Edit")
-        self.btn_edit.setFixedSize(60, 32)
+        self.btn_edit.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.btn_delete = QPushButton("Delete")
-        self.btn_delete.setFixedSize(60, 32)
         self.btn_delete.setObjectName("btn_delete")
+        self.btn_delete.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         
         self.btn_edit.clicked.connect(lambda: self.edit_requested.emit(self.domain))
         self.btn_delete.clicked.connect(lambda: self.delete_requested.emit(self.domain))
         
+        btn_layout.addWidget(self.btn_edit)
+        btn_layout.addWidget(self.btn_delete)
+        
         layout.addLayout(info_layout)
         layout.addStretch()
-        layout.addWidget(self.btn_edit)
-        layout.addWidget(self.btn_delete)
+        layout.addLayout(btn_layout)
 
     def _apply_theme(self):
-        from ui.theme import ThemeManager
-        tm = ThemeManager.instance()
-        self.setStyleSheet(f"""
-            QFrame#website_item {{
-                background-color: {tm.color('card_bg')};
-                border: 1px solid {tm.color('border')};
-                border-radius: 8px;
-            }}
-            QFrame#website_item:hover {{
-                background-color: {tm.color('hover')};
-            }}
-            QPushButton {{
-                background-color: {tm.color('button_bg')};
-                border: 1px solid {tm.color('border')};
-                border-radius: 4px;
-                color: {tm.color('text_main')};
-            }}
-            QPushButton:hover {{
-                background-color: {tm.color('button_hover')};
-            }}
-            QPushButton#btn_delete {{
+        self.setStyleSheet("""
+            QFrame#website_item {
+                background-color: #252526;
+                border: 1px solid #333333;
+                border-radius: 12px;
+            }
+            QFrame#website_item:hover {
+                background-color: #2D2D30;
+                border: 1px solid #444444;
+            }
+            QPushButton {
+                background-color: #333333;
+                border: 1px solid #444444;
+                border-radius: 6px;
+                color: #FFFFFF;
+                padding: 8px 16px;
+                font-weight: 600;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #3E3E42;
+                border: 1px solid #555555;
+            }
+            QPushButton:pressed {
+                background-color: #2D2D30;
+            }
+            QPushButton#btn_delete {
                 color: #EF4444;
-            }}
-            QPushButton#btn_delete:hover {{
-                background-color: rgba(239, 68, 68, 0.1);
-            }}
+            }
+            QPushButton#btn_delete:hover {
+                background-color: rgba(239, 68, 68, 0.15);
+                border: 1px solid rgba(239, 68, 68, 0.3);
+            }
         """)
 
 class WebsiteTimerConfigDialog(QDialog):
@@ -90,39 +105,94 @@ class WebsiteTimerConfigDialog(QDialog):
         self.setup_ui()
 
     def setup_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(40, 40, 40, 40)
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(20, 20, 20, 20) # Space for drop shadow
+        
+        self.container = QFrame()
+        self.container.setObjectName("dialogContainer")
+        
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(40)
+        shadow.setColor(QColor(0, 0, 0, 150))
+        shadow.setOffset(0, 10)
+        self.container.setGraphicsEffect(shadow)
+        
+        layout = QVBoxLayout(self.container)
+        layout.setContentsMargins(32, 32, 32, 32)
+        layout.setSpacing(24)
         
         self.setStyleSheet("""
-            QDialog {
-                background-color: rgba(30, 30, 30, 250);
+            QFrame#dialogContainer {
+                background-color: #1C1C1E;
                 border-radius: 16px;
-                border: 1px solid rgba(255, 255, 255, 30);
+                border: 1px solid #333333;
             }
-            QLabel { color: white; }
+            QLabel {
+                color: #FFFFFF;
+                font-family: "Segoe UI", sans-serif;
+            }
+            QLabel#titleLbl {
+                font-size: 22px;
+                font-weight: 700;
+            }
+            QLabel#subLbl {
+                font-size: 14px;
+                font-weight: 600;
+                color: #A0A0A5;
+                margin-bottom: 4px;
+            }
             QLineEdit, QComboBox {
-                background-color: rgba(0, 0, 0, 100);
-                border: 1px solid rgba(255, 255, 255, 40);
-                border-radius: 6px;
-                color: white;
-                padding: 8px;
+                background-color: #252526;
+                border: 1px solid #333333;
+                border-radius: 8px;
+                color: #FFFFFF;
+                padding: 12px;
+                font-size: 14px;
+                selection-background-color: #0078D4;
+            }
+            QLineEdit:focus, QComboBox:focus {
+                border: 1px solid #0078D4;
+                background-color: #2D2D30;
+            }
+            QComboBox::drop-down {
+                border: none;
             }
             QPushButton {
-                background-color: #3B82F6;
+                background-color: #0078D4;
                 color: white;
                 border-radius: 8px;
-                padding: 10px;
-                font-weight: bold;
+                padding: 12px 24px;
+                font-weight: 700;
+                font-size: 14px;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #005FB8;
+            }
+            QPushButton:pressed {
+                background-color: #004C93;
             }
             QPushButton#cancelBtn {
-                background-color: rgba(255, 255, 255, 20);
+                background-color: #333333;
+                color: #FFFFFF;
+            }
+            QPushButton#cancelBtn:hover {
+                background-color: #3E3E42;
+            }
+            QPushButton#cancelBtn:pressed {
+                background-color: #2D2D30;
             }
         """)
         
         title = QLabel("Configure Website Timer" if self.domain else "Add Website Timer")
-        title.setStyleSheet("font-size: 20px; font-weight: bold; margin-bottom: 20px;")
-        
+        title.setObjectName("titleLbl")
         layout.addWidget(title)
+        
+        # Domain Section
+        domain_layout = QVBoxLayout()
+        domain_layout.setSpacing(4)
+        lbl_domain = QLabel("Website Domain")
+        lbl_domain.setObjectName("subLbl")
         
         self.domain_input = QLineEdit()
         self.domain_input.setPlaceholderText("e.g. instagram.com")
@@ -130,12 +200,20 @@ class WebsiteTimerConfigDialog(QDialog):
             self.domain_input.setText(self.domain)
             self.domain_input.setEnabled(False)
             
-        layout.addWidget(QLabel("Website Domain"))
-        layout.addWidget(self.domain_input)
+        domain_layout.addWidget(lbl_domain)
+        domain_layout.addWidget(self.domain_input)
+        layout.addLayout(domain_layout)
         
-        layout.addSpacing(10)
+        # Time Section
+        time_section_layout = QVBoxLayout()
+        time_section_layout.setSpacing(4)
+        lbl_limit = QLabel("Daily Limit")
+        lbl_limit.setObjectName("subLbl")
+        time_section_layout.addWidget(lbl_limit)
         
-        time_layout = QHBoxLayout()
+        time_h_layout = QHBoxLayout()
+        time_h_layout.setSpacing(12)
+        
         self.hours_combo = QComboBox()
         self.hours_combo.addItems([str(i) for i in range(24)])
         self.mins_combo = QComboBox()
@@ -148,17 +226,29 @@ class WebsiteTimerConfigDialog(QDialog):
         m_snap = (m // 5) * 5
         self.mins_combo.setCurrentText(str(m_snap))
         
-        time_layout.addWidget(QLabel("Hours:"))
-        time_layout.addWidget(self.hours_combo)
-        time_layout.addWidget(QLabel("Minutes:"))
-        time_layout.addWidget(self.mins_combo)
+        # Hours Wrapper
+        h_layout = QHBoxLayout()
+        h_layout.addWidget(self.hours_combo, 1)
+        h_layout.addWidget(QLabel("hrs"))
         
-        layout.addWidget(QLabel("Daily Limit"))
-        layout.addLayout(time_layout)
+        # Mins Wrapper
+        m_layout = QHBoxLayout()
+        m_layout.addWidget(self.mins_combo, 1)
+        m_layout.addWidget(QLabel("mins"))
         
-        layout.addSpacing(20)
+        time_h_layout.addLayout(h_layout)
+        time_h_layout.addLayout(m_layout)
         
+        time_section_layout.addLayout(time_h_layout)
+        layout.addLayout(time_section_layout)
+        
+        layout.addSpacing(16)
+        
+        # Buttons
         btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(12)
+        btn_layout.addStretch()
+        
         self.btn_cancel = QPushButton("Cancel")
         self.btn_cancel.setObjectName("cancelBtn")
         self.btn_save = QPushButton("Save")
@@ -169,6 +259,8 @@ class WebsiteTimerConfigDialog(QDialog):
         btn_layout.addWidget(self.btn_cancel)
         btn_layout.addWidget(self.btn_save)
         layout.addLayout(btn_layout)
+        
+        main_layout.addWidget(self.container)
 
     def get_data(self):
         h = int(self.hours_combo.currentText())
@@ -192,21 +284,30 @@ class WebsiteTimersSection(QWidget):
         super().__init__(parent)
         self.pm = protection_manager
         self.process_name = process_name
+        self.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
         self.setup_ui()
         
     def setup_ui(self):
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.setSpacing(16)
         
         header_layout = QHBoxLayout()
         title = FluentLabel("Website Timers", FluentLabel.Style.HEADING)
         self.btn_add = QPushButton("+ Add Website")
-        self.btn_add.setFixedSize(120, 36)
+        self.btn_add.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.btn_add.setStyleSheet("""
             QPushButton {
-                background-color: #3B82F6; color: white; border-radius: 18px; font-weight: bold;
+                background-color: #0078D4;
+                color: white;
+                border-radius: 16px;
+                padding: 8px 16px;
+                font-weight: 700;
+                font-size: 13px;
+                border: none;
             }
-            QPushButton:hover { background-color: #2563EB; }
+            QPushButton:hover { background-color: #005FB8; }
+            QPushButton:pressed { background-color: #004C93; }
         """)
         self.btn_add.clicked.connect(self._on_add)
         
@@ -215,10 +316,9 @@ class WebsiteTimersSection(QWidget):
         header_layout.addWidget(self.btn_add)
         
         self.layout.addLayout(header_layout)
-        self.layout.addSpacing(10)
         
         self.list_layout = QVBoxLayout()
-        self.list_layout.setSpacing(8)
+        self.list_layout.setSpacing(12)
         self.layout.addLayout(self.list_layout)
         
         self.refresh()
@@ -234,8 +334,9 @@ class WebsiteTimersSection(QWidget):
             
         limits = self.pm.website_limits.get_all_limits(self.process_name)
         if not limits:
-            lbl = QLabel("No website timers configured. Click '+ Add Website' to create one.")
-            lbl.setStyleSheet("color: #888888; padding: 20px;")
+            lbl = QLabel("No website timers configured.\nClick '+ Add Website' to create one.")
+            lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            lbl.setStyleSheet("color: #A0A0A5; font-size: 14px; padding: 40px; background: #252526; border-radius: 12px; border: 1px dashed #333333;")
             self.list_layout.addWidget(lbl)
             return
             
