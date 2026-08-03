@@ -37,6 +37,8 @@ class SimpleAppRow(QFrame):
         self._hover_progress = 0.0
         self._hover_anim = QPropertyAnimation(self, b"hover_progress", self)
         self._hover_anim.setDuration(200)
+        self._hover_anim.setStartValue(0.0)
+        self._hover_anim.setEndValue(1.0)
         
         from ui.theme import ThemeManager
         ThemeManager.instance().theme_changed.connect(self._apply_theme)

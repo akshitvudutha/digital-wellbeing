@@ -167,6 +167,8 @@ class ToggleSwitch(QAbstractButton):
         self._anim = QPropertyAnimation(self, b"thumb_position", self)
         self._anim.setEasingCurve(QEasingCurve.Type.InOutQuad)
         self._anim.setDuration(200)
+        self._anim.setStartValue(4.0)
+        self._anim.setEndValue(24.0)
         
         self.toggled.connect(self._on_toggled)
 
@@ -238,10 +240,14 @@ class IconButton(QAbstractButton):
         self._hover_anim = QPropertyAnimation(self, b"hover_progress", self)
         self._hover_anim.setDuration(150)
         self._hover_anim.setEasingCurve(QEasingCurve.Type.OutQuad)
+        self._hover_anim.setStartValue(0.0)
+        self._hover_anim.setEndValue(1.0)
 
         self._scale_anim = QPropertyAnimation(self, b"scale", self)
         self._scale_anim.setDuration(150)
         self._scale_anim.setEasingCurve(QEasingCurve.Type.OutQuad)
+        self._scale_anim.setStartValue(1.0)
+        self._scale_anim.setEndValue(1.0)
 
         self._spin_anim = QPropertyAnimation(self, b"rotation", self)
         self._spin_anim.setDuration(700)

@@ -26,6 +26,8 @@ class WheelPicker(QWidget):
         self._anim = QPropertyAnimation(self, b"scroll_offset", self)
         self._anim.setEasingCurve(QEasingCurve.Type.OutQuad)
         self._anim.setDuration(250)
+        self._anim.setStartValue(0.0)
+        self._anim.setEndValue(0.0)
 
     @Property(float)
     def scroll_offset(self):
@@ -142,6 +144,8 @@ class CircularChip(QPushButton):
         self._bg_alpha = 0.0
         self._anim = QPropertyAnimation(self, b"bg_alpha", self)
         self._anim.setDuration(200)
+        self._anim.setStartValue(0.0)
+        self._anim.setEndValue(1.0)
         
         self.toggled.connect(self._on_toggled)
 
@@ -245,6 +249,8 @@ class RadioCard(QFrame):
         self._scale = 1.0
         self._anim = QPropertyAnimation(self, b"scale", self)
         self._anim.setDuration(150)
+        self._anim.setStartValue(1.0)
+        self._anim.setEndValue(0.97)
         
     @Property(float)
     def scale(self):
@@ -260,10 +266,14 @@ class RadioCard(QFrame):
         self.update()
 
     def mousePressEvent(self, event):
+        self._anim.stop()
+        self._anim.setStartValue(self._scale)
         self._anim.setEndValue(0.97)
         self._anim.start()
 
     def mouseReleaseEvent(self, event):
+        self._anim.stop()
+        self._anim.setStartValue(self._scale)
         self._anim.setEndValue(1.0)
         self._anim.start()
         self.clicked.emit(self.value)
@@ -766,6 +776,8 @@ class AnimatedProgressBar(QWidget):
         self._anim = QPropertyAnimation(self, b"progress", self)
         self._anim.setDuration(400)
         self._anim.setEasingCurve(QEasingCurve.Type.OutQuad)
+        self._anim.setStartValue(0.0)
+        self._anim.setEndValue(1.0)
 
     @Property(float)
     def progress(self):
