@@ -360,13 +360,66 @@ class PresetChipRow(QWidget):
         """)
 
 
+class MultiSelectChipRow(QWidget):
+    def __init__(self, items: list[tuple[str, int]], parent=None):
+        super().__init__(parent)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
+        
+        self._chips = []
+        for label, val in items:
+            btn = QPushButton(label)
+            btn.setCheckable(True)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.setFixedHeight(32)
+            btn.setProperty("val", val)
+            self._chips.append(btn)
+            layout.addWidget(btn)
+            
+        layout.addStretch()
+        
+        from ui.theme import ThemeManager
+        ThemeManager.instance().theme_changed.connect(self._apply_theme)
+        self._apply_theme(ThemeManager.instance().is_dark)
+        
+    def _apply_theme(self, is_dark):
+        tm = ThemeManager.instance()
+        self.setStyleSheet(f"""
+            QPushButton {{
+                background: {tm.color('card_bg')};
+                border: 1px solid {tm.color('border')};
+                border-radius: 16px;
+                padding: 0 16px;
+                color: {tm.color('text_main')};
+                font-weight: 600;
+                font-size: 13px;
+            }}
+            QPushButton:hover {{
+                background: {tm.color('card_hover')};
+            }}
+            QPushButton:checked {{
+                background: {tm.color('accent')};
+                color: white;
+                border: none;
+            }}
+        """)
+        
+    def get_selected(self) -> list[int]:
+        return [btn.property("val") for btn in self._chips if btn.isChecked()]
+        
+    def set_selected(self, values: list[int]):
+        for btn in self._chips:
+            btn.setChecked(btn.property("val") in values)
+
+
 class TimerConfigDialog(QDialog):
-    """The main massive modal for configuring an app timer."""
+    """The main massive modal for configuring an app timer (Samsung inspired)."""
     def __init__(self, parent=None, current_rule: dict=None):
         super().__init__(parent)
         self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setFixedSize(500, 680)
+        self.setFixedSize(540, 780)
         
         self.current_rule = current_rule or {}
         
@@ -388,29 +441,46 @@ class TimerConfigDialog(QDialog):
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         
-        # Main background frame
         self.bg_frame = QFrame()
         self.bg_frame.setObjectName("dialog_bg")
-        bg_layout = QVBoxLayout(self.bg_frame)
+        
+        # We need a scroll area because it's tall
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setStyleSheet("background: transparent; border: none;")
+        
+        scroll_content = QWidget()
+        bg_layout = QVBoxLayout(scroll_content)
         bg_layout.setContentsMargins(32, 32, 32, 32)
-        bg_layout.setSpacing(24)
+        bg_layout.setSpacing(28)
         
         # Header
         header_layout = QHBoxLayout()
-        title = FluentLabel("Configure Timer", FluentLabel.Style.TITLE)
+        title = FluentLabel("Configure App Timer", FluentLabel.Style.TITLE)
         header_layout.addWidget(title)
         header_layout.addStretch()
         bg_layout.addLayout(header_layout)
+        
+        # Timer Name
+        from PySide6.QtWidgets import QLineEdit
+        name_layout = QVBoxLayout()
+        name_layout.setSpacing(8)
+        name_layout.addWidget(FluentLabel("Timer Name (Optional)", FluentLabel.Style.HEADING))
+        self.name_input = QLineEdit()
+        self.name_input.setPlaceholderText("e.g. Social Media Limit")
+        self.name_input.setFixedHeight(40)
+        self.name_input.setObjectName("timer_name_input")
+        name_layout.addWidget(self.name_input)
+        bg_layout.addLayout(name_layout)
         
         # Time Picker Row
         picker_layout = QHBoxLayout()
         picker_layout.addStretch()
         self.hr_picker = WheelPicker([str(i) for i in range(24)])
         self.min_picker = WheelPicker([str(i) for i in range(60)])
-        
         hr_lbl = FluentLabel("hr", FluentLabel.Style.HEADING)
         min_lbl = FluentLabel("min", FluentLabel.Style.HEADING)
-        
         picker_layout.addWidget(self.hr_picker)
         picker_layout.addWidget(hr_lbl)
         picker_layout.addSpacing(16)
@@ -424,31 +494,54 @@ class TimerConfigDialog(QDialog):
         self.preset_row.preset_selected.connect(self._on_preset)
         bg_layout.addWidget(self.preset_row)
         
-        # Repeat Days
-        bg_layout.addWidget(FluentLabel("Repeat Days", FluentLabel.Style.HEADING))
+        # Repeat Days with Toggle
+        days_header = QHBoxLayout()
+        days_header.addWidget(FluentLabel("Repeat Days", FluentLabel.Style.HEADING))
+        days_header.addStretch()
+        days_header.addWidget(FluentLabel("Every Day", FluentLabel.Style.MUTED))
+        self.every_day_toggle = ToggleSwitch()
+        self.every_day_toggle.toggled.connect(self._on_every_day_toggled)
+        days_header.addWidget(self.every_day_toggle)
+        
+        bg_layout.addLayout(days_header)
         self.days_picker = RepeatDaysPicker()
         bg_layout.addWidget(self.days_picker)
+        
+        # Notifications
+        bg_layout.addWidget(FluentLabel("Notification Alerts", FluentLabel.Style.HEADING))
+        self.alerts_row = MultiSelectChipRow([("15m before", 15), ("10m before", 10), ("5m before", 5), ("1m before", 1)])
+        bg_layout.addWidget(self.alerts_row)
         
         # Action
         bg_layout.addWidget(FluentLabel("When Timer Expires", FluentLabel.Style.HEADING))
         self.action_group = RadioCardGroup()
         self.action_group.add_card("Close App", "Forcibly terminates the application", "close")
         self.action_group.add_card("Lock Screen", "Shows an overlay until tomorrow", "lock")
-        self.action_group.add_card("Require PIN", "Allow override if PIN is entered", "pin")
+        self.action_group.add_card("Ask for PIN Override", "Allow override if PIN is entered", "pin")
         bg_layout.addWidget(self.action_group)
         
-        bg_layout.addStretch()
+        # Reset note
+        reset_lbl = FluentLabel("Timer resets every midnight.", FluentLabel.Style.MUTED)
+        bg_layout.addWidget(reset_lbl)
         
-        # Buttons
+        bg_layout.addStretch()
+        scroll.setWidget(scroll_content)
+        
+        container_layout = QVBoxLayout(self.bg_frame)
+        container_layout.setContentsMargins(0, 0, 0, 0)
+        container_layout.addWidget(scroll)
+        
+        # Buttons fixed at bottom
         btn_layout = QHBoxLayout()
+        btn_layout.setContentsMargins(32, 16, 32, 32)
         btn_layout.addStretch()
         cancel_btn = FluentButton("Cancel")
         cancel_btn.clicked.connect(self.reject)
-        save_btn = FluentButton("Save Timer", primary=True)
+        save_btn = FluentButton("Save", primary=True)
         save_btn.clicked.connect(self.accept)
         btn_layout.addWidget(cancel_btn)
         btn_layout.addWidget(save_btn)
-        bg_layout.addLayout(btn_layout)
+        container_layout.addLayout(btn_layout)
         
         main_layout.addWidget(self.bg_frame)
         
@@ -464,7 +557,22 @@ class TimerConfigDialog(QDialog):
                 border: 1px solid {tm.color('border')};
                 border-radius: 16px;
             }}
+            QLineEdit#timer_name_input {{
+                background-color: {tm.color('card_bg')};
+                border: 1px solid {tm.color('border')};
+                border-radius: 8px;
+                padding: 0 12px;
+                color: {tm.color('text_main')};
+                font-size: 14px;
+            }}
+            QLineEdit#timer_name_input:focus {{
+                border: 1px solid {tm.color('accent')};
+            }}
         """)
+
+    def _on_every_day_toggled(self, checked: bool):
+        if checked:
+            self.days_picker.set_selected_days([0,1,2,3,4,5,6])
 
     def _on_preset(self, mins: int):
         hr = mins // 60
@@ -478,8 +586,14 @@ class TimerConfigDialog(QDialog):
         self.hr_picker.set_index(mins // 60)
         self.min_picker.set_index(mins % 60)
         
+        self.name_input.setText(self.current_rule.get("name", ""))
+        
         days = self.current_rule.get("repeat_days", [0,1,2,3,4,5,6])
         self.days_picker.set_selected_days(days)
+        self.every_day_toggle.setChecked(len(days) == 7)
+        
+        notifs = self.current_rule.get("notifications", [15, 5, 1])
+        self.alerts_row.set_selected(notifs)
         
         action = self.current_rule.get("on_expire", "lock")
         self.action_group.set_selected(action)
@@ -490,40 +604,90 @@ class TimerConfigDialog(QDialog):
             return None # Unlimited
             
         return {
+            "name": self.name_input.text().strip(),
             "limit_seconds": total_secs,
             "repeat_days": self.days_picker.get_selected_days(),
-            "notifications": [15, 10, 5, 1],
+            "notifications": sorted(self.alerts_row.get_selected(), reverse=True),
             "on_expire": self.action_group.get_selected()
         }
 
 
 class TimerDisplayCard(QFrame):
-    """The card shown on App Details page displaying current timer."""
+    """The summary card shown on App Details page displaying current timer (Samsung style)."""
     change_requested = Signal()
     
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setObjectName("timer_card")
+        self.setObjectName("timer_summary_card")
         
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(24, 24, 24, 24)
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
         
-        text_layout = QVBoxLayout()
-        self.title_lbl = FluentLabel("Daily Timer", FluentLabel.Style.HEADING)
-        self.val_lbl = QLabel("Unlimited")
-        self.val_lbl.setStyleSheet("font-size: 32px; font-weight: 800;")
-        self.desc_lbl = FluentLabel("", FluentLabel.Style.MUTED)
+        # Header area
+        header_frame = QFrame()
+        header_frame.setObjectName("timer_header")
+        header_layout = QHBoxLayout(header_frame)
+        header_layout.setContentsMargins(24, 16, 24, 16)
         
-        text_layout.addWidget(self.title_lbl)
-        text_layout.addWidget(self.val_lbl)
-        text_layout.addWidget(self.desc_lbl)
+        self.title_lbl = FluentLabel("App Timer", FluentLabel.Style.HEADING)
+        header_layout.addWidget(self.title_lbl)
+        header_layout.addStretch()
+        self.status_lbl = FluentLabel("Disabled", FluentLabel.Style.MUTED)
+        self.status_lbl.setStyleSheet("font-weight: 700; color: #EAB308;") # Default orange for disabled
+        header_layout.addWidget(self.status_lbl)
         
-        self.change_btn = FluentButton("Change Timer")
+        # Body area
+        body_frame = QFrame()
+        body_layout = QVBoxLayout(body_frame)
+        body_layout.setContentsMargins(24, 20, 24, 24)
+        body_layout.setSpacing(12)
+        
+        # Grid for stats
+        from PySide6.QtWidgets import QGridLayout
+        grid = QGridLayout()
+        grid.setSpacing(16)
+        
+        def add_stat(row, title, val_widget):
+            lbl = FluentLabel(title, FluentLabel.Style.SUBHEADING)
+            lbl.setFixedWidth(120)
+            grid.addWidget(lbl, row, 0)
+            grid.addWidget(val_widget, row, 1)
+            
+        self.val_limit = FluentLabel("Unlimited", FluentLabel.Style.BODY)
+        self.val_repeats = FluentLabel("-", FluentLabel.Style.BODY)
+        self.val_alerts = FluentLabel("-", FluentLabel.Style.BODY)
+        self.val_action = FluentLabel("-", FluentLabel.Style.BODY)
+        
+        # Style values slightly bolder
+        for w in [self.val_limit, self.val_repeats, self.val_alerts, self.val_action]:
+            w.setStyleSheet("font-weight: 500;")
+            
+        add_stat(0, "Daily Limit", self.val_limit)
+        add_stat(1, "Repeats", self.val_repeats)
+        add_stat(2, "Alerts", self.val_alerts)
+        add_stat(3, "Action", self.val_action)
+        
+        body_layout.addLayout(grid)
+        
+        # Divider
+        div = QFrame()
+        div.setFixedHeight(1)
+        div.setObjectName("divider")
+        body_layout.addSpacing(12)
+        body_layout.addWidget(div)
+        body_layout.addSpacing(12)
+        
+        # Button
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        self.change_btn = FluentButton("Edit Timer")
         self.change_btn.clicked.connect(self.change_requested.emit)
+        btn_layout.addWidget(self.change_btn)
+        body_layout.addLayout(btn_layout)
         
-        layout.addLayout(text_layout)
-        layout.addStretch()
-        layout.addWidget(self.change_btn, alignment=Qt.AlignmentFlag.AlignVCenter)
+        main_layout.addWidget(header_frame)
+        main_layout.addWidget(body_frame)
         
         from ui.theme import ThemeManager
         ThemeManager.instance().theme_changed.connect(self._apply_theme)
@@ -532,41 +696,64 @@ class TimerDisplayCard(QFrame):
     def _apply_theme(self, is_dark):
         tm = ThemeManager.instance()
         self.setStyleSheet(f"""
-            QFrame#timer_card {{
+            QFrame#timer_summary_card {{
                 background-color: {tm.color('card_bg')};
                 border: 1px solid {tm.color('border')};
                 border-radius: 12px;
             }}
+            QFrame#timer_header {{
+                background-color: {tm.color('card_hover')};
+                border-bottom: 1px solid {tm.color('border')};
+                border-top-left-radius: 12px;
+                border-top-right-radius: 12px;
+            }}
+            QFrame#divider {{
+                background-color: {tm.color('border')};
+            }}
         """)
-        self.val_lbl.setStyleSheet(f"font-size: 32px; font-weight: 800; color: {tm.color('accent')};")
 
     def set_limit(self, rule: dict):
         if not rule or not rule.get("limit_seconds"):
-            self.val_lbl.setText("Unlimited")
-            self.desc_lbl.setText("Timer is disabled")
+            self.title_lbl.setText("App Timer")
+            self.status_lbl.setText("Disabled")
+            self.status_lbl.setStyleSheet("font-weight: 700; color: #6B7280;") # Gray
+            self.val_limit.setText("Unlimited")
+            self.val_repeats.setText("-")
+            self.val_alerts.setText("-")
+            self.val_action.setText("-")
+            self.change_btn.setText("Configure App Timer")
             return
             
+        name = rule.get("name", "").strip()
+        self.title_lbl.setText(name if name else "App Timer")
+            
+        self.status_lbl.setText("Enabled")
+        self.status_lbl.setStyleSheet("font-weight: 700; color: #10B981;") # Green
+        
         secs = rule.get("limit_seconds", 0)
         hrs = secs // 3600
         mns = (secs % 3600) // 60
         if hrs > 0 and mns > 0:
-            self.val_lbl.setText(f"{hrs}h {mns}m")
+            self.val_limit.setText(f"{hrs}h {mns}m")
         elif hrs > 0:
-            self.val_lbl.setText(f"{hrs}h")
+            self.val_limit.setText(f"{hrs}h")
         else:
-            self.val_lbl.setText(f"{mns}m")
+            self.val_limit.setText(f"{mns}m")
             
         days = rule.get("repeat_days", [0,1,2,3,4,5,6])
-        days_map = {0: "M", 1: "T", 2: "W", 3: "Th", 4: "F", 5: "S", 6: "Su"}
-        days_str = ", ".join(days_map[d] for d in sorted(days)) if len(days) < 7 else "Every day"
+        days_map = {0: "Mon", 1: "Tue", 2: "Wed", 3: "Thu", 4: "Fri", 5: "Sat", 6: "Sun"}
+        days_str = " ".join(days_map[d] for d in sorted(days)) if len(days) < 7 else "Every day"
+        self.val_repeats.setText(days_str)
         
         action = rule.get("on_expire", "lock")
-        action_str = "Close App" if action == "close" else "Require PIN" if action == "pin" else "Lock Screen"
+        action_str = "Close App" if action == "close" else "Ask for PIN" if action == "pin" else "Lock Screen"
+        self.val_action.setText(action_str)
         
         notifs = rule.get("notifications", [])
-        notifs_str = f", Alerts: {', '.join(str(n)+'m' for n in notifs)}" if notifs else ""
+        notifs_str = " • ".join(str(n)+'m' for n in sorted(notifs, reverse=True)) if notifs else "None"
+        self.val_alerts.setText(notifs_str)
         
-        self.desc_lbl.setText(f"Repeats: {days_str} • Action: {action_str}{notifs_str}")
+        self.change_btn.setText("Edit Timer")
 
 
 class AnimatedProgressBar(QWidget):
@@ -614,3 +801,4 @@ class AnimatedProgressBar(QWidget):
             fill_w = self.width() * self._progress
             painter.setBrush(QBrush(fill_color))
             painter.drawRoundedRect(0, 0, fill_w, self.height(), self.height()/2, self.height()/2)
+

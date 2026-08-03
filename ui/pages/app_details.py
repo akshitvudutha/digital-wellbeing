@@ -199,19 +199,14 @@ class AppDetailsPage(QWidget):
         self._inner_layout.addLayout(self._stats_grid)
 
         # -----------------------------------------------------
-        # Limits and Restrictions Section
+        # App Timer Section
         # -----------------------------------------------------
         if self._protection_manager:
-            limits_header = QLabel("Usage Restrictions")
-            limits_header.setObjectName("app_title")
-            limits_header.setStyleSheet("font-size: 20px; font-weight: 700; margin-top: 16px;")
-            self._inner_layout.addWidget(limits_header)
-            
             # Progress Widget
             self._progress_widget = TodayProgressWidget()
             self._inner_layout.addWidget(self._progress_widget)
             
-            # Timer Card
+            # Standalone App Timer Card (Samsung-inspired)
             self._timer_card = TimerDisplayCard()
             self._timer_card.change_requested.connect(self._on_change_timer)
             self._inner_layout.addWidget(self._timer_card)
