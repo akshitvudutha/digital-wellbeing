@@ -56,14 +56,14 @@ class TrackingManager:
         self._shutdown_mode: str = self._sm.shutdown_mode
         self._media_idle_timeout_s: float = self._sm.media_idle_timeout_minutes * 60.0
         self._data_changed_callbacks: list[Callable[[], None]] = []
-        self._on_active_tick_callbacks: list[Callable[[str, float], None]] = []
+        self._on_active_tick_callbacks: list[Callable[[str, float, str], None]] = []
 
     # ─── Public API ───────────────────────────────────────────────────────────
 
     def add_data_changed_callback(self, cb: Callable[[], None]) -> None:
         self._data_changed_callbacks.append(cb)
 
-    def add_active_tick_callback(self, cb: Callable[[str, float], None]) -> None:
+    def add_active_tick_callback(self, cb: Callable[[str, float, str], None]) -> None:
         self._on_active_tick_callbacks.append(cb)
 
     def start(self) -> None:
@@ -230,7 +230,7 @@ class TrackingManager:
         if not idle:
             for cb in self._on_active_tick_callbacks:
                 try:
-                    cb(fg.process_name, delta_s)
+                    cb(fg.process_name, delta_s, getattr(fg, "url", ""))
                 except Exception as exc:
                     logger.warning(f"Active tick callback failed: {exc}")
 

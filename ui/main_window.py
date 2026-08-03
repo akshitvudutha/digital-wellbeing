@@ -19,6 +19,10 @@ from tracker.manager import TrackingManager
 from tracker.sleepguard import SleepGuardController
 from ui.pages.activity import ActivityPage
 from ui.pages.dashboard import DashboardPage
+from ui.components.layout import MainLayout
+from ui.widgets.title_bar import TitleBar
+from ui.widgets.website_overlay import WebsiteLimitOverlayDialog
+from ui.widgets.limit_dialog import LimitReachedDialog, PinOverrideDialog
 from ui.pages.debug import DebugPage
 from ui.pages.settings import SettingsPage
 from ui.pages.wellbeing import WellbeingPage
@@ -54,11 +58,13 @@ class MainWindow(QMainWindow):
         
         if self._protection_manager:
             self._protection_manager.notifications.show_limit_dialog.connect(self._show_limit_dialog)
+            self._protection_manager.notifications.show_website_limit_dialog.connect(self._show_website_limit_dialog)
 
         self.data_changed_signal.connect(self._refresh_current_page)
         self._active_nav_btn: Optional[QPushButton] = None
         self._navigation_history: list[int] = []
         self._active_limit_dialogs = set()
+        self._active_website_dialogs = set()
         self._setup_ui()
         self._connect_tracker()
         self._setup_shortcuts()
@@ -472,13 +478,31 @@ class MainWindow(QMainWindow):
                 
             self._stack.setCurrentIndexAnimated(prev_idx)
 
+    def _show_website_limit_dialog(self, process_name: str, domain: str, limit_seconds: int) -> None:
+        dialog_id = f"{process_name}_{domain}"
+        if dialog_id in self._active_website_dialogs:
+            return
+            
+        self._active_website_dialogs.add(dialog_id)
+        
+        dialog = WebsiteLimitOverlayDialog(process_name, domain, limit_seconds, self)
+        
+        def on_override_requested(p, d):
+            pin_dialog = PinOverrideDialog(self)
+            if pin_dialog.exec():
+                minutes = pin_dialog.get_duration_minutes()
+                self._protection_manager.add_website_override(d, minutes)
+                dialog.accept()
+                
+        dialog.override_requested.connect(on_override_requested)
+        dialog.exec()
+        self._active_website_dialogs.discard(dialog_id)
+
     def _show_limit_dialog(self, process_name: str, limit_seconds: int) -> None:
         if process_name in self._active_limit_dialogs:
             return
             
         self._active_limit_dialogs.add(process_name)
-        
-        from ui.widgets.limit_dialog import LimitReachedDialog, PinOverrideDialog
         
         if self.isHidden():
             self.show()

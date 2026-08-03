@@ -17,6 +17,8 @@ from tracker.categorizer import display_name as get_display_name
 from utils.icon_provider import AppIconProvider
 from ui.widgets.fluent import FluentLabel
 from ui.widgets.app_timer_widgets import TimerDisplayCard, TimerConfigDialog, AnimatedProgressBar
+from ui.widgets.website_timer_widgets import WebsiteTimersSection
+from tracker.foreground import BROWSER_PROCESSES
 
 class TodayProgressWidget(QFrame):
     def __init__(self, parent=None):
@@ -215,6 +217,24 @@ class AppDetailsPage(QWidget):
             self._override_lbl = QLabel("")
             self._override_lbl.setStyleSheet("color: #EAB308; font-weight: 600; font-size: 13px; margin-top: 8px;")
             self._inner_layout.addWidget(self._override_lbl)
+            
+            # Restriction Type Segmented Control
+            self._restriction_type_combo = QComboBox()
+            self._restriction_type_combo.addItems(["Entire Application", "Specific Websites"])
+            self._restriction_type_combo.setFixedWidth(200)
+            self._restriction_type_combo.setStyleSheet("""
+                QComboBox {
+                    padding: 8px; border-radius: 6px; border: 1px solid #444; background: #222; color: white;
+                }
+            """)
+            self._inner_layout.addWidget(QLabel("Restriction Mode:"))
+            self._inner_layout.addWidget(self._restriction_type_combo)
+            
+            self._website_timers_section = WebsiteTimersSection(self._protection_manager, self._current_app)
+            self._inner_layout.addWidget(self._website_timers_section)
+            self._website_timers_section.hide()
+            
+            self._restriction_type_combo.currentIndexChanged.connect(self._on_restriction_type_changed)
 
         history_header = QLabel("Usage History")
         history_header.setObjectName("app_title")
@@ -239,8 +259,18 @@ class AppDetailsPage(QWidget):
             self._protection_manager.limits.set_limit_rule(self._current_app, rule)
             self.refresh()
 
+    def _on_restriction_type_changed(self, idx: int) -> None:
+        if idx == 0:
+            self._timer_card.show()
+            self._website_timers_section.hide()
+        else:
+            self._timer_card.hide()
+            self._website_timers_section.show()
+
     def set_app(self, process_name: str) -> None:
         self._current_app = process_name
+        if hasattr(self, "_website_timers_section"):
+            self._website_timers_section.process_name = process_name
         self.refresh()
         
     def refresh(self) -> None:
@@ -322,10 +352,25 @@ class AppDetailsPage(QWidget):
             
             self._progress_widget.update_progress(today_s, limit_s)
 
-            # Update override status
             if self._protection_manager.has_active_override(process_name):
                 self._override_lbl.setText("Status: Override active for today.")
                 self._override_lbl.setVisible(True)
             else:
                 self._override_lbl.setText("")
                 self._override_lbl.setVisible(False)
+                
+            # Update Website Timers Section
+            is_browser = process_name.lower() in BROWSER_PROCESSES
+            if is_browser:
+                self._restriction_type_combo.parentWidget().layout().itemAt(self._inner_layout.indexOf(self._restriction_type_combo) - 1).widget().show() # The label
+                self._restriction_type_combo.show()
+                self._website_timers_section.refresh()
+                # Check if there are website limits configured
+                limits = self._protection_manager.website_limits.get_all_limits(process_name)
+                if limits and self._restriction_type_combo.currentIndex() != 1:
+                    self._restriction_type_combo.setCurrentIndex(1)
+            else:
+                self._restriction_type_combo.parentWidget().layout().itemAt(self._inner_layout.indexOf(self._restriction_type_combo) - 1).widget().hide()
+                self._restriction_type_combo.hide()
+                self._restriction_type_combo.setCurrentIndex(0)
+                self._website_timers_section.hide()

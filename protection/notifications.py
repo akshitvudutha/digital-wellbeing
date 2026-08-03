@@ -7,6 +7,7 @@ from core.logger import logger
 class NotificationManager(QObject):
     # Signals to be connected to the main UI thread
     show_limit_dialog = Signal(str, int)  # process_name, limit_seconds
+    show_website_limit_dialog = Signal(str, str, int)  # process_name, domain, limit_seconds
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -30,3 +31,8 @@ class NotificationManager(QObject):
         """Emit a signal to the UI thread to show the blocking Lock Dialog."""
         logger.info(f"NotificationManager: Triggering lock dialog for {process_name}")
         self.show_limit_dialog.emit(process_name, limit_seconds)
+
+    def trigger_website_lock_dialog(self, process_name: str, domain: str, limit_seconds: int) -> None:
+        """Emit a signal to the UI thread to show the website overlay dialog."""
+        logger.info(f"NotificationManager: Triggering website lock dialog for {domain} in {process_name}")
+        self.show_website_limit_dialog.emit(process_name, domain, limit_seconds)

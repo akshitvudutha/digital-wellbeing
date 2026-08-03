@@ -58,6 +58,19 @@ CREATE TABLE IF NOT EXISTS event_log (
 );
 """
 
+CREATE_WEBSITE_SESSIONS = """
+CREATE TABLE IF NOT EXISTS website_sessions (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    domain          TEXT    NOT NULL,
+    browser_process TEXT    NOT NULL,
+    start_time      TEXT    NOT NULL,
+    end_time        TEXT,
+    duration_s      REAL    NOT NULL DEFAULT 0,
+    was_closed      INTEGER NOT NULL DEFAULT 0
+);
+"""
+
+
 CREATE_INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_sessions_start      ON app_sessions(start_time);",
     "CREATE INDEX IF NOT EXISTS idx_sessions_process    ON app_sessions(process_name);",
@@ -66,6 +79,8 @@ CREATE_INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_sessions_open       ON app_sessions(end_time) WHERE end_time IS NULL;",
     "CREATE INDEX IF NOT EXISTS idx_event_log_time      ON event_log(timestamp);",
     "CREATE INDEX IF NOT EXISTS idx_event_log_type      ON event_log(event_type);",
+    "CREATE INDEX IF NOT EXISTS idx_website_sessions_start ON website_sessions(start_time);",
+    "CREATE INDEX IF NOT EXISTS idx_website_sessions_domain ON website_sessions(domain);",
 ]
 
 MIGRATE_ADD_EXE_PATH = """
@@ -106,6 +121,7 @@ ALL_DDL = [
     CREATE_DAILY_STATS,
     CREATE_SETTINGS,
     CREATE_EVENT_LOG,
+    CREATE_WEBSITE_SESSIONS,
     *CREATE_INDEXES,
 ]
 

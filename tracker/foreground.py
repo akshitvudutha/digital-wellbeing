@@ -87,6 +87,7 @@ class ForegroundApp:
     pid: int
     window_title: str
     hwnd: int
+    url: str = ""
 
 
 OVERLAY_PROCESSES = {
@@ -408,12 +409,19 @@ def get_foreground_app(last_known_app: Optional[ForegroundApp] = None) -> Option
         if is_private_browsing(name, title):
             title = "Private Browsing"
 
+        url = ""
+        name_lower = name.lower()
+        if name_lower in BROWSER_PROCESSES:
+            from tracker.browser_url import BrowserURLProvider
+            url = BrowserURLProvider.get_active_domain(root_hwnd, name_lower) or ""
+
         app = ForegroundApp(
             process_name=name,
             exe_path=exe_path,
             pid=pid,
             window_title=title[:512],
             hwnd=hwnd,
+            url=url,
         )
         _last_valid_app = app
         return app
@@ -427,4 +435,4 @@ def apps_are_same(a: Optional[ForegroundApp], b: Optional[ForegroundApp]) -> boo
         return True
     if a is None or b is None:
         return False
-    return a.process_name == b.process_name and a.window_title == b.window_title
+    return a.process_name == b.process_name and a.window_title == b.window_title and a.url == b.url

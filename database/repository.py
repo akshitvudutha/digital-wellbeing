@@ -9,7 +9,7 @@ from typing import Generator, List, Optional
 
 from core.constants import AppCategory
 from core.logger import logger
-from database.models import AppInfo, AppSession, EventLogEntry, DailyStat, Setting
+from database.models import AppInfo, AppSession, EventLogEntry, DailyStat, Setting, WebsiteSession
 from database.schema import ALL_DDL, DEFAULT_SETTINGS, MIGRATIONS
 
 
@@ -139,9 +139,96 @@ class Repository:
                     WHERE end_time IS NULL OR was_closed = 0
                     """,
                 )
+                
+                cur.execute(
+                    """
+                    UPDATE website_sessions
+                    SET end_time = COALESCE(end_time, start_time),
+                        duration_s = CASE
+                            WHEN end_time IS NOT NULL AND start_time IS NOT NULL THEN
+                                MAX(0.0, (JULIANDAY(end_time) - JULIANDAY(start_time)) * 86400.0)
+                            ELSE 0.0
+                        END,
+                        was_closed = 1
+                    WHERE end_time IS NULL OR was_closed = 0
+                    """,
+                )
                 count = cur.rowcount
                 if count:
                     logger.warning("Closed %d orphaned sessions from previous run", count)
+
+    # ─── Website Sessions ────────────────────────────────────────────────────
+    
+    def insert_website_session(self, session: WebsiteSession) -> int:
+        with self._write_lock:
+            with self._cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO website_sessions
+                        (domain, browser_process, start_time, end_time, duration_s, was_closed)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        session.domain,
+                        session.browser_process,
+                        session.start_time.isoformat(),
+                        session.end_time.isoformat() if session.end_time else None,
+                        session.duration_s,
+                        int(session.was_closed),
+                    ),
+                )
+                return cur.lastrowid or 0
+
+    def update_website_session_end(
+        self,
+        session_id: int,
+        end_time: datetime,
+        duration_s: float,
+        was_closed: bool = True,
+    ) -> None:
+        with self._write_lock:
+            with self._cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE website_sessions
+                    SET end_time=?, duration_s=?, was_closed=?
+                    WHERE id=?
+                    """,
+                    (end_time.isoformat(), duration_s, int(was_closed), session_id),
+                )
+                
+    def get_website_usage_today(self, domain: str) -> float:
+        today = date.today()
+        start = datetime.combine(today, datetime.min.time()).isoformat()
+        end = datetime.combine(today, datetime.max.time()).isoformat()
+        with self._cursor() as cur:
+            cur.execute(
+                """
+                SELECT SUM(duration_s) AS total_s
+                FROM website_sessions
+                WHERE domain=? AND start_time >= ? AND start_time <= ?
+                """,
+                (domain, start, end),
+            )
+            row = cur.fetchone()
+            return row["total_s"] or 0.0
+
+    def get_top_websites_for_browser_today(self, browser_process: str) -> List[dict]:
+        today = date.today()
+        start = datetime.combine(today, datetime.min.time()).isoformat()
+        end = datetime.combine(today, datetime.max.time()).isoformat()
+        with self._cursor() as cur:
+            cur.execute(
+                """
+                SELECT domain, SUM(duration_s) AS total_s
+                FROM website_sessions
+                WHERE browser_process=? AND start_time >= ? AND start_time <= ?
+                GROUP BY domain
+                ORDER BY total_s DESC
+                """,
+                (browser_process, start, end),
+            )
+            return [dict(row) for row in cur.fetchall()]
 
     # ─── Sessions ────────────────────────────────────────────────────────────
 

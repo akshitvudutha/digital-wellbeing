@@ -8,9 +8,12 @@ from database.repository import Repository
 from core.logger import logger
 from protection.timer import TimerEngine
 from protection.limits import LimitManager
+from protection.website_timer import WebsiteTimerEngine
+from protection.website_limits import WebsiteLimitManager
 from protection.pin import PINManager
 from protection.notifications import NotificationManager
 from protection.process import ProcessController
+
 
 
 class ProtectionManager:
@@ -18,11 +21,17 @@ class ProtectionManager:
         self._repo = repo
         self._timer = TimerEngine(repo)
         self._limits = LimitManager(repo)
+        
+        self._website_timer = WebsiteTimerEngine(repo)
+        self._website_limits = WebsiteLimitManager(repo)
+        
         self._pin = PINManager(repo)
         self._notifications = NotificationManager()
         
         self._overrides: Dict[str, datetime] = {}
+        self._website_overrides: Dict[str, datetime] = {}
         self._warnings_sent: Dict[str, Set[int]] = {}  # process_name -> set of warning thresholds hit (e.g. 10, 5, 1)
+        self._website_warnings_sent: Dict[str, Set[int]] = {}
         self._lock = threading.Lock()
 
     @property
@@ -34,6 +43,14 @@ class ProtectionManager:
         return self._limits
         
     @property
+    def website_timer(self) -> WebsiteTimerEngine:
+        return self._website_timer
+        
+    @property
+    def website_limits(self) -> WebsiteLimitManager:
+        return self._website_limits
+        
+    @property
     def pin(self) -> PINManager:
         return self._pin
 
@@ -41,13 +58,17 @@ class ProtectionManager:
     def notifications(self) -> NotificationManager:
         return self._notifications
 
-    def tick(self, process_name: str, delta_s: float) -> None:
+    def tick(self, process_name: str, delta_s: float, url: str = "") -> None:
         """Called by TrackingManager every tick."""
         if not process_name:
             return
             
         process_name = process_name.lower()
         self._timer.add_time(process_name, delta_s)
+        
+        if url:
+            self._website_timer.add_time(url, delta_s)
+            self._check_website_limit(process_name, url)
         
         rule = self._limits.get_limit_rule(process_name)
         limit_s = self._limits.get_limit(process_name)
@@ -99,7 +120,29 @@ class ProtectionManager:
     def force_close(self, process_name: str) -> None:
         """Called by UI when user clicks 'Close App'"""
         ProcessController.close_process(process_name)
+
+    def _check_website_limit(self, process_name: str, domain: str) -> None:
+        """Check and enforce website limits."""
+        limit_s = self._website_limits.get_limit(process_name, domain)
+        if limit_s is None:
+            return
+            
+        elapsed_s = self._website_timer.get_time(domain)
         
+        # Check override
+        with self._lock:
+            override_until = self._website_overrides.get(domain)
+            if override_until and datetime.now() < override_until:
+                return
+
+        remaining_s = limit_s - elapsed_s
+        
+        if remaining_s > 0:
+            return # We don't have website warnings yet
+            
+        # Website limit reached
+        self._notifications.trigger_website_lock_dialog(process_name, domain, limit_s)
+
     def add_override(self, process_name: str, duration_minutes: int) -> None:
         """Called by UI when PIN is entered correctly."""
         process_name = process_name.lower()
@@ -121,6 +164,24 @@ class ProtectionManager:
         process_name = process_name.lower()
         with self._lock:
             override_until = self._overrides.get(process_name)
+            if override_until and datetime.now() < override_until:
+                return True
+        return False
+
+    def add_website_override(self, domain: str, duration_minutes: int) -> None:
+        domain = domain.lower()
+        with self._lock:
+            if duration_minutes <= 0:
+                now = datetime.now()
+                end_of_day = datetime(now.year, now.month, now.day) + timedelta(days=1)
+                self._website_overrides[domain] = end_of_day
+            else:
+                self._website_overrides[domain] = datetime.now() + timedelta(minutes=duration_minutes)
+                
+    def has_active_website_override(self, domain: str) -> bool:
+        domain = domain.lower()
+        with self._lock:
+            override_until = self._website_overrides.get(domain)
             if override_until and datetime.now() < override_until:
                 return True
         return False

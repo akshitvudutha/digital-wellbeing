@@ -37,6 +37,33 @@ class AppSession:
 
 
 @dataclass
+class WebsiteSession:
+    domain: str
+    browser_process: str
+    start_time: datetime
+    end_time: Optional[datetime]
+    duration_s: float
+    was_closed: bool = False
+    id: Optional[int] = field(default=None)
+
+    @property
+    def duration_formatted(self) -> str:
+        total = int(self.duration_s)
+        h, remainder = divmod(total, 3600)
+        m, s = divmod(remainder, 60)
+        if h:
+            return f"{h}h {m}m"
+        if m:
+            return f"{m}m {s}s"
+        return f"{s}s"
+
+    @property
+    def is_open(self) -> bool:
+        return self.end_time is None
+
+
+
+@dataclass
 class AppInfo:
     process_name: str
     display_name: str
