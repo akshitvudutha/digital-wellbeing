@@ -2,8 +2,9 @@
 fluent.py — Reusable Fluent Design UI Components.
 """
 
-from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve
-from PySide6.QtWidgets import QFrame, QPushButton, QLabel, QVBoxLayout, QWidget, QGraphicsOpacityEffect
+from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve, Property, QRectF
+from PySide6.QtGui import QPainter, QColor, QBrush, QPen
+from PySide6.QtWidgets import QFrame, QPushButton, QLabel, QVBoxLayout, QWidget, QGraphicsOpacityEffect, QAbstractButton
 
 class FluentCard(QFrame):
     """A glassmorphism-styled card widget."""
@@ -153,3 +154,68 @@ class FluentLabel(QLabel):
                     color: {tm.color('text_main')};
                 }}
             """)
+
+class ToggleSwitch(QAbstractButton):
+    """A smooth, modern animated toggle switch (Windows 11 / Fluent style)."""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setCheckable(True)
+        self.setFixedSize(44, 24)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        
+        self._thumb_position = 4.0
+        self._anim = QPropertyAnimation(self, b"thumb_position", self)
+        self._anim.setEasingCurve(QEasingCurve.Type.InOutQuad)
+        self._anim.setDuration(200)
+        
+        self.toggled.connect(self._on_toggled)
+
+    @Property(float)
+    def thumb_position(self):
+        return self._thumb_position
+
+    @thumb_position.setter
+    def thumb_position(self, pos):
+        self._thumb_position = pos
+        self.update()
+        
+    def _on_toggled(self, checked):
+        self._anim.setStartValue(self._thumb_position)
+        self._anim.setEndValue(24.0 if checked else 4.0)
+        self._anim.start()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        
+        from ui.theme import ThemeManager
+        tm = ThemeManager.instance()
+        is_dark = tm.is_dark
+        
+        # Track Colors
+        if self.isChecked():
+            track_color = QColor("#3B82F6") # Blue accent
+        else:
+            track_color = QColor(60, 60, 60) if is_dark else QColor(220, 220, 220)
+            
+        # Hover state
+        if self.underMouse() and not self.isChecked():
+            track_color = track_color.lighter(120) if is_dark else track_color.darker(110)
+            
+        # Draw track
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QBrush(track_color))
+        painter.drawRoundedRect(0, 0, self.width(), self.height(), self.height() / 2.0, self.height() / 2.0)
+        
+        # Thumb Colors
+        if self.isChecked():
+            thumb_color = QColor(255, 255, 255)
+        else:
+            thumb_color = QColor(200, 200, 200) if is_dark else QColor(120, 120, 120)
+            if self.isDown(): # Press animation
+                thumb_color = thumb_color.darker(110)
+        
+        # Draw thumb
+        painter.setBrush(QBrush(thumb_color))
+        painter.drawEllipse(QRectF(self._thumb_position, 4.0, 16.0, 16.0))
+        painter.end()

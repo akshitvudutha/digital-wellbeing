@@ -8,7 +8,7 @@ from typing import Optional
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QCheckBox, QComboBox, QFrame, QHBoxLayout, QLabel, QMessageBox,
+    QComboBox, QFrame, QHBoxLayout, QLabel, QMessageBox,
     QPushButton, QScrollArea, QSlider, QSpinBox, QVBoxLayout, QWidget,
 )
 
@@ -84,7 +84,8 @@ class WellbeingPage(QWidget):
         t_col.addWidget(t_desc)
         t_row.addLayout(t_col, 1)
 
-        self._sg_check = QCheckBox()
+        from ui.widgets.fluent import ToggleSwitch
+        self._sg_check = ToggleSwitch()
         if self._sleepguard:
             self._sg_check.setChecked(self._sleepguard.is_enabled)
         self._sg_check.toggled.connect(self._on_sg_toggle)

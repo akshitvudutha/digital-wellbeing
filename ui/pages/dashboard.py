@@ -40,7 +40,6 @@ class DashboardPage(QWidget):
         self._on_global_refresh = on_global_refresh
         self._navigate = navigate_callback
         self._engine = AnalyticsEngine()
-        self._current_score = 100
         self._setup_ui()
         self._refresh()
 
@@ -60,7 +59,7 @@ class DashboardPage(QWidget):
 
         # Header Row
         header = QHBoxLayout()
-        header.setSpacing(20)
+        header.setSpacing(24)
         
         title_box = QVBoxLayout()
         title_box.setSpacing(4)
@@ -75,12 +74,6 @@ class DashboardPage(QWidget):
         header.addLayout(title_box)
 
         header.addStretch()
-
-        # Dynamic Daily Wellbeing Score Badge
-        self._score_badge = QLabel("🌟 85/100 · Optimal Balance")
-        self._score_badge.setObjectName("score_badge")
-        self._score_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        header.addWidget(self._score_badge)
 
         self._refresh_btn = FluentButton("⚡ Refresh", primary=False)
         self._refresh_btn.setFixedWidth(120)
@@ -141,20 +134,6 @@ class DashboardPage(QWidget):
         # Apply standard label styles
         self.setStyleSheet(f"""
         """)
-        
-        # Apply semantic style to score badge
-        if self._current_score >= 80:
-            bg, border, text = tm.color("success_bg"), tm.color("success_border"), tm.color("success_text")
-        elif self._current_score >= 50:
-            bg, border, text = tm.color("info_bg"), tm.color("info_border"), tm.color("info_text")
-        else:
-            bg, border, text = tm.color("danger_bg"), tm.color("danger_border"), tm.color("danger_text")
-            
-        self._score_badge.setStyleSheet(f"""
-            background-color: {bg}; color: {text};
-            border: 1px solid {border}; border-radius: 20px;
-            font-size: 13px; font-weight: 800; padding: 8px 18px;
-        """)
 
     def _trigger_refresh(self) -> None:
         self._refresh_btn.setEnabled(False)
@@ -194,32 +173,6 @@ class DashboardPage(QWidget):
             active_seconds=summary.active_time_s,
             category_breakdown=summary.category_breakdown,
         )
-
-        # Compute Daily Wellbeing Score
-        active_s = summary.active_time_s
-        productive_s = 0.0
-        for item in summary.category_breakdown:
-            cat_str = item["category"].lower()
-            if cat_str in ("programming", "productivity", "education", "utilities"):
-                productive_s += item["total_s"]
-
-        if active_s > 0:
-            prod_pct = int((productive_s / active_s) * 100)
-            score = min(100, max(20, int(prod_pct * 0.85 + 25)))
-        else:
-            score = 100
-
-        self._current_score = score
-        if score >= 80:
-            self._score_badge.setText(f"🌟 {score}/100 · Optimal Balance")
-        elif score >= 50:
-            self._score_badge.setText(f"⚖️ {score}/100 · Moderate Habit")
-        else:
-            self._score_badge.setText(f"⚠️ {score}/100 · High Screen Load")
-
-        # Re-apply theme to instantly update the semantic colors based on new score
-        from ui.theme import ThemeManager
-        self._apply_theme(ThemeManager.instance().is_dark)
 
         # Update Screen Time Interactive Card
         self._screen_time_card.set_data(

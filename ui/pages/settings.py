@@ -9,7 +9,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QCheckBox, QComboBox, QFileDialog, QFrame, QHBoxLayout, QLabel, QMessageBox,
+    QComboBox, QFileDialog, QFrame, QHBoxLayout, QLabel, QMessageBox,
     QPushButton, QScrollArea, QSpinBox, QVBoxLayout, QWidget,
 )
 
@@ -399,7 +399,7 @@ class SettingsPage(QWidget):
 
     def _toggle_row(
         self, parent_layout, title: str, description: str
-    ) -> QCheckBox:
+    ):
         row = QHBoxLayout()
         label_col = QVBoxLayout()
         label_col.setSpacing(2)
@@ -411,7 +411,8 @@ class SettingsPage(QWidget):
         label_col.addWidget(desc)
         row.addLayout(label_col, 1)
 
-        check = QCheckBox()
+        from ui.widgets.fluent import ToggleSwitch
+        check = ToggleSwitch()
         row.addWidget(check)
         parent_layout.addLayout(row)
         return check

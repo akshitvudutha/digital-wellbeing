@@ -306,7 +306,8 @@ class MainWindow(QMainWindow):
         brand_col.setSpacing(2)
         self._logo_lbl = QLabel("Digital Wellbeing")
         self._logo_lbl.setObjectName("sidebar_logo_label")
-        self._subtitle_lbl = QLabel("VERSION 2.0")
+        from core.constants import APP_VERSION
+        self._subtitle_lbl = QLabel(f"VERSION {APP_VERSION}")
         self._subtitle_lbl.setObjectName("sidebar_subtitle_label")
         brand_col.addWidget(self._logo_lbl)
         brand_col.addWidget(self._subtitle_lbl)
@@ -368,16 +369,7 @@ class MainWindow(QMainWindow):
         # We append to _nav_buttons list but NOT the nav_layout so it can be managed for highlighting
         self._nav_buttons.insert(3, self._settings_btn)
         
-        # Status Capsule
-        status_widget = QWidget()
-        status_layout = QVBoxLayout(status_widget)
-        status_layout.setContentsMargins(16, 0, 16, 8)
 
-        self._tracking_status = QLabel("● Engine Active")
-        self._tracking_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        status_layout.addWidget(self._tracking_status)
-        footer_layout.addWidget(status_widget)
         
         layout.addWidget(footer_widget)
 
@@ -425,12 +417,6 @@ class MainWindow(QMainWindow):
         self._subtitle_lbl.setStyleSheet(f"font-size: 11px; font-weight: 800; color: {tm.color('text_sub')}; letter-spacing: 0.5px;")
         self._separator.setStyleSheet(f"background: {tm.color('border')}; margin: 0 16px;")
         
-        # Modern Pill Style for Engine Active
-        self._tracking_status.setStyleSheet(
-            f"color: {tm.color('success_text')}; background-color: {tm.color('success_bg')}; "
-            f"border: 1px solid {tm.color('success_border')}; border-radius: 16px; "
-            "font-size: 12px; font-weight: 700; padding: 6px 16px; letter-spacing: 0.3px;"
-        )
         
         # Repolish active button
         if self._active_nav_btn:
