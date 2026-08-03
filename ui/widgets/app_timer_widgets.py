@@ -445,6 +445,8 @@ class TimerConfigDialog(QDialog):
         
     def showEvent(self, event):
         super().showEvent(event)
+        self._anim.setStartValue(0.0)
+        self._anim.setEndValue(1.0)
         self._anim.start()
 
     def _setup_ui(self):
@@ -644,7 +646,7 @@ class TimerDisplayCard(QFrame):
         header_layout.addWidget(self.title_lbl)
         header_layout.addStretch()
         self.status_lbl = FluentLabel("Disabled", FluentLabel.Style.MUTED)
-        self.status_lbl.setStyleSheet("font-weight: 700; color: #EAB308;") # Default orange for disabled
+        self.status_lbl.setStyleSheet(f"font-weight: 700; color: {ThemeManager.instance().color('text_sub')};")
         header_layout.addWidget(self.status_lbl)
         
         # Body area
@@ -726,7 +728,7 @@ class TimerDisplayCard(QFrame):
         if not rule or not rule.get("limit_seconds"):
             self.title_lbl.setText("App Timer")
             self.status_lbl.setText("Disabled")
-            self.status_lbl.setStyleSheet("font-weight: 700; color: #6B7280;") # Gray
+            self.status_lbl.setStyleSheet(f"font-weight: 700; color: {ThemeManager.instance().color('text_muted')};")
             self.val_limit.setText("Unlimited")
             self.val_repeats.setText("-")
             self.val_alerts.setText("-")
@@ -738,7 +740,7 @@ class TimerDisplayCard(QFrame):
         self.title_lbl.setText(name if name else "App Timer")
             
         self.status_lbl.setText("Enabled")
-        self.status_lbl.setStyleSheet("font-weight: 700; color: #10B981;") # Green
+        self.status_lbl.setStyleSheet(f"font-weight: 700; color: {ThemeManager.instance().color('accent')};")
         
         secs = rule.get("limit_seconds", 0)
         hrs = secs // 3600

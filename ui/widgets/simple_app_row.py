@@ -57,10 +57,9 @@ class SimpleAppRow(QFrame):
         self.update()
 
     def set_highlighted(self, state: bool) -> None:
-        if state:
-            self._hover_anim.setDirection(QPropertyAnimation.Direction.Forward)
-        else:
-            self._hover_anim.setDirection(QPropertyAnimation.Direction.Backward)
+        self._hover_anim.setStartValue(self._hover_progress)
+        self._hover_anim.setEndValue(1.0 if state else 0.0)
+        self._hover_anim.setDirection(QPropertyAnimation.Direction.Forward)
         self._hover_anim.start()
 
     def enterEvent(self, event) -> None:

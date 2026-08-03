@@ -196,9 +196,9 @@ class ToggleSwitch(QAbstractButton):
         
         # Track Colors
         if self.isChecked():
-            track_color = QColor("#3B82F6") # Blue accent
+            track_color = QColor(tm.color('accent'))
         else:
-            track_color = QColor(60, 60, 60) if is_dark else QColor(220, 220, 220)
+            track_color = QColor(tm.color('card_hover'))
             
         # Hover state
         if self.underMouse() and not self.isChecked():
@@ -288,12 +288,16 @@ class IconButton(QAbstractButton):
         if spinning:
             self.setCursor(Qt.CursorShape.BusyCursor)
             if self._spin_anim.state() != QPropertyAnimation.State.Running:
+                self._spin_anim.setStartValue(self._rotation)
+                self._spin_anim.setEndValue(self._rotation + 360.0)
                 self._spin_anim.start()
         else:
             self.setCursor(Qt.CursorShape.PointingHandCursor)
 
     def _on_spin_finished(self):
         if self._is_spinning:
+            self._spin_anim.setStartValue(0.0)
+            self._spin_anim.setEndValue(360.0)
             self._spin_anim.start()
         else:
             self._rotation = 0.0

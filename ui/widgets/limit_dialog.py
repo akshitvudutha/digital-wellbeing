@@ -33,6 +33,8 @@ class LimitReachedDialog(QDialog):
         
     def showEvent(self, event):
         super().showEvent(event)
+        self._anim.setStartValue(0.0)
+        self._anim.setEndValue(1.0)
         self._anim.start()
         
     def _setup_ui(self):
@@ -199,6 +201,8 @@ class PinOverrideDialog(QDialog):
         
     def showEvent(self, event):
         super().showEvent(event)
+        self._anim.setStartValue(0.0)
+        self._anim.setEndValue(1.0)
         self._anim.start()
         
     def _setup_ui(self):
