@@ -78,19 +78,23 @@ class ProtectionManager:
             return
             
         # Limit Reached!
-        # First, ensure we don't spam the UI dialog every tick
+        expire_action = rule.get("on_expire", "lock")
+        
         with self._lock:
+            # 1. Send system notification toast only once
             sent = self._warnings_sent.setdefault(process_name, set())
             if 0 not in sent:
                 sent.add(0)
                 self._notifications.send_warning(process_name, 0)
                 
-                expire_action = rule.get("on_expire", "lock")
-                if expire_action == "close":
-                    self.force_close(process_name)
-                else:
-                    # 'lock', 'pin', 'extend' handled via standard dialog for now
-                    self._notifications.trigger_lock_dialog(process_name, limit_s)
+            # 2. Continuous Enforcement (Every Tick)
+            # Since there is no active override, we forcefully close the app.
+            # This ensures that even if the dialog is dismissed, the app remains blocked.
+            self.force_close(process_name)
+            
+            # 3. Trigger the UI dialog (UI handles debouncing active dialogs)
+            if expire_action != "close":
+                self._notifications.trigger_lock_dialog(process_name, limit_s)
 
     def force_close(self, process_name: str) -> None:
         """Called by UI when user clicks 'Close App'"""

@@ -58,6 +58,7 @@ class MainWindow(QMainWindow):
         self.data_changed_signal.connect(self._refresh_current_page)
         self._active_nav_btn: Optional[QPushButton] = None
         self._navigation_history: list[int] = []
+        self._active_limit_dialogs = set()
         self._setup_ui()
         self._connect_tracker()
         self._setup_shortcuts()
@@ -472,6 +473,11 @@ class MainWindow(QMainWindow):
             self._stack.setCurrentIndexAnimated(prev_idx)
 
     def _show_limit_dialog(self, process_name: str, limit_seconds: int) -> None:
+        if process_name in self._active_limit_dialogs:
+            return
+            
+        self._active_limit_dialogs.add(process_name)
+        
         from ui.widgets.limit_dialog import LimitReachedDialog, PinOverrideDialog
         
         if self.isHidden():
@@ -492,6 +498,9 @@ class MainWindow(QMainWindow):
         dlg.close_app_requested.connect(on_close_app)
         dlg.override_requested.connect(on_override)
         dlg.exec()
+        
+        # When dialog is closed (for any reason), remove it from active set
+        self._active_limit_dialogs.discard(process_name)
 
     def _refresh_current_page(self) -> None:
         idx = self._stack.currentIndex()
