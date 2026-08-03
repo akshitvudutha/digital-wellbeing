@@ -107,7 +107,7 @@ class DashboardPage(QWidget):
         # 2. Large Interactive Screen Time Card
         self._screen_time_card = ActiveScreenTimeCard()
         self._screen_time_card.card_clicked.connect(self.request_screen_time_details.emit)
-        self._screen_time_card.app_clicked.connect(self.request_app_details.emit)
+        self._screen_time_card.app_clicked.connect(self._on_dashboard_app_clicked)
         self._inner_layout.addWidget(self._screen_time_card)
 
         self._inner_layout.addSpacing(16)
@@ -125,6 +125,10 @@ class DashboardPage(QWidget):
         self._inner_layout.addWidget(self._cats_container)
 
         self._inner_layout.addStretch()
+
+    def _on_dashboard_app_clicked(self, pname: str) -> None:
+        print("Dashboard received signal")
+        self.request_app_details.emit(pname)
 
     def _apply_theme(self, is_dark: bool) -> None:
         from ui.theme import ThemeManager

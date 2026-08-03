@@ -40,6 +40,7 @@ class SimpleAppRow(QFrame):
 
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
+            print(f"SimpleAppRow clicked: {self.process_name}")
             self.clicked.emit(self.process_name)
             event.accept()
         else:
@@ -62,11 +63,13 @@ class SimpleAppRow(QFrame):
             
         self._icon_lbl.setObjectName("icon_lbl")
         self._icon_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._icon_lbl.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         layout.addWidget(self._icon_lbl)
 
         # Center Column (Name)
         self._name_lbl = QLabel(display_name)
         self._name_lbl.setObjectName("name_lbl")
+        self._name_lbl.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         layout.addWidget(self._name_lbl, 1)
         
         # Right Column (Duration)
@@ -74,6 +77,7 @@ class SimpleAppRow(QFrame):
         self._dur_lbl = QLabel(engine.format_duration_short(duration_s))
         self._dur_lbl.setObjectName("dur_lbl")
         self._dur_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self._dur_lbl.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         layout.addWidget(self._dur_lbl)
 
     def _apply_theme(self, is_dark: bool) -> None:

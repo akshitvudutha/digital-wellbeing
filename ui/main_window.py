@@ -278,6 +278,8 @@ class MainWindow(QMainWindow):
             self._navigate(5)
 
     def _navigate_to_app_details(self, process_name: str) -> None:
+        print("MainWindow received signal")
+        print("Opening AppDetailsPage")
         self._app_details_page.set_app(process_name)
         self._navigate(6)
 

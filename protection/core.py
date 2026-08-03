@@ -112,3 +112,11 @@ class ProtectionManager:
             # (Actually overrides extend usage, we might want to reset warnings if we want to warn them again)
             self._warnings_sent.pop(process_name, None)
             logger.info(f"ProtectionManager: Override added for {process_name} ({duration_minutes}m)")
+
+    def has_active_override(self, process_name: str) -> bool:
+        process_name = process_name.lower()
+        with self._lock:
+            override_until = self._overrides.get(process_name)
+            if override_until and datetime.now() < override_until:
+                return True
+        return False

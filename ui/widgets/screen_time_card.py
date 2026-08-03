@@ -132,5 +132,9 @@ class ActiveScreenTimeCard(FluentCard):
                     duration_s=s["total_s"],
                     legend_color=colors[idx]
                 )
-                row.clicked.connect(lambda pname=s["process_name"]: self.app_clicked.emit(pname))
+                row.clicked.connect(lambda pname=s["process_name"]: self._on_app_row_clicked(pname))
                 self._apps_layout.addWidget(row)
+
+    def _on_app_row_clicked(self, pname: str) -> None:
+        print("App clicked signal emitted (ActiveScreenTimeCard)")
+        self.app_clicked.emit(pname)
