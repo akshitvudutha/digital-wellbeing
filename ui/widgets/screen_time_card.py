@@ -89,28 +89,22 @@ class ActiveScreenTimeCard(FluentCard):
         from ui.theme import ThemeManager
         tm = ThemeManager.instance()
         
-        # Colors matching Android Wellbeing
-        color_top1 = "#3B82F6" # Blue
-        color_top2 = "#38BDF8" # Cyan
-        color_top3 = "#4ADE80" # Green
-        color_other = "#9CA3AF" # Grey
-        colors = [color_top1, color_top2, color_top3]
-        
         segments = []
         if not top_apps or active_s <= 0:
             segments = [("Active", 1.0, tm.color('accent'))]
         else:
             sorted_apps = sorted(top_apps, key=lambda x: float(x.get("total_s", 0.0)), reverse=True)
+            from ui.theme import get_app_color
             for idx, item in enumerate(sorted_apps[:3]):
                 dur = float(item.get("total_s", 0.0))
                 if dur > 0:
-                    segments.append((get_display_name(item["process_name"]), dur, colors[idx]))
+                    segments.append((get_display_name(item["process_name"]), dur, get_app_color(item["process_name"])))
             
             remaining = sorted_apps[3:]
             if remaining:
                 other_dur = sum(float(x.get("total_s", 0.0)) for x in remaining)
                 if other_dur > 0:
-                    segments.append(("Other", other_dur, color_other))
+                    segments.append(("Other", other_dur, tm.color('text_muted')))
 
         # Update Donut
         formatted_total = AnalyticsEngine.format_duration_short(active_s)
@@ -128,13 +122,14 @@ class ActiveScreenTimeCard(FluentCard):
             placeholder = FluentLabel("No application usage recorded today.", FluentLabel.Style.MUTED)
             self._apps_layout.addWidget(placeholder)
         else:
+            from ui.theme import get_app_color
             for idx, s in enumerate(top_apps[:3]):
                 display_name = get_display_name(s["process_name"])
                 row = SimpleAppRow(
                     process_name=s["process_name"],
                     display_name=display_name,
                     duration_s=s["total_s"],
-                    legend_color=colors[idx]
+                    legend_color=get_app_color(s["process_name"])
                 )
                 self._app_rows[display_name] = row
                 row.clicked.connect(lambda pname=s["process_name"]: self._on_app_row_clicked(pname))
