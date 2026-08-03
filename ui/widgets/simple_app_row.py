@@ -17,6 +17,8 @@ class SimpleAppRow(QFrame):
     """A minimal row widget representing app usage with icon, name, and duration only."""
     
     clicked = Signal(str)
+    hover_entered = Signal(str)
+    hover_left = Signal(str)
 
     def __init__(
         self,
@@ -28,6 +30,7 @@ class SimpleAppRow(QFrame):
     ) -> None:
         super().__init__(parent)
         self.process_name = process_name
+        self.display_name = display_name
         self._legend_color = legend_color
         self.setObjectName("simple_app_row")
         
@@ -53,15 +56,22 @@ class SimpleAppRow(QFrame):
         self._hover_progress = val
         self.update()
 
+    def set_highlighted(self, state: bool) -> None:
+        if state:
+            self._hover_anim.setDirection(QPropertyAnimation.Direction.Forward)
+        else:
+            self._hover_anim.setDirection(QPropertyAnimation.Direction.Backward)
+        self._hover_anim.start()
+
     def enterEvent(self, event) -> None:
         super().enterEvent(event)
-        self._hover_anim.setDirection(QPropertyAnimation.Direction.Forward)
-        self._hover_anim.start()
+        self.set_highlighted(True)
+        self.hover_entered.emit(self.display_name)
 
     def leaveEvent(self, event) -> None:
         super().leaveEvent(event)
-        self._hover_anim.setDirection(QPropertyAnimation.Direction.Backward)
-        self._hover_anim.start()
+        self.set_highlighted(False)
+        self.hover_left.emit(self.display_name)
 
     def paintEvent(self, event) -> None:
         super().paintEvent(event)
@@ -95,7 +105,13 @@ class SimpleAppRow(QFrame):
     def _setup_ui(self, display_name: str, duration_s: float) -> None:
         layout = QHBoxLayout(self)
         layout.setContentsMargins(16, 12, 16, 12)
-        layout.setSpacing(20)
+        layout.setSpacing(16)
+
+        if self._legend_color:
+            self._dot_lbl = QLabel()
+            self._dot_lbl.setFixedSize(10, 10)
+            self._dot_lbl.setStyleSheet(f"background-color: {self._legend_color}; border-radius: 5px;")
+            layout.addWidget(self._dot_lbl)
 
         # App Icon
         icon_provider = AppIconProvider()

@@ -21,6 +21,7 @@ from ui.theme import get_theme_tokens
 
 class DonutChart(QWidget):
     """Responsive Antialiased Donut Chart Ring with Center Typography."""
+    segment_hovered = Signal(str)
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -30,7 +31,19 @@ class DonutChart(QWidget):
         self._center_subtext: str = ""
         self.setMinimumSize(180, 180)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.setMouseTracking(True)
         
+        self._hovered_label: str = ""
+        self._hit_paths: List[Tuple[QPainterPath, str]] = []
+        
+        from PySide6.QtCore import QTimer
+        self._anim_timer = QTimer(self)
+        self._anim_timer.timeout.connect(self._update_animations)
+        self._anim_timer.setInterval(16)
+        
+        self._current_opacities = {}
+        self._current_scales = {}
+
         from ui.theme import ThemeManager
         ThemeManager.instance().theme_changed.connect(self._apply_theme)
 
@@ -47,7 +60,72 @@ class DonutChart(QWidget):
         self._total = sum(s[1] for s in segments)
         self._center_text = center_text
         self._center_subtext = center_subtext
+        
+        self._current_opacities = {s[0]: 1.0 for s in segments}
+        self._current_scales = {s[0]: 1.0 for s in segments}
         self.update()
+
+    def set_highlighted_segment(self, label: str) -> None:
+        if self._hovered_label == label:
+            return
+        self._hovered_label = label
+        self._anim_timer.start()
+
+    def _update_animations(self):
+        changed = False
+        any_hovered = bool(self._hovered_label)
+        
+        for label, _, _ in self._segments:
+            target_opacity = 1.0
+            target_scale = 1.0
+            
+            if any_hovered:
+                if label == self._hovered_label:
+                    target_opacity = 1.0
+                    target_scale = 1.05
+                else:
+                    target_opacity = 0.3
+                    target_scale = 1.0
+                    
+            curr_o = self._current_opacities.get(label, 1.0)
+            curr_s = self._current_scales.get(label, 1.0)
+            
+            if abs(curr_o - target_opacity) > 0.02:
+                curr_o += 0.12 * (1 if target_opacity > curr_o else -1)
+                changed = True
+            else:
+                curr_o = target_opacity
+                
+            if abs(curr_s - target_scale) > 0.002:
+                curr_s += 0.006 * (1 if target_scale > curr_s else -1)
+                changed = True
+            else:
+                curr_s = target_scale
+                
+            self._current_opacities[label] = curr_o
+            self._current_scales[label] = curr_s
+            
+        if changed:
+            self.update()
+        else:
+            self._anim_timer.stop()
+
+    def mouseMoveEvent(self, event):
+        pos = event.position()
+        hovered = ""
+        for path, label in self._hit_paths:
+            if path.contains(pos):
+                hovered = label
+                break
+                
+        if hovered != self._hovered_label:
+            self.set_highlighted_segment(hovered)
+            self.segment_hovered.emit(hovered)
+
+    def leaveEvent(self, event):
+        super().leaveEvent(event)
+        self.set_highlighted_segment("")
+        self.segment_hovered.emit("")
 
     def paintEvent(self, event) -> None:
         if not self._segments or self._total <= 0:
@@ -65,27 +143,31 @@ class DonutChart(QWidget):
         subtext_color = QColor(tm.color("text_sub"))
 
         size = min(self.width(), self.height())
-        margin = 10
-        outer_r = (size - margin * 2) / 2.0
-        inner_r = outer_r * 0.78
+        margin = 15
+        base_outer_r = (size - margin * 2) / 2.0
+        inner_r = base_outer_r * 0.78
         cx = self.width() / 2.0
         cy = self.height() / 2.0
 
-        # 1. Background Track Ring
         painter.setPen(Qt.PenStyle.NoPen)
         track_path = QPainterPath()
-        track_path.addEllipse(QRectF(cx - outer_r, cy - outer_r, outer_r * 2, outer_r * 2))
+        track_path.addEllipse(QRectF(cx - base_outer_r, cy - base_outer_r, base_outer_r * 2, base_outer_r * 2))
         track_path.addEllipse(QRectF(cx - inner_r, cy - inner_r, inner_r * 2, inner_r * 2))
         painter.fillPath(track_path, track_color)
 
-        # 2. Color Segments
         angle = 90.0
         gap = 1.2 if len(self._segments) > 1 else 0.0
+
+        self._hit_paths.clear()
 
         for label, value, color_str in self._segments:
             span = (value / self._total) * 360.0
             if span < 0.5:
                 continue
+
+            scale = self._current_scales.get(label, 1.0)
+            opacity = self._current_opacities.get(label, 1.0)
+            outer_r = base_outer_r * scale
 
             path = QPainterPath()
             path.moveTo(QPointF(
@@ -105,15 +187,17 @@ class DonutChart(QWidget):
             path.arcTo(arc_rect_inner, angle - span + gap, span - gap)
             path.closeSubpath()
 
-            painter.fillPath(path, QColor(color_str))
+            self._hit_paths.append((path, label))
+
+            col = QColor(color_str)
+            col.setAlphaF(opacity)
+            painter.fillPath(path, col)
             angle -= span
 
-        # 3. Center Circle
         bg_circle = QPainterPath()
         bg_circle.addEllipse(QRectF(cx - inner_r + 0.5, cy - inner_r + 0.5, (inner_r - 0.5) * 2, (inner_r - 0.5) * 2))
         painter.fillPath(bg_circle, center_bg)
 
-        # 4. Center Typography
         if self._center_text:
             painter.setPen(text_color)
             font = painter.font()

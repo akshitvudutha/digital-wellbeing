@@ -31,6 +31,7 @@ class ActiveScreenTimeCard(FluentCard):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._app_rows = {}
         self._setup_ui()
         
         from ui.theme import ThemeManager
@@ -63,6 +64,7 @@ class ActiveScreenTimeCard(FluentCard):
         # Left: Donut Chart & Total Time
         self._donut = DonutChart()
         self._donut.setMinimumSize(220, 220)
+        self._donut.segment_hovered.connect(self._on_donut_segment_hovered)
         content_row.addWidget(self._donut, 0, Qt.AlignmentFlag.AlignCenter)
 
         # Right: Lists
@@ -115,6 +117,7 @@ class ActiveScreenTimeCard(FluentCard):
         self._donut.set_data(segments, center_text=formatted_total, center_subtext="Active Time")
         
         # Update Top Apps
+        self._app_rows.clear()
         while self._apps_layout.count():
             item = self._apps_layout.takeAt(0)
             if item.widget():
@@ -126,14 +129,25 @@ class ActiveScreenTimeCard(FluentCard):
             self._apps_layout.addWidget(placeholder)
         else:
             for idx, s in enumerate(top_apps[:3]):
+                display_name = get_display_name(s["process_name"])
                 row = SimpleAppRow(
                     process_name=s["process_name"],
-                    display_name=get_display_name(s["process_name"]),
+                    display_name=display_name,
                     duration_s=s["total_s"],
                     legend_color=colors[idx]
                 )
+                self._app_rows[display_name] = row
                 row.clicked.connect(lambda pname=s["process_name"]: self._on_app_row_clicked(pname))
+                row.hover_entered.connect(self._donut.set_highlighted_segment)
+                row.hover_left.connect(lambda _: self._donut.set_highlighted_segment(""))
                 self._apps_layout.addWidget(row)
+
+    def _on_donut_segment_hovered(self, label: str) -> None:
+        for name, row in self._app_rows.items():
+            if name == label:
+                row.set_highlighted(True)
+            else:
+                row.set_highlighted(False)
 
     def _on_app_row_clicked(self, pname: str) -> None:
         print("App clicked signal emitted (ActiveScreenTimeCard)")
