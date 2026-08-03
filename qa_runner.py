@@ -34,7 +34,7 @@ def run_qa():
             print("Dashboard OK.")
             
             print("--- Stress Testing Refresh Button ---")
-            for i in range(20):
+            for i in range(30):
                 window._dashboard_page._refresh_btn.click()
                 app.processEvents()
             assert window._dashboard_page._is_refreshing == True

@@ -341,33 +341,61 @@ class IconButton(QAbstractButton):
         tm = ThemeManager.instance()
         is_dark = tm.is_dark
         
+        # Dimensions
         w = self.width()
         h = self.height()
         
-        center = QRectF(self.rect()).center()
+        # Leave some padding for shadow/glow
+        rect_w = w - 8
+        rect_h = h - 8
+        
+        center = QRectF(0, 0, w, h).center()
         painter.translate(center)
         painter.scale(self._scale, self._scale)
         
-        hover_color = QColor(tm.color('accent'))
-        base_alpha = 40 if is_dark else 30
-        press_alpha = 70 if is_dark else 60
-        
-        alpha = int(base_alpha * self._hover_progress)
-        if self.isDown():
-            alpha = press_alpha
+        # Fluent Translucent Colors
+        if is_dark:
+            base_color = QColor(255, 255, 255)
+            normal_alpha = 25  # ~10%
+            hover_alpha = 42   # ~16%
+            press_alpha = 58   # ~22%
+        else:
+            base_color = QColor(0, 0, 0)
+            normal_alpha = 15  # ~6%
+            hover_alpha = 25   # ~10%
+            press_alpha = 38   # ~15%
             
-        hover_color.setAlpha(alpha)
+        # Interpolate between normal and hover alpha based on progress
+        current_alpha = normal_alpha + (hover_alpha - normal_alpha) * self._hover_progress
+        if self.isDown():
+            current_alpha = press_alpha
+            
+        base_color.setAlpha(int(current_alpha))
             
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QBrush(hover_color))
-        painter.drawRoundedRect(QRectF(-w/2, -h/2, w, h), 8, 8)
+        painter.setBrush(QBrush(base_color))
+        
+        # Optional subtle glow/shadow at higher hover progress
+        if self._hover_progress > 0.05 and not self.isDown():
+            glow_color = QColor(255, 255, 255, int(15 * self._hover_progress)) if is_dark else QColor(0, 0, 0, int(10 * self._hover_progress))
+            painter.setBrush(glow_color)
+            # Draw slightly larger soft rect behind
+            painter.drawRoundedRect(QRectF(-rect_w/2 - 1, -rect_h/2 - 1, rect_w + 2, rect_h + 2), 7, 7)
+            
+        # Main background
+        painter.setBrush(QBrush(base_color))
+        painter.drawRoundedRect(QRectF(-rect_w/2, -rect_h/2, rect_w, rect_h), 6, 6)
         
         painter.rotate(self._rotation)
         
-        painter.setPen(QColor(tm.color('text_main')))
+        # Icon styling - thinner and modern
+        icon_color = QColor(tm.color('text_main'))
+        painter.setPen(icon_color)
         font = self.font()
-        font.setPixelSize(22)
-        font.setWeight(QFont.Weight.Bold if not is_dark else QFont.Weight.Medium)
+        font.setPixelSize(19)  # 18-20px
+        font.setWeight(QFont.Weight.Light)  # Thinner icon look
         painter.setFont(font)
-        painter.drawText(QRectF(-w/2, -h/2, w, h), Qt.AlignmentFlag.AlignCenter, self._icon_text)
+        
+        # Adjust Y slightly so icon looks perfectly centered visually
+        painter.drawText(QRectF(-rect_w/2, -rect_h/2 - 2, rect_w, rect_h), Qt.AlignmentFlag.AlignCenter, self._icon_text)
         painter.end()

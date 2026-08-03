@@ -79,7 +79,7 @@ class DashboardPage(QWidget):
         self._refresh_btn.setToolTip("Refresh Data")
         self._is_refreshing = False
         self._refresh_btn.clicked.connect(self._trigger_refresh)
-        header.addWidget(self._refresh_btn)
+        header.addWidget(self._refresh_btn, alignment=Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)
 
         main_layout.addLayout(header)
         main_layout.addSpacing(32)
