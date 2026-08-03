@@ -19,8 +19,6 @@ from tracker.manager import TrackingManager
 from tracker.sleepguard import SleepGuardController
 from ui.pages.activity import ActivityPage
 from ui.pages.dashboard import DashboardPage
-from ui.components.layout import MainLayout
-from ui.widgets.title_bar import TitleBar
 from ui.widgets.website_overlay import WebsiteLimitOverlayDialog
 from ui.widgets.limit_dialog import LimitReachedDialog, PinOverrideDialog
 from ui.pages.debug import DebugPage
