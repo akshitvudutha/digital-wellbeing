@@ -41,7 +41,9 @@ class SimpleAppRow(QFrame):
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
             self.clicked.emit(self.process_name)
-        super().mousePressEvent(event)
+            event.accept()
+        else:
+            super().mousePressEvent(event)
 
     def _setup_ui(self, display_name: str, duration_s: float) -> None:
         layout = QHBoxLayout(self)

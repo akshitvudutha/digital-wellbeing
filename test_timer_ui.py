@@ -1,12 +1,12 @@
 import sys
 from PySide6.QtWidgets import QApplication
-from ui.theme import ThemeManager
 from ui.widgets.app_timer_widgets import TimerConfigDialog
+from ui.theme import apply_theme, ThemeManager
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     
-    tm = ThemeManager.instance()
+    apply_theme(app, "dark")
     
     rule = {
         "limit_seconds": 7200,
@@ -24,7 +24,7 @@ if __name__ == "__main__":
     from PySide6.QtCore import QTimer
     def take_screenshot():
         pixmap = dialog.grab()
-        pixmap.save("C:\\Users\\akshi\\.gemini\\antigravity-ide\\brain\\77176abb-7214-42a2-a272-188483d8d5a7\\scratch\\timer_dialog.png")
+        pixmap.save("C:\\Users\\akshi\\.gemini\\antigravity-ide\\brain\\77176abb-7214-42a2-a272-188483d8d5a7\\scratch\\timer_dialog_dark.png")
         app.quit()
         
     QTimer.singleShot(300, take_screenshot)

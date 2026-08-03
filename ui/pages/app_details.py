@@ -323,7 +323,7 @@ class AppDetailsPage(QWidget):
             current_rule = self._protection_manager.limits.get_limit_rule(process_name)
             limit_s = current_rule.get("limit_seconds", 0) if current_rule else 0
             
-            self._timer_card.set_limit(limit_s)
+            self._timer_card.set_limit(current_rule)
             
             self._progress_widget.update_progress(today_s, limit_s)
 

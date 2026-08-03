@@ -512,8 +512,11 @@ class TimerDisplayCard(QFrame):
         self.title_lbl = FluentLabel("Daily Timer", FluentLabel.Style.HEADING)
         self.val_lbl = QLabel("Unlimited")
         self.val_lbl.setStyleSheet("font-size: 32px; font-weight: 800;")
+        self.desc_lbl = FluentLabel("", FluentLabel.Style.MUTED)
+        
         text_layout.addWidget(self.title_lbl)
         text_layout.addWidget(self.val_lbl)
+        text_layout.addWidget(self.desc_lbl)
         
         self.change_btn = FluentButton("Change Timer")
         self.change_btn.clicked.connect(self.change_requested.emit)
@@ -537,18 +540,33 @@ class TimerDisplayCard(QFrame):
         """)
         self.val_lbl.setStyleSheet(f"font-size: 32px; font-weight: 800; color: {tm.color('accent')};")
 
-    def set_limit(self, secs: int):
-        if secs is None or secs <= 0:
+    def set_limit(self, rule: dict):
+        if not rule or not rule.get("limit_seconds"):
             self.val_lbl.setText("Unlimited")
+            self.desc_lbl.setText("Timer is disabled")
+            return
+            
+        secs = rule.get("limit_seconds", 0)
+        hrs = secs // 3600
+        mns = (secs % 3600) // 60
+        if hrs > 0 and mns > 0:
+            self.val_lbl.setText(f"{hrs}h {mns}m")
+        elif hrs > 0:
+            self.val_lbl.setText(f"{hrs}h")
         else:
-            hrs = secs // 3600
-            mns = (secs % 3600) // 60
-            if hrs > 0 and mns > 0:
-                self.val_lbl.setText(f"{hrs}h {mns}m")
-            elif hrs > 0:
-                self.val_lbl.setText(f"{hrs}h")
-            else:
-                self.val_lbl.setText(f"{mns}m")
+            self.val_lbl.setText(f"{mns}m")
+            
+        days = rule.get("repeat_days", [0,1,2,3,4,5,6])
+        days_map = {0: "M", 1: "T", 2: "W", 3: "Th", 4: "F", 5: "S", 6: "Su"}
+        days_str = ", ".join(days_map[d] for d in sorted(days)) if len(days) < 7 else "Every day"
+        
+        action = rule.get("on_expire", "lock")
+        action_str = "Close App" if action == "close" else "Require PIN" if action == "pin" else "Lock Screen"
+        
+        notifs = rule.get("notifications", [])
+        notifs_str = f", Alerts: {', '.join(str(n)+'m' for n in notifs)}" if notifs else ""
+        
+        self.desc_lbl.setText(f"Repeats: {days_str} • Action: {action_str}{notifs_str}")
 
 
 class AnimatedProgressBar(QWidget):
