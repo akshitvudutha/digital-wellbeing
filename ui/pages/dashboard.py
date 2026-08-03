@@ -64,7 +64,7 @@ class DashboardPage(QWidget):
         title_box = QVBoxLayout()
         title_box.setSpacing(4)
         
-        from ui.widgets.fluent import FluentLabel, FluentButton
+        from ui.widgets.fluent import FluentLabel, FluentButton, IconButton
         
         self._greeting_label = FluentLabel("Welcome Back", FluentLabel.Style.TITLE)
         self._date_label = FluentLabel("", FluentLabel.Style.SUBHEADING)
@@ -75,9 +75,8 @@ class DashboardPage(QWidget):
 
         header.addStretch()
 
-        self._refresh_btn = FluentButton("⚡ Refresh", primary=False)
-        self._refresh_btn.setFixedWidth(120)
-        self._refresh_btn.setMinimumHeight(38)
+        self._refresh_btn = IconButton("↻")
+        self._refresh_btn.setToolTip("Refresh")
         self._refresh_btn.clicked.connect(self._trigger_refresh)
         header.addWidget(self._refresh_btn)
 
@@ -137,12 +136,11 @@ class DashboardPage(QWidget):
 
     def _trigger_refresh(self) -> None:
         self._refresh_btn.setEnabled(False)
-        self._refresh_btn.setText("⚡ Refreshing...")
         if self._on_global_refresh:
             self._on_global_refresh()
         else:
             self._refresh()
-        QTimer.singleShot(400, lambda: self._refresh_btn.setText("⚡ Refresh") or self._refresh_btn.setEnabled(True))
+        QTimer.singleShot(400, lambda: self._refresh_btn.setEnabled(True))
 
     def _refresh(self) -> None:
         # Dynamic time-of-day greeting

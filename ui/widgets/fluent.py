@@ -3,7 +3,7 @@ fluent.py — Reusable Fluent Design UI Components.
 """
 
 from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve, Property, QRectF
-from PySide6.QtGui import QPainter, QColor, QBrush, QPen
+from PySide6.QtGui import QPainter, QColor, QBrush, QPen, QFont
 from PySide6.QtWidgets import QFrame, QPushButton, QLabel, QVBoxLayout, QWidget, QGraphicsOpacityEffect, QAbstractButton
 
 class FluentCard(QFrame):
@@ -218,4 +218,72 @@ class ToggleSwitch(QAbstractButton):
         # Draw thumb
         painter.setBrush(QBrush(thumb_color))
         painter.drawEllipse(QRectF(self._thumb_position, 4.0, 16.0, 16.0))
+        painter.end()
+
+
+class IconButton(QAbstractButton):
+    """A minimal icon-only button with Fluent hover/press animations."""
+    def __init__(self, icon_text: str, parent=None):
+        super().__init__(parent)
+        self.setFixedSize(44, 44)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._icon_text = icon_text
+        
+        self._hover_progress = 0.0
+        self._anim = QPropertyAnimation(self, b"hover_progress", self)
+        self._anim.setDuration(150)
+        self._anim.setEasingCurve(QEasingCurve.Type.OutQuad)
+        
+    @Property(float)
+    def hover_progress(self):
+        return self._hover_progress
+        
+    @hover_progress.setter
+    def hover_progress(self, val):
+        self._hover_progress = val
+        self.update()
+        
+    def enterEvent(self, event):
+        super().enterEvent(event)
+        self._anim.setDirection(QPropertyAnimation.Direction.Forward)
+        self._anim.setStartValue(self._hover_progress)
+        self._anim.setEndValue(1.0)
+        self._anim.start()
+        
+    def leaveEvent(self, event):
+        super().leaveEvent(event)
+        self._anim.setDirection(QPropertyAnimation.Direction.Backward)
+        self._anim.setStartValue(self._hover_progress)
+        self._anim.setEndValue(0.0)
+        self._anim.start()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        
+        from ui.theme import ThemeManager
+        tm = ThemeManager.instance()
+        is_dark = tm.is_dark
+        
+        hover_color = QColor(tm.color('accent'))
+        base_alpha = 40 if is_dark else 30
+        press_alpha = 70 if is_dark else 60
+        
+        alpha = int(base_alpha * self._hover_progress)
+        if self.isDown():
+            alpha = press_alpha
+            
+        hover_color.setAlpha(alpha)
+            
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QBrush(hover_color))
+        painter.drawRoundedRect(self.rect(), 8, 8)
+        
+        painter.setPen(QColor(tm.color('text_main')))
+        font = self.font()
+        font.setPixelSize(22)
+        font.setWeight(QFont.Weight.Bold if not is_dark else QFont.Weight.Medium)
+        painter.setFont(font)
+        # Shift text slightly down if needed, but center works well for symbols
+        painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, self._icon_text)
         painter.end()
