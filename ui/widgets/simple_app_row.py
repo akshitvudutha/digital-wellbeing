@@ -4,8 +4,8 @@ simple_app_row.py — Minimalist application row for the redesigned dashboard.
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, QSize, Signal
-from PySide6.QtGui import QCursor
+from PySide6.QtCore import Qt, QSize, Signal, Property, QPropertyAnimation
+from PySide6.QtGui import QCursor, QPainter, QColor, QBrush
 from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel
 )
@@ -34,9 +34,53 @@ class SimpleAppRow(QFrame):
         self._setup_ui(display_name, duration_s)
         self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         
+        self._hover_progress = 0.0
+        self._hover_anim = QPropertyAnimation(self, b"hover_progress", self)
+        self._hover_anim.setDuration(200)
+        
         from ui.theme import ThemeManager
         ThemeManager.instance().theme_changed.connect(self._apply_theme)
         self._apply_theme(ThemeManager.instance().is_dark)
+
+    @Property(float)
+    def hover_progress(self) -> float:
+        return self._hover_progress
+
+    @hover_progress.setter
+    def hover_progress(self, val: float) -> None:
+        self._hover_progress = val
+        self.update()
+
+    def enterEvent(self, event) -> None:
+        super().enterEvent(event)
+        self._hover_anim.setDirection(QPropertyAnimation.Direction.Forward)
+        self._hover_anim.start()
+
+    def leaveEvent(self, event) -> None:
+        super().leaveEvent(event)
+        self._hover_anim.setDirection(QPropertyAnimation.Direction.Backward)
+        self._hover_anim.start()
+
+    def paintEvent(self, event) -> None:
+        super().paintEvent(event)
+        if self._hover_progress > 0.0:
+            painter = QPainter(self)
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+            from ui.theme import ThemeManager
+            is_dark = ThemeManager.instance().is_dark
+            
+            if is_dark:
+                color = QColor(255, 255, 255)
+                # target alpha roughly 0.06 (15/255)
+                color.setAlpha(int(15 * self._hover_progress))
+            else:
+                color = QColor(0, 0, 0)
+                # target alpha roughly 0.04 (10/255)
+                color.setAlpha(int(10 * self._hover_progress))
+                
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QBrush(color))
+            painter.drawRoundedRect(self.rect(), 6, 6)
 
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
@@ -91,10 +135,6 @@ class SimpleAppRow(QFrame):
             SimpleAppRow {{
                 background-color: transparent;
                 border-radius: 6px;
-                transition: background-color 0.2s;
-            }}
-            SimpleAppRow:hover {{
-                background-color: {tm.color('card_hover')};
             }}
             QLabel#icon_lbl {{ 
                 background-color: {icon_bg}; 
