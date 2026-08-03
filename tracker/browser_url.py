@@ -48,17 +48,18 @@ class BrowserURLProvider:
 
             url = None
             
-            # Chrome, Brave, Edge
-            if "chrome" in process_name.lower() or "brave" in process_name.lower() or "edge" in process_name.lower():
-                # Fast path: Search only for EditControl
-                edit = window.EditControl()
-                if edit.Exists(0, 0):
-                    val = edit.GetValuePattern().Value
-                    url = val
-            
-            # Firefox
-            elif "firefox" in process_name.lower():
-                edit = window.EditControl()
+            # Chrome, Brave, Edge, Firefox
+            if any(b in process_name.lower() for b in ["chrome", "brave", "edge", "firefox"]):
+                # Try finding by known attributes first
+                edit = window.EditControl(searchDepth=6, Name="Address and search bar")
+                if not edit.Exists(0, 0):
+                    edit = window.EditControl(searchDepth=6, AccessKey="Ctrl+L")
+                if not edit.Exists(0, 0):
+                    edit = window.EditControl(searchDepth=6, AccessKey="Alt+D")
+                if not edit.Exists(0, 0):
+                    # Fallback to the first EditControl
+                    edit = window.EditControl(searchDepth=6)
+                
                 if edit.Exists(0, 0):
                     val = edit.GetValuePattern().Value
                     url = val

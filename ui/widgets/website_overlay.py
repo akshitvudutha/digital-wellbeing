@@ -19,20 +19,18 @@ class WebsiteLimitOverlayDialog(QDialog):
         self.limit_seconds = limit_seconds
         
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         
-        self.setup_ui()
-        self._position_timer = QTimer(self)
-        self._position_timer.timeout.connect(self._update_position)
-        self._position_timer.start(50) # Update position frequently to stick to browser
-
-    def setup_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(40, 40, 40, 40)
-        layout.setSpacing(20)
+        # Main layout holds the inner frame centered
+        self.setLayout(QVBoxLayout(self))
+        self.layout().setContentsMargins(0, 0, 0, 0)
         
         self.setStyleSheet("""
             QDialog {
-                background-color: rgba(30, 30, 30, 245);
+                background-color: rgba(0, 0, 0, 220); /* Darken entire browser */
+            }
+            QFrame#inner_frame {
+                background-color: rgba(30, 30, 30, 255);
                 border-radius: 16px;
                 border: 1px solid rgba(255, 255, 255, 30);
             }
@@ -59,6 +57,17 @@ class WebsiteLimitOverlayDialog(QDialog):
             }
         """)
 
+        self.inner_frame = QFrame(self)
+        self.inner_frame.setObjectName("inner_frame")
+        self.inner_frame.setFixedSize(500, 300)
+        
+        inner_layout = QVBoxLayout(self.inner_frame)
+        inner_layout.setContentsMargins(40, 40, 40, 40)
+        inner_layout.setSpacing(20)
+        
+        # Center the inner frame inside the QDialog
+        self.layout().addWidget(self.inner_frame, 0, Qt.AlignmentFlag.AlignCenter)
+
         title = QLabel("Website Limit Reached")
         title.setStyleSheet("font-size: 24px; font-weight: bold;")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -80,13 +89,17 @@ class WebsiteLimitOverlayDialog(QDialog):
         btn_layout.addWidget(self.btn_close_tab)
         btn_layout.addWidget(self.btn_override)
         
-        layout.addWidget(title)
-        layout.addWidget(domain_label)
-        layout.addWidget(msg)
-        layout.addLayout(btn_layout)
+        inner_layout.addWidget(title)
+        inner_layout.addWidget(domain_label)
+        inner_layout.addWidget(msg)
+        inner_layout.addLayout(btn_layout)
         
         self.btn_close_tab.clicked.connect(self._on_close_tab)
         self.btn_override.clicked.connect(self._on_override)
+        
+        self._position_timer = QTimer(self)
+        self._position_timer.timeout.connect(self._update_position)
+        self._position_timer.start(50) # Update position frequently to stick to browser
 
     def _find_browser_hwnd(self) -> int:
         hwnd = win32gui.GetForegroundWindow()
@@ -125,13 +138,13 @@ class WebsiteLimitOverlayDialog(QDialog):
             bw = rect[2] - rect[0]
             bh = rect[3] - rect[1]
             
-            dialog_w = self.width()
-            dialog_h = self.height()
+            # The dialog must fill the entire browser bounds to intercept ALL input
+            self.setGeometry(rect[0], rect[1], bw, bh)
             
-            x = rect[0] + (bw - dialog_w) // 2
-            y = rect[1] + (bh - dialog_h) // 2
-            
-            self.move(x, y)
+            # Force focus so keyboard shortcuts don't reach the browser
+            if not self.isActiveWindow():
+                self.activateWindow()
+                self.setFocus()
         except Exception:
             pass
 
