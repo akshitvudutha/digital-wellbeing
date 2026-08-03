@@ -33,6 +33,13 @@ def run_qa():
             assert window._dashboard_page is not None
             print("Dashboard OK.")
             
+            print("--- Stress Testing Refresh Button ---")
+            for i in range(20):
+                window._dashboard_page._refresh_btn.click()
+                app.processEvents()
+            assert window._dashboard_page._is_refreshing == True
+            print("Refresh stress test OK.")
+            
             print("--- Testing Activity Trends ---")
             window._navigate(1)
             app.processEvents()

@@ -76,7 +76,8 @@ class DashboardPage(QWidget):
         header.addStretch()
 
         self._refresh_btn = IconButton("↻")
-        self._refresh_btn.setToolTip("Refresh")
+        self._refresh_btn.setToolTip("Refresh Data")
+        self._is_refreshing = False
         self._refresh_btn.clicked.connect(self._trigger_refresh)
         header.addWidget(self._refresh_btn)
 
@@ -135,12 +136,22 @@ class DashboardPage(QWidget):
         """)
 
     def _trigger_refresh(self) -> None:
-        self._refresh_btn.setEnabled(False)
+        if getattr(self, '_is_refreshing', False):
+            return
+        self._is_refreshing = True
+        self._refresh_btn.set_spinning(True)
+        
         if self._on_global_refresh:
             self._on_global_refresh()
         else:
             self._refresh()
-        QTimer.singleShot(400, lambda: self._refresh_btn.setEnabled(True))
+            
+        # Guarantee minimum rotation time for smooth UX
+        QTimer.singleShot(700, self._finish_refresh)
+
+    def _finish_refresh(self) -> None:
+        self._refresh_btn.set_spinning(False)
+        self._is_refreshing = False
 
     def _refresh(self) -> None:
         # Dynamic time-of-day greeting

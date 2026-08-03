@@ -222,17 +222,33 @@ class ToggleSwitch(QAbstractButton):
 
 
 class IconButton(QAbstractButton):
-    """A minimal icon-only button with Fluent hover/press animations."""
+    """A minimal icon-only button with Fluent hover/press animations, scaling, and rotation."""
     def __init__(self, icon_text: str, parent=None):
         super().__init__(parent)
         self.setFixedSize(44, 44)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self._icon_text = icon_text
         
         self._hover_progress = 0.0
-        self._anim = QPropertyAnimation(self, b"hover_progress", self)
-        self._anim.setDuration(150)
-        self._anim.setEasingCurve(QEasingCurve.Type.OutQuad)
+        self._scale = 1.0
+        self._rotation = 0.0
+        self._is_spinning = False
+        
+        self._hover_anim = QPropertyAnimation(self, b"hover_progress", self)
+        self._hover_anim.setDuration(150)
+        self._hover_anim.setEasingCurve(QEasingCurve.Type.OutQuad)
+
+        self._scale_anim = QPropertyAnimation(self, b"scale", self)
+        self._scale_anim.setDuration(150)
+        self._scale_anim.setEasingCurve(QEasingCurve.Type.OutQuad)
+
+        self._spin_anim = QPropertyAnimation(self, b"rotation", self)
+        self._spin_anim.setDuration(700)
+        self._spin_anim.setStartValue(0.0)
+        self._spin_anim.setEndValue(360.0)
+        self._spin_anim.setEasingCurve(QEasingCurve.Type.InOutQuad)
+        self._spin_anim.finished.connect(self._on_spin_finished)
         
     @Property(float)
     def hover_progress(self):
@@ -242,20 +258,80 @@ class IconButton(QAbstractButton):
     def hover_progress(self, val):
         self._hover_progress = val
         self.update()
+
+    @Property(float)
+    def scale(self):
+        return self._scale
+
+    @scale.setter
+    def scale(self, val):
+        self._scale = val
+        self.update()
+
+    @Property(float)
+    def rotation(self):
+        return self._rotation
+
+    @rotation.setter
+    def rotation(self, val):
+        self._rotation = val
+        self.update()
+
+    def set_spinning(self, spinning: bool):
+        self._is_spinning = spinning
+        if spinning:
+            self.setCursor(Qt.CursorShape.BusyCursor)
+            if self._spin_anim.state() != QPropertyAnimation.State.Running:
+                self._spin_anim.start()
+        else:
+            self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def _on_spin_finished(self):
+        if self._is_spinning:
+            self._spin_anim.start()
+        else:
+            self._rotation = 0.0
+            self.update()
         
     def enterEvent(self, event):
         super().enterEvent(event)
-        self._anim.setDirection(QPropertyAnimation.Direction.Forward)
-        self._anim.setStartValue(self._hover_progress)
-        self._anim.setEndValue(1.0)
-        self._anim.start()
+        self._hover_anim.setDirection(QPropertyAnimation.Direction.Forward)
+        self._hover_anim.setStartValue(self._hover_progress)
+        self._hover_anim.setEndValue(1.0)
+        self._hover_anim.start()
+        if not self.isDown():
+            self._scale_anim.setDirection(QPropertyAnimation.Direction.Forward)
+            self._scale_anim.setStartValue(self._scale)
+            self._scale_anim.setEndValue(1.03)
+            self._scale_anim.start()
         
     def leaveEvent(self, event):
         super().leaveEvent(event)
-        self._anim.setDirection(QPropertyAnimation.Direction.Backward)
-        self._anim.setStartValue(self._hover_progress)
-        self._anim.setEndValue(0.0)
-        self._anim.start()
+        self._hover_anim.setDirection(QPropertyAnimation.Direction.Backward)
+        self._hover_anim.setStartValue(self._hover_progress)
+        self._hover_anim.setEndValue(0.0)
+        self._hover_anim.start()
+        if not self.isDown():
+            self._scale_anim.setDirection(QPropertyAnimation.Direction.Forward)
+            self._scale_anim.setStartValue(self._scale)
+            self._scale_anim.setEndValue(1.0)
+            self._scale_anim.start()
+
+    def mousePressEvent(self, event):
+        super().mousePressEvent(event)
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._scale_anim.setDirection(QPropertyAnimation.Direction.Forward)
+            self._scale_anim.setStartValue(self._scale)
+            self._scale_anim.setEndValue(0.96)
+            self._scale_anim.start()
+
+    def mouseReleaseEvent(self, event):
+        super().mouseReleaseEvent(event)
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._scale_anim.setDirection(QPropertyAnimation.Direction.Forward)
+            self._scale_anim.setStartValue(self._scale)
+            self._scale_anim.setEndValue(1.03 if self.underMouse() else 1.0)
+            self._scale_anim.start()
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -264,6 +340,13 @@ class IconButton(QAbstractButton):
         from ui.theme import ThemeManager
         tm = ThemeManager.instance()
         is_dark = tm.is_dark
+        
+        w = self.width()
+        h = self.height()
+        
+        center = QRectF(self.rect()).center()
+        painter.translate(center)
+        painter.scale(self._scale, self._scale)
         
         hover_color = QColor(tm.color('accent'))
         base_alpha = 40 if is_dark else 30
@@ -277,13 +360,14 @@ class IconButton(QAbstractButton):
             
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(QBrush(hover_color))
-        painter.drawRoundedRect(self.rect(), 8, 8)
+        painter.drawRoundedRect(QRectF(-w/2, -h/2, w, h), 8, 8)
+        
+        painter.rotate(self._rotation)
         
         painter.setPen(QColor(tm.color('text_main')))
         font = self.font()
         font.setPixelSize(22)
         font.setWeight(QFont.Weight.Bold if not is_dark else QFont.Weight.Medium)
         painter.setFont(font)
-        # Shift text slightly down if needed, but center works well for symbols
-        painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, self._icon_text)
+        painter.drawText(QRectF(-w/2, -h/2, w, h), Qt.AlignmentFlag.AlignCenter, self._icon_text)
         painter.end()
