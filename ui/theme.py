@@ -87,6 +87,7 @@ class ThemeManager(QObject):
         if dark_mode:
             return {
                 "bg": "transparent", # Transparent for Mica / Pure black via palette
+                "window_bg": "#1C1C1E",
                 "card_bg": "#121212",
                 "card_hover": "#1A1A1A",
                 "card_pressed": "#101010",
@@ -129,6 +130,7 @@ class ThemeManager(QObject):
         else:
             return {
                 "bg": "transparent",
+                "window_bg": "#F3F3F3",
                 "card_bg": "rgba(255, 255, 255, 0.85)",
                 "card_hover": "rgba(255, 255, 255, 1.0)",
                 "card_pressed": "rgba(255, 255, 255, 0.7)",

@@ -41,6 +41,10 @@ class TrackingManager:
         self._current_launcher_reason: str = ""
         self._current_transition_reason: str = ""
         self._debug_enabled: bool = self._sm.debug_tracking
+        
+        self._current_website_url: str = ""
+        self._current_website_session_id: Optional[int] = None
+        self._current_website_start: Optional[datetime] = None
 
         self._last_heartbeat: float = 0.0
         self._last_tick_time: Optional[datetime] = None
@@ -98,6 +102,7 @@ class TrackingManager:
 
         self._session_monitor.stop()
         self._end_current_session(reason="stop")
+        self._end_website_session(datetime.now())
         self._repo.log_event("tracker_stop", "Tracking stopped")
         logger.info("[LIFECYCLE] Tracking stopped — waiting for tracking thread to exit...")
 
@@ -244,10 +249,21 @@ class TrackingManager:
                 reason = "app_switch" if not same_process else "idle_switch"
                 TrackingAuditor.log_poll_event(self._current_app, "EndSession", reason=reason, session_id=self._current_session_id)
                 self._end_current_session(reason=reason)
+                self._end_website_session(now)
 
             TrackingAuditor.log_poll_event(fg, "StartSession", reason="new_foreground")
             self._start_session(fg, now, idle, reason="new_foreground" if self._current_app is None else reason)
+            
+            url = getattr(fg, "url", "")
+            if url and not idle:
+                self._start_website_session(fg.process_name, url, now)
             return
+            
+        url = getattr(fg, "url", "")
+        if url != self._current_website_url:
+            self._end_website_session(now)
+            if url and not idle:
+                self._start_website_session(fg.process_name, url, now)
 
         # Same process, same idle state, but window title changed
         if title_changed:
@@ -300,6 +316,18 @@ class TrackingManager:
                     )
                 except Exception as exc:
                     logger.warning("Heartbeat update failed: %s", exc)
+                    
+            if self._current_website_session_id and self._current_website_start:
+                w_duration = (now - self._current_website_start).total_seconds()
+                try:
+                    self._repo.update_website_session_end(
+                        self._current_website_session_id,
+                        now,
+                        w_duration,
+                        was_closed=False
+                    )
+                except Exception as exc:
+                    logger.warning("Website heartbeat update failed: %s", exc)
 
     # ─── Session lifecycle ────────────────────────────────────────────────────
 
@@ -425,6 +453,51 @@ class TrackingManager:
             self._notify_data_changed()
         except Exception as exc:
             logger.error("Failed to end session %d: %s", session_id, exc)
+
+    def _start_website_session(self, process_name: str, domain: str, start_time: datetime) -> None:
+        try:
+            from database.models import WebsiteSession
+            ws = WebsiteSession(
+                domain=domain,
+                browser_process=process_name,
+                start_time=start_time,
+                end_time=None,
+                duration_s=0.0,
+                was_closed=False
+            )
+            session_id = self._repo.insert_website_session(ws)
+            self._current_website_url = domain
+            self._current_website_start = start_time
+            self._current_website_session_id = session_id
+        except Exception as exc:
+            logger.error("Failed to start website session for %s: %s", domain, exc)
+
+    def _end_website_session(self, capped_end_time: datetime) -> None:
+        session_id = self._current_website_session_id
+        start_time = self._current_website_start
+
+        self._current_website_url = ""
+        self._current_website_session_id = None
+        self._current_website_start = None
+
+        if session_id is None or start_time is None:
+            return
+
+        duration = max(0.0, (capped_end_time - start_time).total_seconds())
+        if duration < _MIN_SESSION_DURATION_S:
+            # We don't have a delete_website_session, but we could add one if needed.
+            # For now, it will just end up with 0s.
+            pass
+
+        try:
+            self._repo.update_website_session_end(
+                session_id,
+                capped_end_time,
+                duration,
+                was_closed=True
+            )
+        except Exception as exc:
+            logger.error("Failed to end website session %d: %s", session_id, exc)
 
     # ─── Session events ───────────────────────────────────────────────────────
 

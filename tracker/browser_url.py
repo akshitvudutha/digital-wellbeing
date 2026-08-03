@@ -39,8 +39,8 @@ class BrowserURLProvider:
         cls._cached_process = process_name
 
         try:
-            # Set shorter timeout for UI queries to prevent freezing the main loop
-            auto.SetGlobalSearchTimeout(0.2)
+            # Set shorter timeout for UI queries to prevent freezing the main loop (increased from 0.2 to 0.5)
+            auto.SetGlobalSearchTimeout(0.5)
             window = auto.ControlFromHandle(hwnd)
             if not window:
                 cls._cached_url = None

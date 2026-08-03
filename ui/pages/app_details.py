@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from typing import Callable, Optional
 from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QPushButton, QScrollArea,
     QVBoxLayout, QWidget, QGridLayout, QComboBox
@@ -120,6 +121,32 @@ class AppDetailsPage(QWidget):
         from ui.theme import ThemeManager
         ThemeManager.instance().theme_changed.connect(self._apply_theme)
         self._apply_theme(ThemeManager.instance().is_dark)
+
+        # Setup live update timer
+        self._live_timer = QTimer(self)
+        self._live_timer.setInterval(2000) # Update every 2 seconds
+        self._live_timer.timeout.connect(self._on_live_update)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._live_timer.start()
+
+    def hideEvent(self, event):
+        super().hideEvent(event)
+        self._live_timer.stop()
+
+    def _on_live_update(self):
+        if not self._current_app or not self._protection_manager:
+            return
+            
+        # Update app timer progress
+        current_rule = self._protection_manager.limits.get_limit_rule(self._current_app)
+        limit_s = current_rule.get("limit_seconds", 0) if current_rule else 0
+        
+        # We need today_s from DB or active memory. It's expensive to do full DB query every 2s.
+        # Instead of full refresh(), we can just refresh the website timers list which uses memory.
+        if hasattr(self, "_website_timers_section") and self._website_timers_section.isVisible():
+            self._website_timers_section.refresh()
 
     def _apply_theme(self, is_dark: bool) -> None:
         from ui.theme import ThemeManager

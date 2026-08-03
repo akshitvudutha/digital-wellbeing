@@ -486,11 +486,12 @@ class MainWindow(QMainWindow):
         dialog = WebsiteLimitOverlayDialog(process_name, domain, limit_seconds, self)
         
         def on_override_requested(p, d):
-            pin_dialog = PinOverrideDialog(self)
-            if pin_dialog.exec():
-                minutes = pin_dialog.get_duration_minutes()
-                self._protection_manager.add_website_override(d, minutes)
+            pin_dialog = PinOverrideDialog(p, self._protection_manager.pin, self)
+            def on_granted(pname, mins):
+                self._protection_manager.add_website_override(d, mins)
                 dialog.accept()
+            pin_dialog.override_granted.connect(on_granted)
+            pin_dialog.exec()
                 
         dialog.override_requested.connect(on_override_requested)
         dialog.exec()
