@@ -90,18 +90,8 @@ class ForegroundApp:
     url: str = ""
 
 
-OVERLAY_PROCESSES = {
-    "gameoverlayui.exe",
-    "discord.exe",
-    "nvidia share.exe",
-    "eosoverlayrenderer-win64-shipping.exe",
-    "eosoverlayrenderer-win32-shipping.exe",
-    "riotvanguardoverlay.exe",
-    "xboxstatbar.exe",
-    "overwolf.exe",
-    "rtsshooksloader64.exe",
-    "rtsshooksloader32.exe",
-}
+# Generic overlay detection replaces hardcoded OVERLAY_PROCESSES
+# Overlays often use specific extended window styles to draw over games without stealing focus.
 
 _SYSTEM_IGNORED_PROCESSES = {
     "dwm.exe",
@@ -128,6 +118,27 @@ def _is_window_cloaked(hwnd: int) -> bool:
             ctypes.sizeof(cloaked)
         )
         return res == 0 and cloaked.value != 0
+    except Exception:
+        return False
+
+def _is_generic_overlay(hwnd: int) -> bool:
+    try:
+        GWL_EXSTYLE = -20
+        WS_EX_TRANSPARENT = 0x00000020
+        WS_EX_TOOLWINDOW = 0x00000080
+        WS_EX_NOACTIVATE = 0x08000000
+        
+        exstyle = _user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
+        
+        # If it's transparent to clicks (click-through overlay)
+        if (exstyle & WS_EX_TRANSPARENT) != 0:
+            return True
+            
+        # If it's a tool window that shouldn't activate
+        if (exstyle & WS_EX_TOOLWINDOW) != 0 and (exstyle & WS_EX_NOACTIVATE) != 0:
+            return True
+            
+        return False
     except Exception:
         return False
 
@@ -363,7 +374,7 @@ def get_foreground_app(last_known_app: Optional[ForegroundApp] = None) -> Option
         hwnd = win32gui.GetForegroundWindow()
         fallback = last_known_app or _last_valid_app
 
-        if not hwnd or not win32gui.IsWindowVisible(hwnd) or _is_window_cloaked(hwnd):
+        if not hwnd or not win32gui.IsWindowVisible(hwnd) or _is_window_cloaked(hwnd) or _is_generic_overlay(hwnd):
             recovered = _try_recover_fullscreen_game(fallback)
             if recovered:
                 return recovered
@@ -392,7 +403,7 @@ def get_foreground_app(last_known_app: Optional[ForegroundApp] = None) -> Option
             return None
 
         name_lower = name.lower()
-        if name_lower in _SYSTEM_IGNORED_PROCESSES or name_lower in OVERLAY_PROCESSES:
+        if name_lower in _SYSTEM_IGNORED_PROCESSES:
             recovered = _try_recover_fullscreen_game(fallback)
             if recovered:
                 return recovered
