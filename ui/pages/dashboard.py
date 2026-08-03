@@ -187,6 +187,7 @@ class DashboardPage(QWidget):
                 
         category_breakdown = summary.category_breakdown
         if not category_breakdown:
+            from ui.theme import ThemeManager
             placeholder2 = QLabel("No category data recorded today.")
             placeholder2.setStyleSheet(f"color: {ThemeManager.instance().color('text_sub')}; font-size: 14px;")
             self._cats_layout.addWidget(placeholder2)
