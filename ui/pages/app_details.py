@@ -15,6 +15,50 @@ from analytics.engine import AnalyticsEngine
 from ui.widgets.charts import HourlyIntensityChart
 from tracker.categorizer import display_name as get_display_name
 from utils.icon_provider import AppIconProvider
+from ui.widgets.fluent import FluentLabel
+from ui.widgets.app_timer_widgets import TimerDisplayCard, TimerConfigDialog, AnimatedProgressBar
+
+class TodayProgressWidget(QFrame):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("stat_box")
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        self.title_lbl = FluentLabel("Today's Progress", FluentLabel.Style.HEADING)
+        self.val_lbl = FluentLabel("0m / Unlimited", FluentLabel.Style.SUBHEADING)
+        self.progress_bar = AnimatedProgressBar()
+        
+        layout.addWidget(self.title_lbl)
+        layout.addWidget(self.val_lbl)
+        layout.addSpacing(16)
+        layout.addWidget(self.progress_bar)
+        
+        from ui.theme import ThemeManager
+        ThemeManager.instance().theme_changed.connect(self._apply_theme)
+        self._apply_theme(ThemeManager.instance().is_dark)
+
+    def _apply_theme(self, is_dark: bool) -> None:
+        from ui.theme import ThemeManager
+        tm = ThemeManager.instance()
+        self.setStyleSheet(f"""
+            QFrame#stat_box {{
+                background-color: {tm.color('card_bg')};
+                border: 1px solid {tm.color('border')};
+                border-radius: 12px;
+            }}
+        """)
+
+    def update_progress(self, elapsed_s, limit_s):
+        from analytics.engine import AnalyticsEngine
+        elapsed_str = AnalyticsEngine.format_duration_short(elapsed_s)
+        
+        if limit_s and limit_s > 0:
+            limit_str = AnalyticsEngine.format_duration_short(limit_s)
+            self.val_lbl.setText(f"{elapsed_str} / {limit_str}")
+            self.progress_bar.set_value(elapsed_s / limit_s)
+        else:
+            self.val_lbl.setText(f"{elapsed_str} / Unlimited")
+            self.progress_bar.set_value(0.0)
 
 
 class StatBox(QFrame):
@@ -163,36 +207,19 @@ class AppDetailsPage(QWidget):
             limits_header.setStyleSheet("font-size: 20px; font-weight: 700; margin-top: 16px;")
             self._inner_layout.addWidget(limits_header)
             
-            limits_container = QFrame()
-            limits_container.setObjectName("stat_box")
-            limits_layout = QVBoxLayout(limits_container)
+            # Progress Widget
+            self._progress_widget = TodayProgressWidget()
+            self._inner_layout.addWidget(self._progress_widget)
             
-            # Daily Limit
-            limit_row = QHBoxLayout()
-            limit_lbl = QLabel("Daily Limit:")
-            limit_lbl.setStyleSheet("font-size: 14px; font-weight: 600;")
-            self._limit_combo = QComboBox()
-            self._limit_combo.setFixedWidth(160)
-            self._limit_combo.addItem("Unlimited", 0)
-            self._limit_combo.addItem("15 min", 15)
-            self._limit_combo.addItem("30 min", 30)
-            self._limit_combo.addItem("45 min", 45)
-            self._limit_combo.addItem("1 hour", 60)
-            self._limit_combo.addItem("2 hours", 120)
-            self._limit_combo.addItem("3 hours", 180)
-            self._limit_combo.currentIndexChanged.connect(self._on_limit_changed)
-            
-            limit_row.addWidget(limit_lbl)
-            limit_row.addWidget(self._limit_combo)
-            limit_row.addStretch()
-            limits_layout.addLayout(limit_row)
+            # Timer Card
+            self._timer_card = TimerDisplayCard()
+            self._timer_card.change_requested.connect(self._on_change_timer)
+            self._inner_layout.addWidget(self._timer_card)
             
             # Override Status
             self._override_lbl = QLabel("")
             self._override_lbl.setStyleSheet("color: #EAB308; font-weight: 600; font-size: 13px; margin-top: 8px;")
-            limits_layout.addWidget(self._override_lbl)
-            
-            self._inner_layout.addWidget(limits_container)
+            self._inner_layout.addWidget(self._override_lbl)
 
         history_header = QLabel("Usage History")
         history_header.setObjectName("app_title")
@@ -205,12 +232,17 @@ class AppDetailsPage(QWidget):
         
         self._inner_layout.addStretch()
 
-    def _on_limit_changed(self, index: int) -> None:
+    def _on_change_timer(self) -> None:
         if not self._protection_manager or not self._current_app:
             return
-        mins = self._limit_combo.itemData(index)
-        sec = (mins * 60) if mins > 0 else None
-        self._protection_manager.limits.set_limit(self._current_app, sec)
+            
+        current_rule = self._protection_manager.limits.get_limit_rule(self._current_app)
+        dialog = TimerConfigDialog(self, current_rule)
+        
+        if dialog.exec():
+            rule = dialog.get_rule()
+            self._protection_manager.limits.set_limit_rule(self._current_app, rule)
+            self.refresh()
 
     def set_app(self, process_name: str) -> None:
         self._current_app = process_name
@@ -288,18 +320,12 @@ class AppDetailsPage(QWidget):
         self._stat_weekly.set_value(AnalyticsEngine.format_duration_short((today_s + yesterday_s) / 2.0))
 
         if self._protection_manager:
-            # Block combo box signal during update
-            self._limit_combo.blockSignals(True)
-            try:
-                current_limit = self._protection_manager.limits.get_limit(process_name)
-                current_mins = (current_limit // 60) if current_limit else 0
-                idx = self._limit_combo.findData(current_mins)
-                if idx >= 0:
-                    self._limit_combo.setCurrentIndex(idx)
-                else:
-                    self._limit_combo.setCurrentIndex(0)
-            finally:
-                self._limit_combo.blockSignals(False)
+            current_rule = self._protection_manager.limits.get_limit_rule(process_name)
+            limit_s = current_rule.get("limit_seconds", 0) if current_rule else 0
+            
+            self._timer_card.set_limit(limit_s)
+            
+            self._progress_widget.update_progress(today_s, limit_s)
 
             # Update override status
             if self._protection_manager.has_active_override(process_name):

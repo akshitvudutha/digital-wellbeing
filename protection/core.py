@@ -49,8 +49,9 @@ class ProtectionManager:
         process_name = process_name.lower()
         self._timer.add_time(process_name, delta_s)
         
+        rule = self._limits.get_limit_rule(process_name)
         limit_s = self._limits.get_limit(process_name)
-        if limit_s is None:
+        if limit_s is None or not rule:
             return
             
         elapsed_s = self._timer.get_time(process_name)
@@ -67,7 +68,8 @@ class ProtectionManager:
         # Check warnings
         if remaining_s > 0:
             remaining_mins = int(remaining_s // 60)
-            if remaining_mins in (10, 5, 1):
+            warning_list = rule.get("notifications", [15, 10, 5, 1])
+            if remaining_mins in warning_list:
                 with self._lock:
                     sent = self._warnings_sent.setdefault(process_name, set())
                     if remaining_mins not in sent:
@@ -82,7 +84,13 @@ class ProtectionManager:
             if 0 not in sent:
                 sent.add(0)
                 self._notifications.send_warning(process_name, 0)
-                self._notifications.trigger_lock_dialog(process_name, limit_s)
+                
+                expire_action = rule.get("on_expire", "lock")
+                if expire_action == "close":
+                    self.force_close(process_name)
+                else:
+                    # 'lock', 'pin', 'extend' handled via standard dialog for now
+                    self._notifications.trigger_lock_dialog(process_name, limit_s)
 
     def force_close(self, process_name: str) -> None:
         """Called by UI when user clicks 'Close App'"""
