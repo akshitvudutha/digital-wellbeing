@@ -645,6 +645,8 @@ class TimerDisplayCard(QFrame):
         self.title_lbl = FluentLabel("App Timer", FluentLabel.Style.HEADING)
         header_layout.addWidget(self.title_lbl)
         header_layout.addStretch()
+        
+        from ui.theme import ThemeManager
         self.status_lbl = FluentLabel("Disabled", FluentLabel.Style.MUTED)
         self.status_lbl.setStyleSheet(f"font-weight: 700; color: {ThemeManager.instance().color('text_sub')};")
         header_layout.addWidget(self.status_lbl)
