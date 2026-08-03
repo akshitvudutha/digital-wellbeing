@@ -121,11 +121,26 @@ class DonutChart(QWidget):
         if hovered != self._hovered_label:
             self.set_highlighted_segment(hovered)
             self.segment_hovered.emit(hovered)
+            
+            if hovered:
+                for lbl, val, _ in self._segments:
+                    if lbl == hovered:
+                        pct = max(1, int((val / self._total) * 100)) if self._total > 0 else 0
+                        dur_str = AnalyticsEngine.format_duration_short(val)
+                        from PySide6.QtWidgets import QToolTip
+                        from PySide6.QtGui import QCursor
+                        QToolTip.showText(QCursor.pos(), f"{lbl}\n{dur_str} ({pct}%)", self)
+                        break
+            else:
+                from PySide6.QtWidgets import QToolTip
+                QToolTip.hideText()
 
     def leaveEvent(self, event):
         super().leaveEvent(event)
         self.set_highlighted_segment("")
         self.segment_hovered.emit("")
+        from PySide6.QtWidgets import QToolTip
+        QToolTip.hideText()
 
     def paintEvent(self, event) -> None:
         if not self._segments or self._total <= 0:

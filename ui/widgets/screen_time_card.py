@@ -94,11 +94,13 @@ class ActiveScreenTimeCard(FluentCard):
             segments = [("Active", 1.0, tm.color('accent'))]
         else:
             sorted_apps = sorted(top_apps, key=lambda x: float(x.get("total_s", 0.0)), reverse=True)
-            from ui.theme import get_app_color
+            fluent_palette = ["#4F8CFF", "#20C997", "#00C4FF"]
+            
             for idx, item in enumerate(sorted_apps[:3]):
                 dur = float(item.get("total_s", 0.0))
                 if dur > 0:
-                    segments.append((get_display_name(item["process_name"]), dur, get_app_color(item["process_name"])))
+                    color = fluent_palette[idx] if idx < len(fluent_palette) else tm.color('text_muted')
+                    segments.append((get_display_name(item["process_name"]), dur, color))
             
             remaining = sorted_apps[3:]
             if remaining:
@@ -122,14 +124,15 @@ class ActiveScreenTimeCard(FluentCard):
             placeholder = FluentLabel("No application usage recorded today.", FluentLabel.Style.MUTED)
             self._apps_layout.addWidget(placeholder)
         else:
-            from ui.theme import get_app_color
+            fluent_palette = ["#4F8CFF", "#20C997", "#00C4FF"]
             for idx, s in enumerate(top_apps[:3]):
                 display_name = get_display_name(s["process_name"])
+                color = fluent_palette[idx] if idx < len(fluent_palette) else tm.color('text_muted')
                 row = SimpleAppRow(
                     process_name=s["process_name"],
                     display_name=display_name,
                     duration_s=s["total_s"],
-                    legend_color=get_app_color(s["process_name"])
+                    legend_color=color
                 )
                 self._app_rows[display_name] = row
                 row.clicked.connect(lambda pname=s["process_name"]: self._on_app_row_clicked(pname))
