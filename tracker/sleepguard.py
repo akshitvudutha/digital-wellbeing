@@ -1,8 +1,14 @@
 """
-sleepguard.py — SleepGuard Controller Module for Digital Wellbeing Platform v2.
+sleepguard.py — SleepGuard Controller Module for Digital Wellbeing Platform v2.4.
 
 Integrates Win32 idle monitoring, WinRT GSMTC media playback detection,
-and automated PC shutdown logic with PySide6 signals.
+and automated PC power action logic with PySide6 signals.
+
+v2.4 changes:
+- Multi-action support (shutdown/sleep/hibernate/lock/cancel)
+- Safety guards preventing invalid/accidental destructive actions
+- Minimum countdown floor (10 seconds)
+- Structured logging throughout the expiry path
 """
 
 from __future__ import annotations
@@ -17,14 +23,15 @@ from PySide6.QtCore import QObject, Signal
 from settings.manager import SettingsManager
 from tracker.idle import get_idle_seconds
 from tracker.media import MediaDetectionEngine, MediaInfo
-from utils.shutdown import ShutdownManager
+from utils.shutdown import ShutdownManager, MIN_COUNTDOWN_SECONDS, VALID_ACTIONS
 
 logger = logging.getLogger(__name__)
 
 
 class SleepGuardController(QObject):
 
-    shutdown_warning_triggered = Signal(int)  # countdown_seconds
+    # Signal carries (countdown_seconds, action_type)
+    shutdown_warning_triggered = Signal(int, str)
     media_state_changed = Signal(object)      # MediaInfo
     sleepguard_status_changed = Signal(bool)  # active status
     programmatic_shutdown_cancelled = Signal()  # emitted when a cancel is performed programmatically
@@ -66,7 +73,12 @@ class SleepGuardController(QObject):
             daemon=True,
         )
         self._poll_thread.start()
-        logger.info("SleepGuardController started (enabled=%s).", not self._paused)
+        logger.info(
+            "[SLEEPGUARD] Controller started (enabled=%s, action=%s, countdown=%ds).",
+            not self._paused,
+            self._settings.sleepguard_action,
+            self._settings.countdown_seconds,
+        )
         self.sleepguard_status_changed.emit(not self._paused)
 
     def stop(self) -> None:
@@ -76,14 +88,14 @@ class SleepGuardController(QObject):
             # give more time for the thread to exit gracefully
             self._poll_thread.join(timeout=5.0)
             self._poll_thread = None
-        logger.info("SleepGuardController stopped.")
+        logger.info("[SLEEPGUARD] Controller stopped.")
 
     def set_enabled(self, enabled: bool) -> None:
         self._settings.sleepguard_enabled = enabled
         self._paused = not enabled
         if enabled:
             self._idle_fired.clear()
-        logger.info("SleepGuard state set to enabled=%s", enabled)
+        logger.info("[SLEEPGUARD] State set to enabled=%s", enabled)
         self.sleepguard_status_changed.emit(enabled)
 
     @property
@@ -113,19 +125,52 @@ class SleepGuardController(QObject):
             self.programmatic_shutdown_cancelled.emit()
         except Exception:
             pass
-        logger.info("Shutdown warning cancelled by user. Applied cooldown=%ss", cooldown)
+        logger.info("[SLEEPGUARD] Warning cancelled by user. Applied cooldown=%ss", cooldown)
 
-    def execute_shutdown(self) -> bool:
+    def execute_power_action(self, action: str = "") -> bool:
+        """Execute the configured (or specified) power action with safety validation.
+        
+        This is the single, authoritative entry point for all SleepGuard power actions.
+        If action is empty, reads from settings.
+        """
         from datetime import datetime
-        logger.info(f"[INSTRUMENTATION] execute_shutdown() entered at: {datetime.now().isoformat()}")
-        return self._shutdown_mgr.shutdown_now()
+
+        if not action:
+            action = self._settings.sleepguard_action
+
+        action = action.lower().strip()
+        ts = datetime.now().isoformat()
+
+        logger.info("[SLEEPGUARD] execute_power_action() entered at %s with action='%s'", ts, action)
+
+        # Safety guard: validate action
+        if not ShutdownManager.validate_action(action):
+            logger.error(
+                "[SLEEPGUARD] SAFETY GUARD: Blocked execution of invalid action '%s'. "
+                "No power action will be taken.", action
+            )
+            return False
+
+        # Safety guard: log the final action before execution
+        logger.warning(
+            "[SLEEPGUARD] EXECUTING power action '%s' at %s. "
+            "Configured action: '%s'.",
+            action, ts, self._settings.sleepguard_action,
+        )
+
+        return self._shutdown_mgr.execute_action(action)
+
+    # Legacy backward-compatible method
+    def execute_shutdown(self) -> bool:
+        """Legacy method — routes through execute_power_action with configured action."""
+        return self.execute_power_action()
 
     def force_trigger_idle(self) -> None:
         # Use an event so the polling loop sees the trigger reliably
         self._force_trigger.set()
 
     def _on_media_state_change(self, info: MediaInfo) -> None:
-        logger.info("SleepGuard media update: playing=%s, app=%s", info.is_playing, info.display_name)
+        logger.info("[SLEEPGUARD] Media update: playing=%s, app=%s", info.is_playing, info.display_name)
         self.media_state_changed.emit(info)
 
     def _poll_loop(self) -> None:
@@ -164,10 +209,29 @@ class SleepGuardController(QObject):
                 if self._force_trigger.is_set():
                     self._force_trigger.clear()
 
-                logger.warning("SleepGuard idle threshold hit (idle: %.0fs, threshold: %ds). Triggering shutdown warning.", idle_s, timeout_s)
+                # Read configured action and countdown
+                action = self._settings.sleepguard_action
+                raw_countdown = self._settings.countdown_seconds
+
+                # Safety guard: enforce minimum countdown floor
+                countdown = max(raw_countdown, MIN_COUNTDOWN_SECONDS)
+                if countdown != raw_countdown:
+                    logger.warning(
+                        "[SLEEPGUARD] Countdown %ds was below minimum floor %ds. Clamped to %ds.",
+                        raw_countdown, MIN_COUNTDOWN_SECONDS, countdown,
+                    )
+
+                logger.warning(
+                    "[SLEEPGUARD] Idle threshold hit (idle: %.0fs, threshold: %ds). "
+                    "Triggering warning. action='%s', countdown=%ds.",
+                    idle_s, timeout_s, action, countdown,
+                )
                 self._idle_fired.set()
 
-                logger.info(f"[STEP 1] About to emit shutdown_warning_triggered with countdown: {self._settings.countdown_seconds}")
+                logger.info(
+                    "[SLEEPGUARD] Emitting shutdown_warning_triggered(countdown=%d, action='%s')",
+                    countdown, action,
+                )
 
                 # Emit a Qt signal — the main thread will show the dialog non-blocking
-                self.shutdown_warning_triggered.emit(self._settings.countdown_seconds)
+                self.shutdown_warning_triggered.emit(countdown, action)

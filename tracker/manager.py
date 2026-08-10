@@ -18,7 +18,7 @@ from tracker.idle import get_idle_seconds, is_idle
 from tracker.session import SessionEvent, SessionMonitor
 
 _MIN_SESSION_DURATION_S = 1.0
-_HEARTBEAT_INTERVAL_S = 30.0
+_HEARTBEAT_INTERVAL_S = 10.0
 
 
 class TrackingManager:
@@ -216,10 +216,12 @@ class TrackingManager:
 
         if fg is None:
             if self._current_app is not None:
+                # Use longer grace period for fullscreen apps (5s vs 2.5s)
+                _grace_limit = 5.0 if self._current_is_fullscreen else 2.5
                 if self._grace_app is None:
                     self._grace_app = self._current_app
                     self._grace_timer = now
-                elif self._grace_timer is not None and (now - self._grace_timer).total_seconds() >= 2.5:
+                elif self._grace_timer is not None and (now - self._grace_timer).total_seconds() >= _grace_limit:
                     TrackingAuditor.log_poll_event(None, "EndSession", reason="No foreground window")
                     self._end_current_session(reason="no_foreground", capped_end_time=self._grace_timer)
                     self._grace_app = None
@@ -242,6 +244,7 @@ class TrackingManager:
         same_process = self._current_app is not None and fg.process_name == self._current_app.process_name
         title_changed = self._current_app is not None and fg.window_title != self._current_app.window_title
         idle_changed = idle != self._current_is_idle
+        is_fullscreen_game = self._current_is_fullscreen and self._current_category == AppCategory.GAMING
 
         # If process changed or idle state changed: transition to new session
         if self._current_app is None or not same_process or idle_changed:
@@ -267,8 +270,27 @@ class TrackingManager:
 
         # Same process, same idle state, but window title changed
         if title_changed:
-            # Split into contiguous sub-session if previous session ran for at least 2 seconds
-            if self._session_start and (now - self._session_start).total_seconds() >= 2.0:
+            # For fullscreen games, NEVER split the session on title change.
+            # Games frequently change titles during gameplay (loading screens,
+            # round transitions, etc.) and splitting creates cumulative time gaps.
+            if is_fullscreen_game:
+                # Just update the title in-place without splitting
+                logger.debug(
+                    "[TRACKING] Fullscreen game title change suppressed (no split). "
+                    "process=%s, old_title=%r, new_title=%r",
+                    fg.process_name,
+                    self._current_app.window_title if self._current_app else "?",
+                    fg.window_title,
+                )
+                TrackingAuditor.log_poll_event(fg, "UpdateTitle", reason="fullscreen_game_title_change", session_id=self._current_session_id)
+                self._current_app = fg
+                if self._current_session_id:
+                    try:
+                        self._repo.update_session_title(self._current_session_id, fg.window_title)
+                    except Exception as exc:
+                        logger.warning("Failed to update session title in DB: %s", exc)
+            # For non-games: split into contiguous sub-session if previous session ran for at least 2 seconds
+            elif self._session_start and (now - self._session_start).total_seconds() >= 2.0:
                 TrackingAuditor.log_poll_event(self._current_app, "EndSession", reason="title_split", session_id=self._current_session_id)
                 self._end_current_session(reason="title_split", capped_end_time=now)
                 TrackingAuditor.log_poll_event(fg, "StartSession", reason="title_split")

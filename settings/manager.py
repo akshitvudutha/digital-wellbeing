@@ -65,6 +65,24 @@ class SettingsManager:
         self.set_bool("sleepguard_enabled", value)
 
     @property
+    def sleepguard_action(self) -> str:
+        """The power action to execute when SleepGuard timer expires.
+        Valid values: lock, sleep, hibernate, shutdown, cancel.
+        Default: 'lock' (safest option).
+        """
+        val = self.get("sleepguard_action", "lock").lower()
+        if val not in ("lock", "sleep", "hibernate", "shutdown", "cancel"):
+            val = "lock"
+        return val
+
+    @sleepguard_action.setter
+    def sleepguard_action(self, value: str) -> None:
+        val = value.lower()
+        if val not in ("lock", "sleep", "hibernate", "shutdown", "cancel"):
+            val = "lock"
+        self.set("sleepguard_action", val)
+
+    @property
     def idle_timeout_minutes(self) -> int:
         return self.get_int("idle_timeout_minutes", 20)
 

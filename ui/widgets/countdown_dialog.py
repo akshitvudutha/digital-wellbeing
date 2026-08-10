@@ -1,24 +1,55 @@
 """
-countdown_dialog.py — PySide6 Shutdown Warning Countdown Dialog for SleepGuard in Digital Wellbeing v2.
+countdown_dialog.py — PySide6 Power Action Warning Countdown Dialog for SleepGuard in Digital Wellbeing v2.4.
+
+v2.4 changes:
+- Displays and carries the configured action type (shutdown/sleep/hibernate/lock)
+- shutdown_accepted signal now carries the action string
+- Emits shutdown_cancelled on closeEvent for safety
 """
 
 from __future__ import annotations
+
+import logging
 
 from PySide6.QtCore import QTimer, Qt, Signal
 from PySide6.QtWidgets import (
     QDialog, QHBoxLayout, QLabel, QPushButton, QVBoxLayout,
 )
 
+logger = logging.getLogger(__name__)
+
+# Human-readable labels for each action type
+_ACTION_LABELS = {
+    "shutdown": "Shut Down",
+    "sleep": "Sleep",
+    "hibernate": "Hibernate",
+    "lock": "Lock",
+    "cancel": "Cancel",
+}
+
+_ACTION_ICONS = {
+    "shutdown": "⚡",
+    "sleep": "💤",
+    "hibernate": "🧊",
+    "lock": "🔒",
+    "cancel": "❌",
+}
+
 
 class ShutdownCountdownDialog(QDialog):
-    """Modal countdown dialog warning the user before automatic PC shutdown."""
+    """Modal countdown dialog warning the user before an automatic PC power action."""
 
-    shutdown_accepted = Signal()
+    # Signal carries the action string so the handler knows what to execute
+    shutdown_accepted = Signal(str)
     shutdown_cancelled = Signal()
 
-    def __init__(self, countdown_seconds: int = 60, parent=None) -> None:
+    def __init__(self, countdown_seconds: int = 60, action: str = "lock", parent=None) -> None:
         super().__init__(parent)
-        self.setWindowTitle("SleepGuard — Automatic Shutdown Warning")
+        self._action = action.lower().strip() or "lock"
+        self._action_label = _ACTION_LABELS.get(self._action, self._action.title())
+        self._action_icon = _ACTION_ICONS.get(self._action, "🌙")
+
+        self.setWindowTitle(f"SleepGuard — Automatic {self._action_label} Warning")
         self.setWindowFlags(
             Qt.WindowType.WindowStaysOnTopHint
             | Qt.WindowType.CustomizeWindowHint
@@ -27,10 +58,12 @@ class ShutdownCountdownDialog(QDialog):
         self.setFixedSize(440, 260)
 
         self._remaining_s = countdown_seconds
-        
-        from datetime import datetime
-        import logging
-        logging.getLogger(__name__).info(f"[STEP 4] ShutdownCountdownDialog constructed. countdown: {countdown_seconds}")
+        self._cancelled = False
+
+        logger.info(
+            "[SLEEPGUARD_DIALOG] Constructed. countdown=%d, action='%s'",
+            countdown_seconds, self._action,
+        )
 
         self._timer = QTimer(self)
         self._timer.setInterval(1000)
@@ -77,12 +110,14 @@ class ShutdownCountdownDialog(QDialog):
         layout.setContentsMargins(28, 24, 28, 24)
         layout.setSpacing(12)
 
-        hdr = QLabel("🌙 SleepGuard Protection Alert")
+        hdr = QLabel(f"{self._action_icon} SleepGuard Protection Alert")
         hdr.setObjectName("hdr")
         hdr.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(hdr)
 
-        msg = QLabel("No user activity detected. Your PC will shut down in:")
+        msg = QLabel(
+            f"No user activity detected. Your PC will {self._action_label.lower()} in:"
+        )
         msg.setObjectName("msg")
         msg.setAlignment(Qt.AlignmentFlag.AlignCenter)
         msg.setWordWrap(True)
@@ -105,30 +140,48 @@ class ShutdownCountdownDialog(QDialog):
 
     def start_countdown(self) -> None:
         self._timer.start()
-        import logging
-        logging.getLogger(__name__).info(f"[STEP 8] start_countdown called. Timer isActive: {self._timer.isActive()}")
+        logger.info(
+            "[SLEEPGUARD_DIALOG] Countdown started. action='%s', remaining=%ds, timer_active=%s",
+            self._action, self._remaining_s, self._timer.isActive(),
+        )
 
     def _on_tick(self) -> None:
-        from datetime import datetime
-        import logging
-        logging.getLogger(__name__).info(f"[STEP 9] Timer ticked. Remaining: {self._remaining_s}")
         if self._remaining_s > 0:
             self._remaining_s -= 1
             self._timer_lbl.setText(f"{self._remaining_s}s")
+            # Log every 10 seconds and the last 5 seconds
+            if self._remaining_s % 10 == 0 or self._remaining_s <= 5:
+                logger.info(
+                    "[SLEEPGUARD_DIALOG] Countdown tick. remaining=%ds, action='%s'",
+                    self._remaining_s, self._action,
+                )
         else:
             self._timer.stop()
-            logging.getLogger(__name__).info(f"[STEP 10] Emitting shutdown_accepted. Remaining: {self._remaining_s}")
-            self.shutdown_accepted.emit()
+            logger.warning(
+                "[SLEEPGUARD_DIALOG] Countdown expired. Emitting shutdown_accepted with action='%s'",
+                self._action,
+            )
+            self.shutdown_accepted.emit(self._action)
             self.accept()
 
     def _on_cancel(self) -> None:
+        self._cancelled = True
         self._timer.stop()
+        logger.info("[SLEEPGUARD_DIALOG] User clicked Cancel.")
         self.shutdown_cancelled.emit()
         self.reject()
 
+    def closeEvent(self, event) -> None:
+        """Treat closing the dialog (e.g. Alt+F4) as cancellation for safety."""
+        if not self._cancelled:
+            self._cancelled = True
+            self._timer.stop()
+            logger.info("[SLEEPGUARD_DIALOG] Dialog closed via closeEvent — treating as cancel.")
+            self.shutdown_cancelled.emit()
+        super().closeEvent(event)
+
     def paintEvent(self, event):
         if not getattr(self, "_logged_paint", False):
-            import logging
-            logging.getLogger(__name__).info("[STEP 7] Dialog paintEvent triggered (painted on screen)")
+            logger.info("[SLEEPGUARD_DIALOG] First paintEvent — dialog is visible on screen.")
             self._logged_paint = True
         super().paintEvent(event)

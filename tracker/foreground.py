@@ -361,8 +361,8 @@ def is_window_fullscreen(hwnd: int) -> bool:
         left, top, right, bottom = rect
         width = right - left
         height = bottom - top
-        screen_w = user32.GetSystemMetrics(0)  # SM_CXSCREEN
-        screen_h = user32.GetSystemMetrics(1)  # SM_CYSCREEN
+        screen_w = _user32.GetSystemMetrics(0)  # SM_CXSCREEN
+        screen_h = _user32.GetSystemMetrics(1)  # SM_CYSCREEN
         return width >= screen_w and height >= screen_h
     except Exception:
         return False
@@ -440,10 +440,24 @@ def get_foreground_app(last_known_app: Optional[ForegroundApp] = None) -> Option
         return _try_recover_fullscreen_game(last_known_app or _last_valid_app)
 
 
-def apps_are_same(a: Optional[ForegroundApp], b: Optional[ForegroundApp]) -> bool:
-    """Check if two foreground app states represent the exact same window instance."""
+def apps_are_same(
+    a: Optional[ForegroundApp],
+    b: Optional[ForegroundApp],
+    category: Optional[AppCategory] = None,
+) -> bool:
+    """Check if two foreground app states represent the same application.
+
+    For gaming apps, only process_name is compared because games frequently
+    change their window title during gameplay (loading screens, round changes,
+    etc.), which should not trigger session splits.
+    """
     if a is None and b is None:
         return True
     if a is None or b is None:
         return False
-    return a.process_name == b.process_name and a.window_title == b.window_title and a.url == b.url
+    if a.process_name != b.process_name:
+        return False
+    # For games, process_name match is sufficient — skip title comparison
+    if category == AppCategory.GAMING:
+        return True
+    return a.window_title == b.window_title and a.url == b.url
