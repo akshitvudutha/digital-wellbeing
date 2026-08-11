@@ -52,16 +52,16 @@ class SettingsPage(QWidget):
         layout.addLayout(title_box)
         layout.addSpacing(24)
 
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self._scroll = QScrollArea()
+        self._scroll.setWidgetResizable(True)
+        self._scroll.setFrameShape(QFrame.Shape.NoFrame)
         inner = QWidget()
         inner.setObjectName("content_area")
         inner_layout = QVBoxLayout(inner)
         inner_layout.setContentsMargins(0, 0, 0, 0)
         inner_layout.setSpacing(20)
-        scroll.setWidget(inner)
-        layout.addWidget(scroll, 1)
+        self._scroll.setWidget(inner)
+        layout.addWidget(self._scroll, 1)
 
         if self._protection_manager:
             from ui.widgets.protection_section import ProtectionSection
@@ -153,6 +153,28 @@ class SettingsPage(QWidget):
             "Enable SleepGuard Protection",
             "Monitor idle time and trigger automatic PC shutdown during bedtime",
         )
+
+        sg_l.addWidget(self._separator())
+
+        sg_action_row = QHBoxLayout()
+        sg_action_col = QVBoxLayout()
+        sg_act_lbl = QLabel("Action when timer ends")
+        sg_act_lbl.setObjectName("setting_label")
+        sg_act_desc = QLabel("Power action to execute when SleepGuard bedtime countdown completes")
+        sg_act_desc.setObjectName("setting_desc")
+        sg_action_col.addWidget(sg_act_lbl)
+        sg_action_col.addWidget(sg_act_desc)
+        sg_action_row.addLayout(sg_action_col, 1)
+
+        self._sg_action_combo = QComboBox()
+        self._sg_action_combo.addItem("Lock", "lock")
+        self._sg_action_combo.addItem("Sleep", "sleep")
+        self._sg_action_combo.addItem("Hibernate", "hibernate")
+        self._sg_action_combo.addItem("Shut down", "shutdown")
+        self._sg_action_combo.addItem("Cancel", "cancel")
+        self._sg_action_combo.setFixedWidth(160)
+        sg_action_row.addWidget(self._sg_action_combo)
+        sg_l.addLayout(sg_action_row)
 
         sg_l.addWidget(self._separator())
 
@@ -490,6 +512,12 @@ class SettingsPage(QWidget):
         self._limit_spin.setValue(self._sm.get_int("daily_limit_minutes", 480))
 
         self._sg_enable_check.setChecked(self._sm.sleepguard_enabled)
+        curr_action = self._sm.sleepguard_action
+        idx_act = self._sg_action_combo.findData(curr_action)
+        if idx_act >= 0:
+            self._sg_action_combo.setCurrentIndex(idx_act)
+        else:
+            self._sg_action_combo.setCurrentIndex(0)
         curr_mode = self._sm.shutdown_mode
         idx = self._sg_mode_combo.findData(curr_mode)
         if idx >= 0:
@@ -617,6 +645,9 @@ class SettingsPage(QWidget):
         self._sm.set_int("daily_limit_minutes", self._limit_spin.value())
 
         self._sm.sleepguard_enabled = self._sg_enable_check.isChecked()
+        act_val = self._sg_action_combo.currentData()
+        if act_val:
+            self._sm.sleepguard_action = act_val
         mode_val = self._sg_mode_combo.currentData()
         if mode_val:
             self._sm.shutdown_mode = mode_val

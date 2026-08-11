@@ -92,6 +92,29 @@ class WellbeingPage(QWidget):
         t_row.addWidget(self._sg_check)
         sg_l.addLayout(t_row)
 
+        # Action Dropdown Row
+        act_row = QHBoxLayout()
+        act_col = QVBoxLayout()
+        act_col.setSpacing(2)
+        act_lbl = QLabel("Action when timer ends")
+        act_lbl.setObjectName("setting_label")
+        act_desc = QLabel("Power action to execute when SleepGuard countdown expires")
+        act_desc.setObjectName("setting_desc")
+        act_col.addWidget(act_lbl)
+        act_col.addWidget(act_desc)
+        act_row.addLayout(act_col, 1)
+
+        self._action_combo = QComboBox()
+        self._action_combo.addItem("Lock", "lock")
+        self._action_combo.addItem("Sleep", "sleep")
+        self._action_combo.addItem("Hibernate", "hibernate")
+        self._action_combo.addItem("Shut down", "shutdown")
+        self._action_combo.addItem("Cancel", "cancel")
+        self._action_combo.setFixedWidth(130)
+        self._action_combo.currentIndexChanged.connect(self._on_action_changed)
+        act_row.addWidget(self._action_combo)
+        sg_l.addLayout(act_row)
+
         self._line = QFrame()
         self._line.setFrameShape(QFrame.Shape.HLine)
         self._line.setMaximumHeight(1)
@@ -114,6 +137,7 @@ class WellbeingPage(QWidget):
         self._timeout_spin.setSuffix(" min")
         self._timeout_spin.setFixedWidth(110)
         self._timeout_spin.setValue(30)
+        self._timeout_spin.valueChanged.connect(self._on_timeout_changed)
         out_row.addWidget(self._timeout_spin)
         sg_l.addLayout(out_row)
 
@@ -158,6 +182,31 @@ class WellbeingPage(QWidget):
                 background-color: {tm.color('card_hover')};
                 border-color: {tm.color('border_hover')};
             }}
+            QComboBox, QSpinBox {{
+                background-color: {tm.color('primary_btn_gradient')};
+                border: 1px solid {tm.color('border')};
+                border-radius: 6px;
+                padding: 4px 8px;
+                color: {tm.color('text_main')};
+                font-size: 13px;
+                font-weight: 500;
+            }}
+            QComboBox:hover, QSpinBox:hover {{
+                border: 1px solid {tm.color('border_hover')};
+                background-color: {tm.color('primary_btn_hover')};
+            }}
+            QComboBox::drop-down, QSpinBox::up-button, QSpinBox::down-button {{
+                border: none;
+                background: transparent;
+            }}
+            QComboBox QAbstractItemView {{
+                background-color: {tm.color('card_bg')};
+                border: 1px solid {tm.color('border')};
+                selection-background-color: {tm.color('accent')};
+                selection-color: white;
+                border-radius: 6px;
+                outline: none;
+            }}
         """)
         
         self._line.setStyleSheet(f"background: {tm.color('border')};")
@@ -167,6 +216,15 @@ class WellbeingPage(QWidget):
     def _on_sg_toggle(self, checked: bool) -> None:
         if self._sleepguard:
             self._sleepguard.set_enabled(checked)
+
+    def _on_action_changed(self) -> None:
+        act = self._action_combo.currentData()
+        if act and self._sleepguard:
+            self._sleepguard._settings.sleepguard_action = act
+
+    def _on_timeout_changed(self, val: int) -> None:
+        if self._sleepguard:
+            self._sleepguard._settings.idle_timeout_minutes = val
 
     def _on_test_warning(self) -> None:
         if self._sleepguard:
@@ -180,6 +238,18 @@ class WellbeingPage(QWidget):
         tm = ThemeManager.instance()
         if self._sleepguard:
             self._sg_check.setChecked(self._sleepguard.is_enabled)
+            
+            act = self._sleepguard._settings.sleepguard_action
+            idx = self._action_combo.findData(act)
+            if idx >= 0:
+                self._action_combo.blockSignals(True)
+                self._action_combo.setCurrentIndex(idx)
+                self._action_combo.blockSignals(False)
+
+            self._timeout_spin.blockSignals(True)
+            self._timeout_spin.setValue(self._sleepguard._settings.idle_timeout_minutes)
+            self._timeout_spin.blockSignals(False)
+
             media = self._sleepguard.current_media
             if media and media.is_playing:
                 self._media_lbl.setText(f"Media Playback Active: Playing on {media.display_name}")
