@@ -106,19 +106,27 @@ class Updater(QObject):
             if self._token:
                 headers["Authorization"] = f"token {self._token}"
 
-            req = Request(f"{self._api_base}/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases/latest", headers=headers)
+            req = Request(f"{self._api_base}/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases", headers=headers)
             with urlopen(req, timeout=15) as resp:
                 data = json.load(resp)
-            latest_version = data.get("tag_name") or data.get("name") or ""
-            latest_version = str(latest_version)
-            cur = APP_VERSION
-            cmp = self._compare_versions(cur, latest_version)
-            logger.info("Updater: current=%s latest=%s compare=%s", cur, latest_version, cmp)
-            if cmp >= 0:
+            
+            best_release = None
+            best_version = APP_VERSION
+            
+            for release in data:
+                if release.get("draft") or release.get("prerelease"):
+                    continue
+                tag = release.get("tag_name") or release.get("name") or ""
+                if self._compare_versions(best_version, str(tag)) < 0:
+                    best_version = str(tag)
+                    best_release = release
+
+            if not best_release or self._compare_versions(APP_VERSION, best_version) >= 0:
                 self.no_update.emit()
                 return
+
             # find an installer asset (Windows exe) — prefer asset name containing 'DigitalWellbeing' or 'Setup' and '.exe'
-            assets = data.get("assets", []) or []
+            assets = best_release.get("assets", []) or []
             chosen = None
             for a in assets:
                 name = a.get("name", "").lower()
@@ -137,8 +145,8 @@ class Updater(QObject):
             asset_name = chosen.get("name")
             asset_url = chosen.get("browser_download_url")
             asset_id = chosen.get("id")
-            notes = data.get("body", "")
-            payload = {"version": latest_version, "notes": notes, "asset_name": asset_name, "asset_url": asset_url, "asset_id": asset_id}
+            notes = best_release.get("body", "")
+            payload = {"version": best_version, "notes": notes, "asset_name": asset_name, "asset_url": asset_url, "asset_id": asset_id}
             self.update_available.emit(payload)
         except HTTPError as e:
             logger.exception("Updater HTTP error: %s", e)

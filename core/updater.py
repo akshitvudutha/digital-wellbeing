@@ -96,21 +96,28 @@ def check_for_update(current_version: str = None) -> Optional[UpdateInfo]:
                 data = response.read()
                 releases = json.loads(data)
 
-        # Find the latest stable release
+        # Find the latest stable release by iterating all releases and picking the highest semantic version
+        best_release = None
+        best_version_tuple = parse_version(current_version)
+
         for release in releases:
             if release.get("draft") or release.get("prerelease"):
                 continue
 
             tag_name = release.get("tag_name", "")
-            if not is_newer(current_version, tag_name):
-                # Since releases are typically ordered by date, if the latest stable is not newer, we stop.
-                # But we just return None.
-                return None
+            release_tuple = parse_version(tag_name)
+            
+            # Keep track of the strictly highest semantic version
+            if release_tuple > best_version_tuple:
+                best_version_tuple = release_tuple
+                best_release = release
 
+        if best_release:
+            tag_name = best_release.get("tag_name", "")
             installer_asset = None
             checksum_asset = None
             
-            for asset in release.get("assets", []):
+            for asset in best_release.get("assets", []):
                 name = asset.get("name", "")
                 if name.endswith(".exe") and "Setup" in name:
                     installer_asset = asset
@@ -120,7 +127,7 @@ def check_for_update(current_version: str = None) -> Optional[UpdateInfo]:
             if installer_asset:
                 return UpdateInfo(
                     version=tag_name.lstrip("vV"),
-                    release_notes=release.get("body", "No release notes provided."),
+                    release_notes=best_release.get("body", "No release notes provided."),
                     installer_url=installer_asset.get("browser_download_url"),
                     checksum_url=checksum_asset.get("browser_download_url") if checksum_asset else None,
                     installer_filename=installer_asset.get("name", "DigitalWellbeingSetup.exe")

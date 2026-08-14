@@ -186,3 +186,41 @@ def test_dynamic_url_generation_ignores_old_tags():
     info = check_for_update("2.5.2")
     # Should not offer an update since 2.0.1 is older than 2.5.2
     assert info is None
+
+def test_dynamic_url_generation_out_of_order_tags():
+    mock_data = [
+        {
+            "tag_name": "v2.0.1",
+            "draft": False,
+            "prerelease": False,
+            "body": "Old release notes",
+            "assets": [
+                {"name": "DigitalWellbeingSetup-2.0.1.exe", "browser_download_url": f"http://localhost:{FAKE_PORT}/old.exe"}
+            ]
+        },
+        {
+            "tag_name": "v2.5.3",
+            "draft": False,
+            "prerelease": False,
+            "body": "New release notes",
+            "assets": [
+                {"name": "DigitalWellbeingSetup-2.5.3.exe", "browser_download_url": f"http://localhost:{FAKE_PORT}/new.exe"}
+            ]
+        },
+        {
+            "tag_name": "v2.5.2",
+            "draft": False,
+            "prerelease": False,
+            "body": "Intermediate release notes",
+            "assets": [
+                {"name": "DigitalWellbeingSetup-2.5.2.exe", "browser_download_url": f"http://localhost:{FAKE_PORT}/mid.exe"}
+            ]
+        }
+    ]
+    set_mock_release_data(mock_data)
+    info = check_for_update("2.5.1")
+    # Even though 2.0.1 is first, it should inspect all and pick 2.5.3
+    assert info is not None
+    assert info.version == "2.5.3"
+    assert info.installer_url == f"http://localhost:{FAKE_PORT}/new.exe"
+    assert info.installer_filename == "DigitalWellbeingSetup-2.5.3.exe"
