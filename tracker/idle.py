@@ -173,6 +173,7 @@ def is_idle(
             return idle_s >= threshold_s
         else:  # smart
             # Activity-aware multipliers when media is playing (entertainment vs gaming)
+            # Cap the threshold at media_timeout_s (e.g. 120 minutes)
             try:
                 from core.constants import AppCategory as _Cat
                 multiplier = 1.0
@@ -182,7 +183,10 @@ def is_idle(
                     multiplier = 3.0
             except Exception:
                 multiplier = 1.0
-            return idle_s >= (threshold_s * multiplier)
+            
+            # Allow media_timeout_s to override the multiplier if it's longer
+            effective_threshold = max(threshold_s * multiplier, media_timeout_s)
+            return idle_s >= effective_threshold
 
     if current_category is not None:
         from core.constants import AppCategory as _Cat

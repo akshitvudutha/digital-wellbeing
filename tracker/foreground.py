@@ -88,6 +88,7 @@ class ForegroundApp:
     window_title: str
     hwnd: int
     url: str = ""
+    is_fullscreen: bool = False
 
 
 # Generic overlay detection replaces hardcoded OVERLAY_PROCESSES
@@ -426,6 +427,13 @@ def get_foreground_app(last_known_app: Optional[ForegroundApp] = None) -> Option
             from tracker.browser_url import BrowserURLProvider
             url = BrowserURLProvider.get_active_domain(root_hwnd, name_lower) or ""
 
+        # Safely detect fullscreen on the root window or the actual foreground window (e.g. video child window)
+        is_fs = False
+        try:
+            is_fs = is_window_fullscreen(hwnd) or is_window_fullscreen(root_hwnd)
+        except Exception:
+            pass
+
         app = ForegroundApp(
             process_name=name,
             exe_path=exe_path,
@@ -433,6 +441,7 @@ def get_foreground_app(last_known_app: Optional[ForegroundApp] = None) -> Option
             window_title=title[:512],
             hwnd=hwnd,
             url=url,
+            is_fullscreen=is_fs,
         )
         _last_valid_app = app
         return app

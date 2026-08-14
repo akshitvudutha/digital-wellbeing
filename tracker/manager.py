@@ -15,6 +15,7 @@ from tracker.categorizer import categorize, categorize_with_reason, display_name
 from tracker.debug_logger import debug_logger
 from tracker.foreground import ForegroundApp, apps_are_same, get_foreground_app, is_window_fullscreen
 from tracker.idle import get_idle_seconds, is_idle
+from tracker.media import MediaDetectionEngine
 from tracker.session import SessionEvent, SessionMonitor
 
 _MIN_SESSION_DURATION_S = 1.0
@@ -29,6 +30,7 @@ class TrackingManager:
         self._paused = False
         self._thread: Optional[threading.Thread] = None
         self._session_monitor = SessionMonitor(self._on_session_event)
+        self._media_engine = MediaDetectionEngine(poll_interval=5.0)
         self._state_lock = threading.Lock()
 
         self._current_app: Optional[ForegroundApp] = None
@@ -80,6 +82,7 @@ class TrackingManager:
 
         logger.info("[LIFECYCLE] Starting SessionMonitor and TrackingManager thread...")
         self._session_monitor.start()
+        self._media_engine.start()
         self._thread = threading.Thread(
             target=self._tracking_loop,
             daemon=True,
@@ -101,6 +104,7 @@ class TrackingManager:
         thread = self._thread
 
         self._session_monitor.stop()
+        self._media_engine.stop()
         self._end_current_session(reason="stop")
         self._end_website_session(datetime.now())
         self._repo.log_event("tracker_stop", "Tracking stopped")
@@ -205,14 +209,29 @@ class TrackingManager:
 
         fg = get_foreground_app(self._current_app)
         from core.constants import AppCategory as _Cat
-        is_media = (self._current_category == _Cat.ENTERTAINMENT)
-        idle = is_idle(
-            self._idle_threshold_s,
-            current_category=self._current_category,
-            is_media_playing=is_media,
-            mode=self._shutdown_mode,
-            media_timeout_s=self._media_idle_timeout_s,
-        )
+        
+        media_engine_active = False
+        if self._media_engine.is_playing and fg:
+            app_n = fg.process_name.lower()
+            m_app = self._media_engine.current.app_name.lower()
+            # Match direct process name or AUMID
+            if app_n.replace(".exe", "") in m_app or m_app in app_n:
+                media_engine_active = True
+            # Match if both foreground and media source are browsers
+            elif app_n in {"chrome.exe", "brave.exe", "msedge.exe", "firefox.exe"} and any(b in m_app for b in {"chrome", "brave", "msedge", "firefox", "chromium"}):
+                media_engine_active = True
+                
+        # For tracking purposes, decouple from SleepGuard's mode.
+        # Treat media playing and fullscreen apps as highly active to prevent premature session splits.
+        is_media = (self._current_category == _Cat.ENTERTAINMENT) or media_engine_active or (fg and getattr(fg, "is_fullscreen", False))
+        
+        tracking_idle_threshold = self._idle_threshold_s
+        if is_media:
+            tracking_idle_threshold = max(tracking_idle_threshold, 7200.0)  # 2 hours for media/fullscreen
+        elif self._current_category == _Cat.GAMING:
+            tracking_idle_threshold = max(tracking_idle_threshold, 3600.0)  # 1 hour for gaming
+            
+        idle = get_idle_seconds() >= tracking_idle_threshold
 
         if fg is None:
             if self._current_app is not None:
@@ -231,7 +250,7 @@ class TrackingManager:
         # Foreground window is present — clear grace buffer
         self._grace_app = None
         self._grace_timer = None
-        self._current_is_fullscreen = is_window_fullscreen(fg.hwnd)
+        self._current_is_fullscreen = fg.is_fullscreen
         
         # Dispatch active tick for limits/timers
         if not idle:

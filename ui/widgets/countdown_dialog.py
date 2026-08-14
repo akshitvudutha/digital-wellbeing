@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
     QDialog, QHBoxLayout, QLabel, QPushButton, QVBoxLayout,
 )
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("digital_wellbeing.ui.countdown")
 
 # Human-readable labels for each action type
 _ACTION_LABELS = {
@@ -54,6 +54,7 @@ class ShutdownCountdownDialog(QDialog):
             Qt.WindowType.WindowStaysOnTopHint
             | Qt.WindowType.CustomizeWindowHint
             | Qt.WindowType.WindowTitleHint
+            | Qt.WindowType.Dialog
         )
         self.setFixedSize(440, 260)
 
@@ -103,6 +104,17 @@ class ShutdownCountdownDialog(QDialog):
             QPushButton#primary_action_btn:hover {{
                 background: {tm.color('accent_hover')};
             }}
+            QPushButton#secondary_action_btn {{
+                background: transparent;
+                color: {tm.color('text_main')};
+                padding: 12px;
+                font-weight: 700;
+                border-radius: 10px;
+                border: 1px solid {tm.color('border')};
+            }}
+            QPushButton#secondary_action_btn:hover {{
+                background: {tm.color('bg_hover')};
+            }}
         """)
 
     def _setup_ui(self) -> None:
@@ -110,32 +122,43 @@ class ShutdownCountdownDialog(QDialog):
         layout.setContentsMargins(28, 24, 28, 24)
         layout.setSpacing(12)
 
-        hdr = QLabel(f"{self._action_icon} SleepGuard Protection Alert")
+        hdr = QLabel(f"SleepGuard")
         hdr.setObjectName("hdr")
         hdr.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(hdr)
 
-        msg = QLabel(
-            f"No user activity detected. Your PC will {self._action_label.lower()} in:"
-        )
+        msg = QLabel(f"Your PC will {self._action_label.lower()} in")
         msg.setObjectName("msg")
         msg.setAlignment(Qt.AlignmentFlag.AlignCenter)
         msg.setWordWrap(True)
         layout.addWidget(msg)
-
-        self._timer_lbl = QLabel(f"{self._remaining_s}s")
+        
+        m, s = divmod(self._remaining_s, 60)
+        self._timer_lbl = QLabel(f"{m:02d}:{s:02d}")
         self._timer_lbl.setObjectName("timer_display")
         self._timer_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self._timer_lbl)
+        
+        desc = QLabel("Your computer has been inactive.")
+        desc.setObjectName("msg")
+        desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(desc)
+        
+        layout.addSpacing(12)
 
         btn_row = QHBoxLayout()
         btn_row.setSpacing(12)
 
-        self._cancel_btn = QPushButton("✋ I'm Still Awake (Cancel)")
-        self._cancel_btn.setObjectName("primary_action_btn")
+        self._cancel_btn = QPushButton("Cancel")
+        self._cancel_btn.setObjectName("secondary_action_btn")
         self._cancel_btn.clicked.connect(self._on_cancel)
-
         btn_row.addWidget(self._cancel_btn)
+        
+        self._confirm_btn = QPushButton(f"{self._action_label} now")
+        self._confirm_btn.setObjectName("primary_action_btn")
+        self._confirm_btn.clicked.connect(self._on_accept)
+        btn_row.addWidget(self._confirm_btn)
+
         layout.addLayout(btn_row)
 
     def start_countdown(self) -> None:
@@ -148,21 +171,22 @@ class ShutdownCountdownDialog(QDialog):
     def _on_tick(self) -> None:
         if self._remaining_s > 0:
             self._remaining_s -= 1
-            self._timer_lbl.setText(f"{self._remaining_s}s")
-            # Log every 10 seconds and the last 5 seconds
-            if self._remaining_s % 10 == 0 or self._remaining_s <= 5:
-                logger.info(
-                    "[SLEEPGUARD_DIALOG] Countdown tick. remaining=%ds, action='%s'",
-                    self._remaining_s, self._action,
-                )
+            m, s = divmod(self._remaining_s, 60)
+            self._timer_lbl.setText(f"{m:02d}:{s:02d}")
+            logger.debug("[SLEEPGUARD_DIALOG] Tick: remaining=%ds", self._remaining_s)
         else:
             self._timer.stop()
-            logger.warning(
-                "[SLEEPGUARD_DIALOG] Countdown expired. Emitting shutdown_accepted with action='%s'",
-                self._action,
-            )
-            self.shutdown_accepted.emit(self._action)
-            self.accept()
+            self._on_accept()
+
+    def _on_accept(self) -> None:
+        if self._cancelled:
+            return
+        logger.info(
+            "[SLEEPGUARD_DIALOG] Countdown expired or action accepted. Executing action='%s'",
+            self._action,
+        )
+        self.shutdown_accepted.emit(self._action)
+        self.accept()
 
     def _on_cancel(self) -> None:
         self._cancelled = True

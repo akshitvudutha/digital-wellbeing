@@ -143,11 +143,23 @@ class SleepGuardController(QObject):
 
         logger.info("[SLEEPGUARD] execute_power_action() entered at %s with action='%s'", ts, action)
 
-        # Safety guard: validate action
+        # Safety guard: validate action, fallback to lock
         if not ShutdownManager.validate_action(action):
+            logger.warning(
+                "[SLEEPGUARD] SAFETY GUARD: Unknown or invalid action '%s'. "
+                "Defaulting to 'lock' for safety.", action
+            )
+            action = "lock"
+
+        # Safety guard: check if condition is still satisfied (user didn't move mouse)
+        # Check standard idle timeout without media mode complexities, just to see if user is actually away.
+        from tracker.idle import get_idle_seconds
+        idle_s = get_idle_seconds()
+        timeout_s = self._settings.idle_timeout_minutes * 60
+        if idle_s < (timeout_s * 0.5): # Use a generous 50% buffer to avoid race conditions but catch recent activity
             logger.error(
-                "[SLEEPGUARD] SAFETY GUARD: Blocked execution of invalid action '%s'. "
-                "No power action will be taken.", action
+                "[SLEEPGUARD] SAFETY GUARD: User became active during countdown. "
+                "Current idle=%.1f, required=%d. Cancelling execution.", idle_s, timeout_s
             )
             return False
 
@@ -182,15 +194,31 @@ class SleepGuardController(QObject):
 
             idle_s = get_idle_seconds()
             timeout_s = self._settings.idle_timeout_minutes * 60
+            
+            # Quick Test Override
+            test_timeout = self._settings.testing_idle_timeout_s
+            if test_timeout > 0:
+                timeout_s = test_timeout
+                
             media_timeout_s = self._settings.media_idle_timeout_minutes * 60
             mode = self._settings.shutdown_mode
             media_playing = self._media_engine.is_playing
+            
+            # Check if the current foreground app is fullscreen
+            is_fullscreen = False
+            try:
+                from tracker.foreground import get_foreground_app
+                fg = get_foreground_app()
+                if fg and getattr(fg, "is_fullscreen", False):
+                    is_fullscreen = True
+            except Exception:
+                pass
 
             from tracker.idle import is_idle
             should_trigger = is_idle(
                 threshold_s=timeout_s,
                 current_category=None,
-                is_media_playing=media_playing,
+                is_media_playing=(media_playing or is_fullscreen),
                 mode=mode,
                 media_timeout_s=media_timeout_s,
             ) or self._force_trigger.is_set()

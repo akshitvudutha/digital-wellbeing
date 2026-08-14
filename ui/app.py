@@ -100,6 +100,11 @@ class DigitalWellbeingApp:
         self._tray: Optional[QSystemTrayIcon] = None
 
         self._setup_tray()
+        
+        from notifications.notifier import Notifier
+        if self._tray:
+            Notifier.set_tray_icon(self._tray)
+            
         self._tracker.start()
         self._sleepguard.start()
 

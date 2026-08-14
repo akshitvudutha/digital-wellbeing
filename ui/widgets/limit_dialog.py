@@ -5,6 +5,7 @@ from PySide6.QtGui import QFont, QIcon
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QLineEdit, QFrame
 )
+from ui.theme import ThemeManager
 
 class LimitReachedDialog(QDialog):
     close_app_requested = Signal(str)
@@ -80,14 +81,15 @@ class LimitReachedDialog(QDialog):
         stats_layout = QHBoxLayout()
         stats_layout.addStretch()
         
+        tm = ThemeManager.instance()
         hrs = self.limit_seconds // 3600
         mins = (self.limit_seconds % 3600) // 60
         usage_str = f"{hrs}h {mins}m" if hrs > 0 else f"{mins}m"
         
-        usage_lbl = QLabel(f"Today's usage: <span style='color: #F0F6FC; font-weight: bold;'>{usage_str}</span>")
+        usage_lbl = QLabel(f"Today's usage: <span style='color: {tm.color('text_main')}; font-weight: bold;'>{usage_str}</span>")
         usage_lbl.setObjectName("stat_text")
         
-        rem_lbl = QLabel("Remaining time: <span style='color: #E53935; font-weight: bold;'>0m</span>")
+        rem_lbl = QLabel(f"Remaining time: <span style='color: {tm.color('danger_text')}; font-weight: bold;'>0m</span>")
         rem_lbl.setObjectName("stat_text")
         
         stats_layout.addWidget(usage_lbl)
@@ -121,50 +123,51 @@ class LimitReachedDialog(QDialog):
         self._apply_theme()
         
     def _apply_theme(self):
-        self.setStyleSheet("""
-            QFrame#dialog_bg {
-                background-color: #000000;
-                border: 1px solid #2A2A2A;
+        tm = ThemeManager.instance()
+        self.setStyleSheet(f"""
+            QFrame#dialog_bg {{
+                background-color: {tm.color('window_bg')};
+                border: 1px solid {tm.color('border')};
                 border-radius: 16px;
-            }
-            QLabel#app_name {
+            }}
+            QLabel#app_name {{
                 font-size: 20px;
                 font-weight: 800;
-                color: #F0F6FC;
-            }
-            QLabel#status_title {
+                color: {tm.color('text_main')};
+            }}
+            QLabel#status_title {{
                 font-size: 15px;
                 font-weight: 600;
-                color: #E53935;
+                color: {tm.color('danger_text')};
                 letter-spacing: 0.5px;
                 text-transform: uppercase;
-            }
-            QLabel#stat_text {
+            }}
+            QLabel#stat_text {{
                 font-size: 13px;
-                color: #8B949E;
-            }
-            QPushButton {
+                color: {tm.color('text_sub')};
+            }}
+            QPushButton {{
                 border-radius: 8px;
                 padding: 10px 16px;
                 font-size: 14px;
                 font-weight: 600;
-            }
-            QPushButton#btn_secondary {
-                background-color: #121212;
-                color: #F0F6FC;
-                border: 1px solid #2A2A2A;
-            }
-            QPushButton#btn_secondary:hover {
-                background-color: #1E1E1E;
-            }
-            QPushButton#btn_primary {
-                background-color: #3B82F6;
+            }}
+            QPushButton#btn_secondary {{
+                background-color: {tm.color('card_bg')};
+                color: {tm.color('text_main')};
+                border: 1px solid {tm.color('border')};
+            }}
+            QPushButton#btn_secondary:hover {{
+                background-color: {tm.color('card_hover')};
+            }}
+            QPushButton#btn_primary {{
+                background-color: {tm.color('accent')};
                 color: #FFFFFF;
                 border: none;
-            }
-            QPushButton#btn_primary:hover {
-                background-color: #2563EB;
-            }
+            }}
+            QPushButton#btn_primary:hover {{
+                background-color: {tm.color('accent_hover')};
+            }}
         """)
         
     def _on_close_app(self) -> None:
@@ -258,58 +261,59 @@ class PinOverrideDialog(QDialog):
         self._apply_theme()
         
     def _apply_theme(self):
-        self.setStyleSheet("""
-            QFrame#dialog_bg {
-                background-color: #000000;
-                border: 1px solid #2A2A2A;
+        tm = ThemeManager.instance()
+        self.setStyleSheet(f"""
+            QFrame#dialog_bg {{
+                background-color: {tm.color('window_bg')};
+                border: 1px solid {tm.color('border')};
                 border-radius: 16px;
-            }
-            QLabel#title {
+            }}
+            QLabel#title {{
                 font-size: 20px;
                 font-weight: 800;
-                color: #F0F6FC;
-            }
-            QLabel#error {
-                color: #E53935;
+                color: {tm.color('text_main')};
+            }}
+            QLabel#error {{
+                color: {tm.color('danger_text')};
                 font-size: 13px;
                 font-weight: 600;
-            }
-            QLineEdit {
-                background-color: #121212;
-                border: 1px solid #2A2A2A;
+            }}
+            QLineEdit {{
+                background-color: {tm.color('card_bg')};
+                border: 1px solid {tm.color('border')};
                 border-radius: 8px;
-                color: #F0F6FC;
+                color: {tm.color('text_main')};
                 padding: 12px;
                 font-size: 18px;
                 letter-spacing: 5px;
-            }
-            QLineEdit:focus {
-                border: 1px solid #3B82F6;
-            }
-            QPushButton#btn_dur {
-                background-color: #121212;
-                color: #F0F6FC;
-                border: 1px solid #2A2A2A;
+            }}
+            QLineEdit:focus {{
+                border: 1px solid {tm.color('accent')};
+            }}
+            QPushButton#btn_dur {{
+                background-color: {tm.color('card_bg')};
+                color: {tm.color('text_main')};
+                border: 1px solid {tm.color('border')};
                 border-radius: 8px;
                 padding: 8px 0;
                 font-weight: 600;
-            }
-            QPushButton#btn_dur:hover {
-                background-color: #3B82F6;
+            }}
+            QPushButton#btn_dur:hover {{
+                background-color: {tm.color('accent')};
                 color: #FFFFFF;
                 border: none;
-            }
-            QPushButton#btn_cancel {
+            }}
+            QPushButton#btn_cancel {{
                 background-color: transparent;
-                color: #8B949E;
+                color: {tm.color('text_sub')};
                 border: none;
                 font-size: 14px;
                 font-weight: 600;
                 padding: 8px 16px;
-            }
-            QPushButton#btn_cancel:hover {
-                color: #FFFFFF;
-            }
+            }}
+            QPushButton#btn_cancel:hover {{
+                color: {tm.color('text_main')};
+            }}
         """)
         
     def _try_override(self, minutes: int) -> None:

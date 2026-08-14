@@ -95,18 +95,17 @@ class ActiveScreenTimeCard(FluentCard):
         else:
             sorted_apps = sorted(top_apps, key=lambda x: float(x.get("total_s", 0.0)), reverse=True)
             fluent_palette = ["#4F8CFF", "#20C997", "#00C4FF"]
-            
+            accounted_s = 0.0
             for idx, item in enumerate(sorted_apps[:3]):
                 dur = float(item.get("total_s", 0.0))
                 if dur > 0:
                     color = fluent_palette[idx] if idx < len(fluent_palette) else tm.color('text_muted')
                     segments.append((get_display_name(item["process_name"]), dur, color))
+                    accounted_s += dur
             
-            remaining = sorted_apps[3:]
-            if remaining:
-                other_dur = sum(float(x.get("total_s", 0.0)) for x in remaining)
-                if other_dur > 0:
-                    segments.append(("Other", other_dur, tm.color('text_muted')))
+            other_dur = active_s - accounted_s
+            if other_dur > 0:
+                segments.append(("Other", other_dur, tm.color('text_muted')))
 
         # Update Donut
         formatted_total = AnalyticsEngine.format_duration_short(active_s)

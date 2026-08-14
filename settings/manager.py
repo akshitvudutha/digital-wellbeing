@@ -4,7 +4,7 @@ from database.repository import Repository
 
 
 class SettingsManager:
-    _BOOL_KEYS = {"autostart", "dark_mode", "minimize_to_tray", "notifications_enabled", "debug_tracking"}
+    _BOOL_KEYS = {"autostart", "dark_mode", "minimize_to_tray", "notifications_enabled", "debug_tracking", "auto_update_enabled", "notify_updates"}
     _INT_KEYS = {"idle_threshold_s", "daily_limit_minutes"}
 
     def __init__(self) -> None:
@@ -67,18 +67,18 @@ class SettingsManager:
     @property
     def sleepguard_action(self) -> str:
         """The power action to execute when SleepGuard timer expires.
-        Valid values: lock, sleep, hibernate, shutdown, cancel.
+        Valid values: lock, sleep, hibernate, shutdown.
         Default: 'lock' (safest option).
         """
         val = self.get("sleepguard_action", "lock").lower()
-        if val not in ("lock", "sleep", "hibernate", "shutdown", "cancel"):
+        if val not in ("lock", "sleep", "hibernate", "shutdown"):
             val = "lock"
         return val
 
     @sleepguard_action.setter
     def sleepguard_action(self, value: str) -> None:
         val = value.lower()
-        if val not in ("lock", "sleep", "hibernate", "shutdown", "cancel"):
+        if val not in ("lock", "sleep", "hibernate", "shutdown"):
             val = "lock"
         self.set("sleepguard_action", val)
 
@@ -97,6 +97,14 @@ class SettingsManager:
     @countdown_seconds.setter
     def countdown_seconds(self, value: int) -> None:
         self.set_int("countdown_seconds", value)
+
+    @property
+    def testing_idle_timeout_s(self) -> int:
+        return self.get_int("testing_idle_timeout_s", 0)
+
+    @testing_idle_timeout_s.setter
+    def testing_idle_timeout_s(self, value: int) -> None:
+        self.set_int("testing_idle_timeout_s", value)
 
     @property
     def shutdown_mode(self) -> str:
@@ -146,4 +154,29 @@ class SettingsManager:
     @debug_tracking.setter
     def debug_tracking(self, value: bool) -> None:
         self.set_bool("debug_tracking", value)
+
+    # Updater Extensions
+    @property
+    def auto_update_enabled(self) -> bool:
+        return self.get_bool("auto_update_enabled", True)
+
+    @auto_update_enabled.setter
+    def auto_update_enabled(self, value: bool) -> None:
+        self.set_bool("auto_update_enabled", value)
+
+    @property
+    def notify_updates(self) -> bool:
+        return self.get_bool("notify_updates", True)
+
+    @notify_updates.setter
+    def notify_updates(self, value: bool) -> None:
+        self.set_bool("notify_updates", value)
+
+    @property
+    def last_update_check(self) -> str:
+        return self.get("last_update_check", "")
+
+    @last_update_check.setter
+    def last_update_check(self, value: str) -> None:
+        self.set("last_update_check", value)
 

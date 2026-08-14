@@ -22,6 +22,7 @@ from utils.csv_exporter import CSVExporter
 class SettingsPage(QWidget):
     settings_changed = Signal()
     theme_changed_req = Signal(str)
+    manual_update_requested = Signal()
 
     def __init__(self, tracker=None, protection_manager=None, parent=None) -> None:
         super().__init__(parent)
@@ -150,8 +151,8 @@ class SettingsPage(QWidget):
 
         self._sg_enable_check = self._toggle_row(
             sg_l,
-            "Enable SleepGuard Protection",
-            "Monitor idle time and trigger automatic PC shutdown during bedtime",
+            "SleepGuard Protection",
+            "Monitor idle time and trigger automatic PC action during bedtime",
         )
 
         sg_l.addWidget(self._separator())
@@ -171,7 +172,6 @@ class SettingsPage(QWidget):
         self._sg_action_combo.addItem("Sleep", "sleep")
         self._sg_action_combo.addItem("Hibernate", "hibernate")
         self._sg_action_combo.addItem("Shut down", "shutdown")
-        self._sg_action_combo.addItem("Cancel", "cancel")
         self._sg_action_combo.setFixedWidth(160)
         sg_action_row.addWidget(self._sg_action_combo)
         sg_l.addLayout(sg_action_row)
@@ -180,7 +180,7 @@ class SettingsPage(QWidget):
 
         sg_mode_row = QHBoxLayout()
         sg_mode_col = QVBoxLayout()
-        sg_m_lbl = QLabel("Shutdown Evaluation Mode")
+        sg_m_lbl = QLabel("Media playback behavior")
         sg_m_lbl.setObjectName("setting_label")
         sg_m_desc = QLabel("Behavior when active media (YouTube/Netflix/Spotify) is playing")
         sg_m_desc.setObjectName("setting_desc")
@@ -189,9 +189,9 @@ class SettingsPage(QWidget):
         sg_mode_row.addLayout(sg_mode_col, 1)
 
         self._sg_mode_combo = QComboBox()
-        self._sg_mode_combo.addItem("Smart (Intelligent timeout during media playback)", "smart")
-        self._sg_mode_combo.addItem("Media (Always ignore idle while media is playing)", "media")
-        self._sg_mode_combo.addItem("Strict (Ignore media playback completely)", "strict")
+        self._sg_mode_combo.addItem("Smart - Allow media playback but trigger after the configured media threshold", "smart")
+        self._sg_mode_combo.addItem("Always Allow - Never trigger SleepGuard while media is playing", "media")
+        self._sg_mode_combo.addItem("Strict - Ignore media playback and use the normal idle timer", "strict")
         self._sg_mode_combo.currentIndexChanged.connect(self._on_sg_mode_changed)
         sg_mode_row.addWidget(self._sg_mode_combo)
         sg_l.addLayout(sg_mode_row)
@@ -200,9 +200,9 @@ class SettingsPage(QWidget):
 
         sg_m_row = QHBoxLayout()
         sg_m_col = QVBoxLayout()
-        sg_m_lbl = QLabel("Idle During Media After")
+        sg_m_lbl = QLabel("Media idle timeout")
         sg_m_lbl.setObjectName("setting_label")
-        sg_m_desc = QLabel("Inactivity threshold before triggering idle/shutdown while media is playing")
+        sg_m_desc = QLabel("Inactivity threshold before triggering action while media is playing")
         sg_m_desc.setObjectName("setting_desc")
         sg_m_col.addWidget(sg_m_lbl)
         sg_m_col.addWidget(sg_m_desc)
@@ -223,9 +223,9 @@ class SettingsPage(QWidget):
 
         sg_t_row = QHBoxLayout()
         sg_t_col = QVBoxLayout()
-        sg_t_lbl = QLabel("SleepGuard Idle Timeout")
+        sg_t_lbl = QLabel("Idle timeout")
         sg_t_lbl.setObjectName("setting_label")
-        sg_t_desc = QLabel("Minutes of inactivity before triggering shutdown countdown")
+        sg_t_desc = QLabel("Minutes of inactivity before triggering the action countdown")
         sg_t_desc.setObjectName("setting_desc")
         sg_t_col.addWidget(sg_t_lbl)
         sg_t_col.addWidget(sg_t_desc)
@@ -238,6 +238,49 @@ class SettingsPage(QWidget):
         self._sg_timeout_spin.setFixedWidth(110)
         sg_t_row.addWidget(self._sg_timeout_spin)
         sg_l.addLayout(sg_t_row)
+
+        sg_l.addWidget(self._separator())
+
+        # Quick Test Mode
+        test_row = QHBoxLayout()
+        test_col = QVBoxLayout()
+        test_lbl = QLabel("Testing / Quick Test")
+        test_lbl.setObjectName("setting_label")
+        test_desc = QLabel("Override idle timeout for rapid manual verification of SleepGuard")
+        test_desc.setObjectName("setting_desc")
+        test_col.addWidget(test_lbl)
+        test_col.addWidget(test_desc)
+        test_row.addLayout(test_col, 1)
+
+        self._sg_test_timeout_combo = QComboBox()
+        self._sg_test_timeout_combo.addItem("Off (Production)", 0)
+        self._sg_test_timeout_combo.addItem("10 seconds", 10)
+        self._sg_test_timeout_combo.addItem("20 seconds", 20)
+        self._sg_test_timeout_combo.addItem("30 seconds", 30)
+        self._sg_test_timeout_combo.addItem("1 minute", 60)
+        self._sg_test_timeout_combo.setFixedWidth(160)
+        test_row.addWidget(self._sg_test_timeout_combo)
+        sg_l.addLayout(test_row)
+
+        sg_l.addWidget(self._separator())
+
+        sg_c_row = QHBoxLayout()
+        sg_c_col = QVBoxLayout()
+        sg_c_lbl = QLabel("Countdown before action")
+        sg_c_lbl.setObjectName("setting_label")
+        sg_c_desc = QLabel("Seconds to wait during the warning dialog before executing the action")
+        sg_c_desc.setObjectName("setting_desc")
+        sg_c_col.addWidget(sg_c_lbl)
+        sg_c_col.addWidget(sg_c_desc)
+        sg_c_row.addLayout(sg_c_col, 1)
+
+        self._sg_countdown_spin = QSpinBox()
+        self._sg_countdown_spin.setRange(10, 300)
+        self._sg_countdown_spin.setSingleStep(10)
+        self._sg_countdown_spin.setSuffix(" sec")
+        self._sg_countdown_spin.setFixedWidth(110)
+        sg_c_row.addWidget(self._sg_countdown_spin)
+        sg_l.addLayout(sg_c_row)
 
         inner_layout.addWidget(sg_section)
 
@@ -373,7 +416,45 @@ class SettingsPage(QWidget):
 
         inner_layout.addWidget(data_section)
 
-        # 5. About Section
+        # 5. Updates Section
+        updates_section = self._make_section("🔄 Updates")
+        updates_layout = updates_section.layout()
+
+        # Toggles
+        self._auto_update_check = self._toggle_row(
+            updates_layout,
+            "Check for updates automatically",
+            "Automatically check for new versions every 24 hours"
+        )
+        updates_layout.addWidget(self._separator())
+
+        self._notify_update_check = self._toggle_row(
+            updates_layout,
+            "Notify me when an update is available",
+            "Show a notification when a new version is ready to install"
+        )
+        updates_layout.addWidget(self._separator())
+
+        # Version & Check Button
+        update_row = QHBoxLayout()
+        update_col = QVBoxLayout()
+        from core.constants import APP_VERSION
+        upd_lbl = QLabel("Current version:")
+        upd_lbl.setObjectName("setting_label")
+        upd_val = QLabel(f"{APP_VERSION}")
+        upd_val.setObjectName("setting_desc")
+        update_col.addWidget(upd_lbl)
+        update_col.addWidget(upd_val)
+        update_row.addLayout(update_col, 1)
+
+        self._check_update_btn = FluentButton("Check for Updates", primary=False)
+        self._check_update_btn.clicked.connect(lambda: self.manual_update_requested.emit())
+        update_row.addWidget(self._check_update_btn)
+        updates_layout.addLayout(update_row)
+
+        inner_layout.addWidget(updates_section)
+
+        # 6. About Section
         about_section = self._make_section("ℹ️ About")
         about_layout = about_section.layout()
         
@@ -523,6 +604,14 @@ class SettingsPage(QWidget):
         if idx >= 0:
             self._sg_mode_combo.setCurrentIndex(idx)
         self._sg_timeout_spin.setValue(self._sm.idle_timeout_minutes)
+        self._sg_countdown_spin.setValue(self._sm.countdown_seconds)
+        
+        test_timeout = self._sm.testing_idle_timeout_s
+        idx_test = self._sg_test_timeout_combo.findData(test_timeout)
+        if idx_test >= 0:
+            self._sg_test_timeout_combo.setCurrentIndex(idx_test)
+        else:
+            self._sg_test_timeout_combo.setCurrentIndex(0)
         
         media_timeout = self._sm.media_idle_timeout_minutes
         idx2 = self._sg_media_timeout_combo.findData(media_timeout)
@@ -535,6 +624,9 @@ class SettingsPage(QWidget):
         idx3 = self._retention_combo.findData(retention)
         if idx3 >= 0:
             self._retention_combo.setCurrentIndex(idx3)
+
+        self._auto_update_check.setChecked(self._sm.auto_update_enabled)
+        self._notify_update_check.setChecked(self._sm.notify_updates)
 
         self._on_sg_mode_changed()
 
@@ -652,10 +744,18 @@ class SettingsPage(QWidget):
         if mode_val:
             self._sm.shutdown_mode = mode_val
         self._sm.idle_timeout_minutes = self._sg_timeout_spin.value()
+        self._sm.countdown_seconds = self._sg_countdown_spin.value()
+        
+        test_val = self._sg_test_timeout_combo.currentData()
+        if test_val is not None:
+            self._sm.testing_idle_timeout_s = test_val
         
         media_timeout_val = self._sg_media_timeout_combo.currentData()
         if media_timeout_val is not None:
             self._sm.media_idle_timeout_minutes = media_timeout_val
+            
+        self._sm.auto_update_enabled = self._auto_update_check.isChecked()
+        self._sm.notify_updates = self._notify_update_check.isChecked()
 
         ret_val = self._retention_combo.currentData()
         if ret_val is not None:

@@ -39,6 +39,19 @@ class DataUpdateThread(QThread):
         self.data_changed.emit()
 
 
+from core.updater import check_for_update, UpdateInfo
+
+class UpdateCheckWorker(QThread):
+    finished_check = Signal(object)  # UpdateInfo | None
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+    def run(self):
+        info = check_for_update()
+        self.finished_check.emit(info)
+
+
 class MainWindow(QMainWindow):
     data_changed_signal = Signal()
     quit_requested = Signal()
@@ -66,6 +79,7 @@ class MainWindow(QMainWindow):
         self._setup_ui()
         self._connect_tracker()
         self._setup_shortcuts()
+        self._check_for_updates_auto()
 
     def _setup_ui(self) -> None:
         from core.constants import APP_NAME, APP_VERSION
@@ -120,6 +134,7 @@ class MainWindow(QMainWindow):
         self._settings_page = SettingsPage(tracker=self._tracker, protection_manager=self._protection_manager)
         self._settings_page.settings_changed.connect(self._on_settings_changed)
         self._settings_page.theme_changed_req.connect(self._animate_theme_change)
+        self._settings_page.manual_update_requested.connect(self._check_for_updates_manual)
         self._debug_page = DebugPage(tracker=self._tracker)
 
         self._stack.addWidget(self._dashboard_page)  # 0: Home
@@ -134,9 +149,65 @@ class MainWindow(QMainWindow):
         if self._nav_buttons:
             self._nav_buttons[0].click()
 
-        from ui.theme import ThemeManager
         ThemeManager.instance().theme_changed.connect(self._apply_theme)
         self._apply_theme(ThemeManager.instance().is_dark)
+
+    def _check_for_updates_auto(self) -> None:
+        from settings.manager import SettingsManager
+        from datetime import datetime, timedelta
+        sm = SettingsManager()
+        if not sm.auto_update_enabled:
+            return
+
+        last_check_str = sm.last_update_check
+        if last_check_str:
+            try:
+                last_check = datetime.fromisoformat(last_check_str)
+                if datetime.now() - last_check < timedelta(hours=24):
+                    return
+            except ValueError:
+                pass
+
+        self._run_update_check(is_manual=False)
+
+    def _check_for_updates_manual(self) -> None:
+        self._run_update_check(is_manual=True)
+
+    def _run_update_check(self, is_manual: bool) -> None:
+        if hasattr(self, '_update_worker') and self._update_worker.isRunning():
+            return
+
+        self._update_worker = UpdateCheckWorker(self)
+        def on_finished(info: UpdateInfo | None):
+            from settings.manager import SettingsManager
+            from datetime import datetime
+            from PySide6.QtWidgets import QMessageBox
+            
+            sm = SettingsManager()
+            sm.last_update_check = datetime.now().isoformat()
+            
+            if info:
+                if sm.notify_updates or is_manual:
+                    self._show_update_dialog(info)
+            elif is_manual:
+                QMessageBox.information(
+                    self, "No Updates", "You are on the latest stable version."
+                )
+                
+        self._update_worker.finished_check.connect(on_finished)
+        self._update_worker.start()
+
+    def _show_update_dialog(self, info: UpdateInfo) -> None:
+        from ui.widgets.update_dialog import UpdateDialog
+        from core.constants import APP_VERSION
+        dialog = UpdateDialog(APP_VERSION, info, self)
+        
+        def on_update_success():
+            # Gracefully close the app so installer can overwrite files
+            self.close()
+            
+        dialog.update_successful.connect(on_update_success)
+        dialog.show()
 
     def _setup_shortcuts(self) -> None:
         self._dev_shortcut = QShortcut(QKeySequence("Ctrl+Shift+D"), self)
@@ -170,7 +241,9 @@ class MainWindow(QMainWindow):
             "[SLEEPGUARD_UI] _show_shutdown_warning_dialog entered. countdown_s=%d, action='%s'",
             countdown_s, action,
         )
-        dialog = ShutdownCountdownDialog(countdown_seconds=countdown_s, action=action, parent=self)
+        # Instantiate with parent=None to ensure it is a true top-level window 
+        # and doesn't inherit hidden state from MainWindow when minimized to tray.
+        dialog = ShutdownCountdownDialog(countdown_seconds=countdown_s, action=action, parent=None)
         dialog.shutdown_accepted.connect(self._sleepguard.execute_power_action)
         # Wrap the dialog.cancel connection to avoid recursive re-entry between UI and controller
         def _on_dialog_cancel():

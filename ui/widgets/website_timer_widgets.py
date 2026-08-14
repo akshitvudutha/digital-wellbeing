@@ -6,6 +6,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor, QFont
 from ui.widgets.fluent import FluentLabel
 from analytics.engine import AnalyticsEngine
+from ui.theme import ThemeManager
 
 class WebsiteTimerItem(QFrame):
     edit_requested = Signal(str)
@@ -30,13 +31,15 @@ class WebsiteTimerItem(QFrame):
         info_layout = QVBoxLayout()
         info_layout.setSpacing(4)
         
+        tm = ThemeManager.instance()
+        
         self.domain_lbl = QLabel(self.domain)
-        self.domain_lbl.setStyleSheet("font-size: 16px; font-weight: 700; color: #FFFFFF;")
+        self.domain_lbl.setStyleSheet(f"font-size: 16px; font-weight: 700; color: {tm.color('text_main')};")
         
         limit_str = AnalyticsEngine.format_duration_short(self.limit_s)
         used_str = AnalyticsEngine.format_duration_short(self.used_s)
         self.stats_lbl = QLabel(f"Used {used_str} of {limit_str}")
-        self.stats_lbl.setStyleSheet("font-size: 13px; color: #A0A0A5;")
+        self.stats_lbl.setStyleSheet(f"font-size: 13px; color: {tm.color('text_sub')};")
         
         info_layout.addWidget(self.domain_lbl)
         info_layout.addWidget(self.stats_lbl)
@@ -61,39 +64,40 @@ class WebsiteTimerItem(QFrame):
         layout.addLayout(btn_layout)
 
     def _apply_theme(self):
-        self.setStyleSheet("""
-            QFrame#website_item {
-                background-color: #252526;
-                border: 1px solid #333333;
+        tm = ThemeManager.instance()
+        self.setStyleSheet(f"""
+            QFrame#website_item {{
+                background-color: {tm.color('card_bg')};
+                border: 1px solid {tm.color('border')};
                 border-radius: 12px;
-            }
-            QFrame#website_item:hover {
-                background-color: #2D2D30;
-                border: 1px solid #444444;
-            }
-            QPushButton {
-                background-color: #333333;
-                border: 1px solid #444444;
+            }}
+            QFrame#website_item:hover {{
+                background-color: {tm.color('card_hover')};
+                border: 1px solid {tm.color('border_hover')};
+            }}
+            QPushButton {{
+                background-color: {tm.color('window_bg')};
+                border: 1px solid {tm.color('border')};
                 border-radius: 6px;
-                color: #FFFFFF;
+                color: {tm.color('text_main')};
                 padding: 8px 16px;
                 font-weight: 600;
                 font-size: 13px;
-            }
-            QPushButton:hover {
-                background-color: #3E3E42;
-                border: 1px solid #555555;
-            }
-            QPushButton:pressed {
-                background-color: #2D2D30;
-            }
-            QPushButton#btn_delete {
-                color: #EF4444;
-            }
-            QPushButton#btn_delete:hover {
-                background-color: rgba(239, 68, 68, 0.15);
-                border: 1px solid rgba(239, 68, 68, 0.3);
-            }
+            }}
+            QPushButton:hover {{
+                background-color: {tm.color('card_hover')};
+                border: 1px solid {tm.color('border_hover')};
+            }}
+            QPushButton:pressed {{
+                background-color: {tm.color('card_pressed')};
+            }}
+            QPushButton#btn_delete {{
+                color: {tm.color('danger_text')};
+            }}
+            QPushButton#btn_delete:hover {{
+                background-color: {tm.color('danger_bg')};
+                border: 1px solid {tm.color('danger_border')};
+            }}
         """)
 
 class WebsiteTimerConfigDialog(QDialog):
@@ -121,67 +125,69 @@ class WebsiteTimerConfigDialog(QDialog):
         layout.setContentsMargins(32, 32, 32, 32)
         layout.setSpacing(24)
         
-        self.setStyleSheet("""
-            QFrame#dialogContainer {
-                background-color: #1C1C1E;
+        tm = ThemeManager.instance()
+        self.setStyleSheet(f"""
+            QFrame#dialogContainer {{
+                background-color: {tm.color('window_bg')};
                 border-radius: 16px;
-                border: 1px solid #333333;
-            }
-            QLabel {
-                color: #FFFFFF;
+                border: 1px solid {tm.color('border')};
+            }}
+            QLabel {{
+                color: {tm.color('text_main')};
                 font-family: "Segoe UI", sans-serif;
-            }
-            QLabel#titleLbl {
+            }}
+            QLabel#titleLbl {{
                 font-size: 22px;
                 font-weight: 700;
-            }
-            QLabel#subLbl {
+            }}
+            QLabel#subLbl {{
                 font-size: 14px;
                 font-weight: 600;
-                color: #A0A0A5;
+                color: {tm.color('text_sub')};
                 margin-bottom: 4px;
-            }
-            QLineEdit, QComboBox {
-                background-color: #252526;
-                border: 1px solid #333333;
+            }}
+            QLineEdit, QComboBox {{
+                background-color: {tm.color('card_bg')};
+                border: 1px solid {tm.color('border')};
                 border-radius: 8px;
-                color: #FFFFFF;
+                color: {tm.color('text_main')};
                 padding: 12px;
                 font-size: 14px;
-                selection-background-color: #0078D4;
-            }
-            QLineEdit:focus, QComboBox:focus {
-                border: 1px solid #0078D4;
-                background-color: #2D2D30;
-            }
-            QComboBox::drop-down {
+                selection-background-color: {tm.color('accent')};
+            }}
+            QLineEdit:focus, QComboBox:focus {{
+                border: 1px solid {tm.color('accent')};
+                background-color: {tm.color('card_hover')};
+            }}
+            QComboBox::drop-down {{
                 border: none;
-            }
-            QPushButton {
-                background-color: #0078D4;
+            }}
+            QPushButton {{
+                background-color: {tm.color('accent')};
                 color: white;
                 border-radius: 8px;
                 padding: 12px 24px;
                 font-weight: 700;
                 font-size: 14px;
                 border: none;
-            }
-            QPushButton:hover {
-                background-color: #005FB8;
-            }
-            QPushButton:pressed {
-                background-color: #004C93;
-            }
-            QPushButton#cancelBtn {
-                background-color: #333333;
-                color: #FFFFFF;
-            }
-            QPushButton#cancelBtn:hover {
-                background-color: #3E3E42;
-            }
-            QPushButton#cancelBtn:pressed {
-                background-color: #2D2D30;
-            }
+            }}
+            QPushButton:hover {{
+                background-color: {tm.color('accent_hover')};
+            }}
+            QPushButton:pressed {{
+                background-color: {tm.color('accent')};
+            }}
+            QPushButton#cancelBtn {{
+                background-color: {tm.color('card_bg')};
+                color: {tm.color('text_main')};
+                border: 1px solid {tm.color('border')};
+            }}
+            QPushButton#cancelBtn:hover {{
+                background-color: {tm.color('card_hover')};
+            }}
+            QPushButton#cancelBtn:pressed {{
+                background-color: {tm.color('card_pressed')};
+            }}
         """)
         
         title = QLabel("Configure Website Timer" if self.domain else "Add Website Timer")
@@ -296,18 +302,19 @@ class WebsiteTimersSection(QWidget):
         title = FluentLabel("Website Timers", FluentLabel.Style.HEADING)
         self.btn_add = QPushButton("+ Add Website")
         self.btn_add.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        self.btn_add.setStyleSheet("""
-            QPushButton {
-                background-color: #0078D4;
+        tm = ThemeManager.instance()
+        self.btn_add.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {tm.color('accent')};
                 color: white;
                 border-radius: 16px;
                 padding: 8px 16px;
                 font-weight: 700;
                 font-size: 13px;
                 border: none;
-            }
-            QPushButton:hover { background-color: #005FB8; }
-            QPushButton:pressed { background-color: #004C93; }
+            }}
+            QPushButton:hover {{ background-color: {tm.color('accent_hover')}; }}
+            QPushButton:pressed {{ background-color: {tm.color('accent')}; }}
         """)
         self.btn_add.clicked.connect(self._on_add)
         
@@ -336,7 +343,8 @@ class WebsiteTimersSection(QWidget):
         if not limits:
             lbl = QLabel("No website timers configured.\nClick '+ Add Website' to create one.")
             lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            lbl.setStyleSheet("color: #A0A0A5; font-size: 14px; padding: 40px; background: #252526; border-radius: 12px; border: 1px dashed #333333;")
+            tm = ThemeManager.instance()
+            lbl.setStyleSheet(f"color: {tm.color('text_sub')}; font-size: 14px; padding: 40px; background: {tm.color('card_bg')}; border-radius: 12px; border: 1px dashed {tm.color('border')};")
             self.list_layout.addWidget(lbl)
             return
             

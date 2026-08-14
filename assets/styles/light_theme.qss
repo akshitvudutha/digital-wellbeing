@@ -1,7 +1,6 @@
 /* Digital Wellbeing - Ultra-Premium Glassmorphism & Fluent Light Theme */
 
 QWidget {
-    background-color: #f3f5f9;
     color: #1e293b;
     font-family: "Segoe UI Variable Text", "Segoe UI", "Outfit", -apple-system, sans-serif;
     font-size: 13px;
