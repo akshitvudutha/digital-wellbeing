@@ -35,7 +35,7 @@ class EventType(str, Enum):
     RESUME = "resume"
 
 
-APP_NAME = "Digital Wellbeing"
+APP_NAME = "Not Your Wellbeing"
 from core.version import get_version
 APP_VERSION = get_version()
 DB_FILENAME = "digital_wellbeing.db"

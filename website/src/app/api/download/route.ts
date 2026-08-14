@@ -66,7 +66,7 @@ export async function GET() {
         <html>
           <body style="font-family: sans-serif; text-align: center; padding: 50px; background: #111; color: #fff;">
             <h2>Download Unavailable</h2>
-            <p>The requested version of Digital Wellbeing (v${MIN_VERSION} or newer) is not yet published.</p>
+            <p>The requested version of NYW (v${MIN_VERSION} or newer) is not yet published.</p>
             <p>Please wait for the developer to publish the GitHub release.</p>
           </body>
         </html>

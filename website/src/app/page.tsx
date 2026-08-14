@@ -26,11 +26,11 @@ export default function Home() {
                 Latest Version: {siteConfig.version} (Windows)
               </div>
               <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight mb-6">
-                Take control of your <br className="hidden md:block" />
-                <span className="text-gradient">time on Windows.</span>
+                Your time. <br className="hidden md:block" />
+                <span className="text-gradient">Your rules.</span>
               </h1>
               <p className="text-lg md:text-xl text-foreground/70 mb-10 max-w-2xl mx-auto leading-relaxed">
-                A powerful, privacy-focused screen-time tracker for Windows that helps you understand where your time goes and build healthier digital habits.
+                Not Your Wellbeing (NYW) is a powerful, privacy-focused screen-time tracker for Windows that helps you understand where your time goes and build healthier digital habits.
               </p>
               
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -60,7 +60,7 @@ export default function Home() {
                 <div className="aspect-[16/9] w-full rounded-xl bg-card border border-border/50 flex flex-col items-center justify-center overflow-hidden relative">
                   <Image 
                     src="/dashboard.png" 
-                    alt="Digital Wellbeing Dashboard" 
+                    alt="NYW Dashboard" 
                     fill 
                     className="object-cover object-top opacity-90"
                     priority
@@ -78,7 +78,7 @@ export default function Home() {
             <div className="text-center max-w-3xl mx-auto mb-16">
               <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">Know where your time goes.</h2>
               <p className="text-lg text-foreground/70">
-                Digital Wellbeing tracks application and website usage intelligently in the background, giving you a crystal clear picture of your daily habits.
+                NYW tracks application and website usage intelligently in the background, giving you a crystal clear picture of your daily habits.
               </p>
             </div>
             
@@ -130,7 +130,7 @@ export default function Home() {
               <div className="flex-1 space-y-6">
                 <h2 className="text-3xl md:text-5xl font-bold tracking-tight">Set your limits.</h2>
                 <p className="text-lg text-foreground/70 leading-relaxed">
-                  Easily set strict usage limits for specific, distracting applications and websites. Once you hit your limit, Digital Wellbeing intervenes to protect your productivity.
+                  Easily set strict usage limits for specific, distracting applications and websites. Once you hit your limit, NYW intervenes to protect your productivity.
                 </p>
                 <ul className="space-y-4">
                   <li className="flex items-center gap-3">
@@ -148,7 +148,7 @@ export default function Home() {
                   <div className="aspect-video w-full rounded-xl bg-card border border-border/50 flex flex-col items-center justify-center relative overflow-hidden">
                     <Image 
                       src="/limits.png" 
-                      alt="Digital Wellbeing Focus Session and Limits" 
+                      alt="NYW Focus Session and Limits" 
                       fill 
                       className="object-cover object-left opacity-90"
                     />
@@ -184,7 +184,7 @@ export default function Home() {
                   <div className="aspect-video w-full rounded-xl bg-card border border-border/50 flex flex-col items-center justify-center relative overflow-hidden">
                     <Image 
                       src="/sleepguard.png" 
-                      alt="Digital Wellbeing SleepGuard Settings" 
+                      alt="NYW SleepGuard Settings" 
                       fill 
                       className="object-cover object-bottom opacity-80"
                     />
@@ -203,7 +203,7 @@ export default function Home() {
               <Server className="h-10 w-10 text-accent mb-2" />
               <h2 className="text-3xl font-bold tracking-tight">Your data belongs to you.</h2>
               <p className="text-foreground/80 leading-relaxed text-lg">
-                We believe in 100% local privacy. Digital Wellbeing stores all your usage data locally on your machine using an encrypted SQLite database. 
+                We believe in 100% local privacy. NYW stores all your usage data locally on your machine using an encrypted SQLite database. 
               </p>
               <ul className="space-y-3 mt-4 text-foreground/70">
                 <li className="flex items-center gap-2">✓ No cloud synchronization</li>
@@ -216,7 +216,7 @@ export default function Home() {
               <RefreshCw className="h-10 w-10 text-accent mb-2" />
               <h2 className="text-3xl font-bold tracking-tight">Stay up to date.</h2>
               <p className="text-foreground/80 leading-relaxed text-lg">
-                Digital Wellbeing features a completely custom, non-blocking automatic update engine. 
+                NYW features a completely custom, non-blocking automatic update engine. 
                 It seamlessly checks for the latest stable releases from GitHub.
               </p>
               <div className="bg-background border border-border/50 p-6 rounded-xl mt-4">
@@ -250,7 +250,7 @@ export default function Home() {
               <div className="space-y-6">
                 <div>
                   <h4 className="font-semibold text-lg mb-2">What operating systems are supported?</h4>
-                  <p className="text-foreground/70">Digital Wellbeing is built exclusively for Windows desktop environments.</p>
+                  <p className="text-foreground/70">NYW is built exclusively for Windows desktop environments.</p>
                 </div>
                 <div>
                   <h4 className="font-semibold text-lg mb-2">Where is my data stored?</h4>
@@ -275,7 +275,7 @@ export default function Home() {
           <div className="container mx-auto px-4 md:px-8 text-center max-w-2xl">
             <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-6">Ready to regain your focus?</h2>
             <p className="text-xl text-foreground/70 mb-10">
-              Download Digital Wellbeing today and start building healthier digital habits on Windows.
+              Download NYW today and start building healthier digital habits on Windows.
             </p>
             <Link href={siteConfig.links.download}>
               <Button size="lg" className="rounded-full font-bold h-14 px-8 text-lg gap-2 shadow-xl shadow-accent/20">

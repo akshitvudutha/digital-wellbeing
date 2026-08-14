@@ -59,7 +59,7 @@ class UpdateDialog(QDialog):
         layout.setSpacing(16)
 
         # Title
-        title_lbl = QLabel("A new version of Digital Wellbeing is available.")
+        title_lbl = QLabel(f"A new version of {APP_NAME} is available.")
         title_lbl.setObjectName("page_title")
         title_lbl.setWordWrap(True)
         title_lbl.setStyleSheet("font-size: 18px; font-weight: bold;")

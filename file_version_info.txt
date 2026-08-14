@@ -18,12 +18,12 @@ VSVersionInfo(
           '040904B0',
           [
             StringStruct('CompanyName', 'Akshit Vudutha'),
-            StringStruct('FileDescription', 'Digital Wellbeing'),
+            StringStruct('FileDescription', 'Not Your Wellbeing'),
             StringStruct('FileVersion', '2.5.2'),
             StringStruct('InternalName', 'DigitalWellbeing'),
             StringStruct('LegalCopyright', 'Copyright (c) 2026 Akshit Vudutha. All rights reserved.'),
             StringStruct('OriginalFilename', 'DigitalWellbeing.exe'),
-            StringStruct('ProductName', 'Digital Wellbeing'),
+            StringStruct('ProductName', 'Not Your Wellbeing'),
             StringStruct('ProductVersion', '2.5.2')
           ]
         )

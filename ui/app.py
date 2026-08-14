@@ -275,7 +275,7 @@ class DigitalWellbeingApp:
             "QMenu::item:selected { background: #0078d4; }"
         )
 
-        show_action = QAction("Open Digital Wellbeing", self._app)
+        show_action = QAction("Open Not Your Wellbeing", self._app)
         show_action.triggered.connect(self._show_window)
 
         toggle_tracking = QAction("Pause Tracking", self._app)

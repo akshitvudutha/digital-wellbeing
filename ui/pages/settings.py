@@ -125,7 +125,7 @@ class SettingsPage(QWidget):
         self._autostart_check = self._toggle_row(
             t_l,
             "Start with Windows Login",
-            "Automatically launch Digital Wellbeing when Windows starts",
+            "Automatically launch NYW when Windows starts",
         )
 
         t_l.addWidget(self._separator())
@@ -346,7 +346,7 @@ class SettingsPage(QWidget):
         export_col = QVBoxLayout()
         export_lbl = QLabel("Export Data (CSV)")
         export_lbl.setObjectName("setting_label")
-        export_desc = QLabel("Export session records and digital wellbeing stats to a CSV file")
+        export_desc = QLabel("Export session records and NYW stats to a CSV file")
         export_desc.setObjectName("setting_desc")
         export_col.addWidget(export_lbl)
         export_col.addWidget(export_desc)
@@ -463,7 +463,7 @@ class SettingsPage(QWidget):
         app_lbl.setObjectName("setting_label")
         app_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
-        dev_lbl = QLabel("Premium Digital Wellbeing & Screen Time Tracker for Windows")
+        dev_lbl = QLabel("Premium NYW & Screen Time Tracker for Windows")
         dev_lbl.setObjectName("setting_desc")
         dev_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         

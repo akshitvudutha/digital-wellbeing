@@ -1,9 +1,9 @@
-# Digital Wellbeing
+# NYW — Not Your Wellbeing
 
-A production-quality Samsung-style Digital Wellbeing application for Windows, built with Python + PySide6.
+Digital wellbeing for Windows.
 
 ## Overview
-Digital Wellbeing helps you understand and manage your screen time. It tracks active windows, idle time, and provides detailed analytics and insights into your daily, weekly, and monthly computer usage habits. It is designed to be lightweight, running as a background service and providing a beautiful, modern Windows 11 Fluent style interface when you want to review your data.
+Not Your Wellbeing (NYW) helps you understand and manage your screen time. It tracks active windows, idle time, and provides detailed analytics and insights into your daily, weekly, and monthly computer usage habits. It is designed to be lightweight, running as a background service and providing a beautiful, modern Windows 11 Fluent style interface when you want to review your data.
 
 ## Features
 - Real-time foreground application tracking (process name, executable path, window title)

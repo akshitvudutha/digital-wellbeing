@@ -1,6 +1,6 @@
 export const siteConfig = {
-  name: "Digital Wellbeing",
-  description: "Take control of your time on Windows. A powerful, privacy-focused screen-time tracker for Windows that helps you understand where your time goes and build healthier digital habits.",
+  name: "NYW",
+  description: "Digital wellbeing for Windows.",
   developer: "Akshit",
   version: "2.5.2",
   links: {

@@ -12,7 +12,7 @@ export function Footer() {
             <span className="font-bold tracking-tight text-lg">{siteConfig.name}</span>
           </Link>
           <p className="text-sm text-foreground/60 mt-2">
-            Take control of your time on Windows. Build healthier digital habits with powerful, privacy-first tracking.
+            Your time. Your rules. Build healthier digital habits with powerful, privacy-first tracking.
           </p>
           <p className="text-sm text-foreground/40 mt-4">
             Built by {siteConfig.developer}.

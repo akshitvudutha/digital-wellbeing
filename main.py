@@ -14,7 +14,7 @@ def _setup_path() -> None:
 
 def run_headless_service() -> None:
     from core.logger import logger
-    logger.info("Starting Digital Wellbeing Headless Tracking Service")
+    logger.info("Starting NYW Headless Tracking Service")
     
     from tracker.manager import TrackingManager
     tracker = TrackingManager()
@@ -46,7 +46,7 @@ def main() -> None:
             from core.logger import logger
             logger.warning(f"Could not set AppUserModelID: {e}")
 
-    parser = argparse.ArgumentParser(description="Digital Wellbeing Windows Tracker")
+    parser = argparse.ArgumentParser(description="NYW Windows Tracker")
     parser.add_argument(
         "--service",
         action="store_true",
@@ -65,7 +65,7 @@ def main() -> None:
         run_headless_service()
         sys.exit(0)
 
-    logger.info("[LIFECYCLE] Starting Digital Wellbeing GUI Application (main.py entry)")
+    logger.info("[LIFECYCLE] Starting NYW GUI Application (main.py entry)")
     try:
         from ui.app import DigitalWellbeingApp
         from utils.debug_lifecycle import log_lifecycle_state

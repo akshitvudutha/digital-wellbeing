@@ -3,7 +3,7 @@
 
 [Setup]
 SourceDir=..
-AppName=Digital Wellbeing
+AppName=NYW
 AppVersion={#MyAppVersion}
 AppPublisher=Akshit Vudutha
 AppPublisherURL=https://github.com/akshitlabs/digitalwellbeing
@@ -11,7 +11,7 @@ AppSupportURL=https://github.com/akshitlabs/digitalwellbeing/issues
 AppUpdatesURL=https://github.com/akshitlabs/digitalwellbeing/releases
 DefaultDirName={autopf}\DigitalWellbeing
 DisableDirPage=yes
-DefaultGroupName=Digital Wellbeing
+DefaultGroupName=NYW
 DisableProgramGroupPage=yes
 OutputDir=dist
 OutputBaseFilename=DigitalWellbeingSetup
@@ -23,9 +23,9 @@ PrivilegesRequired=lowest
 ArchitecturesInstallIn64BitMode=x64
 VersionInfoVersion={#MyAppVersion}.0
 VersionInfoCompany=Akshit Vudutha
-VersionInfoDescription=Digital Wellbeing Setup Installer
+VersionInfoDescription=Not Your Wellbeing Setup Installer
 VersionInfoCopyright=Copyright (C) 2026 Akshit Vudutha. All rights reserved.
-VersionInfoProductName=Digital Wellbeing Platform
+VersionInfoProductName=Not Your Wellbeing for Windows
 VersionInfoProductVersion={#MyAppVersion}
 CloseApplications=yes
 UninstallDisplayIcon={app}\DigitalWellbeing.exe
@@ -35,15 +35,15 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
-Name: "startup"; Description: "Start Digital Wellbeing automatically when Windows boots"; GroupDescription: "Startup:"; Flags: unchecked
+Name: "startup"; Description: "Start NYW automatically when Windows boots"; GroupDescription: "Startup:"; Flags: unchecked
 
 [Files]
 Source: "dist\DigitalWellbeing\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\Digital Wellbeing"; Filename: "{app}\DigitalWellbeing.exe"
-Name: "{userdesktop}\Digital Wellbeing"; Filename: "{app}\DigitalWellbeing.exe"; Tasks: desktopicon
-Name: "{userstartup}\Digital Wellbeing"; Filename: "{app}\DigitalWellbeing.exe"; Parameters: "--background"; Tasks: startup
+Name: "{group}\NYW"; Filename: "{app}\DigitalWellbeing.exe"
+Name: "{userdesktop}\NYW"; Filename: "{app}\DigitalWellbeing.exe"; Tasks: desktopicon
+Name: "{userstartup}\NYW"; Filename: "{app}\DigitalWellbeing.exe"; Parameters: "--background"; Tasks: startup
 
 [Run]
-Filename: "{app}\DigitalWellbeing.exe"; Description: "{cm:LaunchProgram,Digital Wellbeing}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\DigitalWellbeing.exe"; Description: "{cm:LaunchProgram,NYW}"; Flags: nowait postinstall skipifsilent

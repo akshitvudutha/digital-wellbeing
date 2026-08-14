@@ -388,7 +388,7 @@ class MainWindow(QMainWindow):
         
         brand_col = QVBoxLayout()
         brand_col.setSpacing(2)
-        self._logo_lbl = QLabel("Digital Wellbeing")
+        self._logo_lbl = QLabel("NYW")
         self._logo_lbl.setObjectName("sidebar_logo_label")
         from core.constants import APP_VERSION
         self._subtitle_lbl = QLabel(f"VERSION {APP_VERSION}")
