@@ -16,8 +16,8 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: siteConfig.name,
-    template: `%s - ${siteConfig.name}`,
+    default: "NYW | Not Your Wellbeing — Digital wellbeing for Windows",
+    template: `%s - NYW`,
   },
   description: siteConfig.description,
   authors: [
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://digital-wellbeing.vercel.app",
+    url: "https://not-your-wellbeing.vercel.app",
     title: siteConfig.name,
     description: siteConfig.description,
     siteName: siteConfig.name,
