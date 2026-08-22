@@ -20,13 +20,15 @@ class FocusTimerWidget(QFrame):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.setObjectName("v2_card")
-        self._seconds_remaining = self.DEFAULT_FOCUS_M * 60
-        self._is_running = False
-
-        self._timer = QTimer(self)
-        self._timer.setInterval(1000)
-        self._timer.timeout.connect(self._on_tick)
-
+        
+        from protection.focus_manager import FocusManager
+        self._fm = FocusManager.instance()
+        self._fm.tick.connect(self._on_tick)
+        self._fm.focus_state_changed.connect(self._on_state_changed)
+        self._fm.focus_completed.connect(self.focus_completed.emit)
+        
+        self._selected_minutes = self.DEFAULT_FOCUS_M
+        
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self._setup_ui()
         
@@ -48,14 +50,20 @@ class FocusTimerWidget(QFrame):
         self._lbl = QLabel("🧘 Focus Session Timer")
         self._lbl.setObjectName("section_header")
         hdr.addWidget(self._lbl)
+        
+        from PySide6.QtWidgets import QCheckBox
+        self._strict_chk = QCheckBox("Strict Mode")
+        self._strict_chk.setObjectName("strict_chk")
+        self._strict_chk.setToolTip("Requires PIN to exit early. Blocks websites via hosts file.")
         hdr.addStretch()
+        hdr.addWidget(self._strict_chk)
         layout.addLayout(hdr)
 
         center_layout = QVBoxLayout()
         center_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         center_layout.setSpacing(6)
 
-        self._time_display = QLabel(self._format_time(self._seconds_remaining))
+        self._time_display = QLabel(self._format_time(self._selected_minutes * 60))
         self._time_display.setObjectName("timer_display")
         self._time_display.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
@@ -68,18 +76,20 @@ class FocusTimerWidget(QFrame):
         layout.addLayout(center_layout)
 
         # Quick Preset Chips Row
-        chips_row = QHBoxLayout()
-        chips_row.setSpacing(8)
-        chips_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._chips_row = QHBoxLayout()
+        self._chips_row.setSpacing(8)
+        self._chips_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
+        self._chips = []
         for minutes in (15, 25, 45, 60):
             chip = QPushButton(f"{minutes}m")
             chip.setObjectName("timer_chip")
             chip.setCursor(Qt.CursorShape.PointingHandCursor)
             chip.clicked.connect(lambda checked, m=minutes: self.set_preset(m))
-            chips_row.addWidget(chip)
+            self._chips_row.addWidget(chip)
+            self._chips.append(chip)
 
-        layout.addLayout(chips_row)
+        layout.addLayout(self._chips_row)
 
         # Controls Row
         controls = QHBoxLayout()
@@ -90,15 +100,16 @@ class FocusTimerWidget(QFrame):
         self._start_btn.setMinimumHeight(40)
         self._start_btn.clicked.connect(self._toggle_timer)
 
-        self._reset_btn = QPushButton("↺ Reset")
+        self._reset_btn = QPushButton("↺ Stop")
         self._reset_btn.setObjectName("timer_reset_btn")
         self._reset_btn.setMinimumHeight(40)
-        self._reset_btn.clicked.connect(self._reset_timer)
+        self._reset_btn.clicked.connect(self._stop_timer)
 
         controls.addWidget(self._start_btn, 2)
         controls.addWidget(self._reset_btn, 1)
 
         layout.addLayout(controls)
+        self._sync_ui_state()
 
     def _apply_theme(self, is_dark: bool) -> None:
         from ui.theme import ThemeManager
@@ -112,6 +123,7 @@ class FocusTimerWidget(QFrame):
             QLabel#section_header {{ font-size: 14px; font-weight: 700; color: {tm.color('accent')}; letter-spacing: 1.2px; text-transform: uppercase; }}
             QLabel#timer_display {{ font-size: 42px; font-weight: 900; color: {tm.color('accent')}; letter-spacing: -1.2px; }}
             QLabel#timer_status {{ color: {tm.color('text_sub')}; font-size: 12px; font-weight: 600; }}
+            QCheckBox#strict_chk {{ color: {tm.color('danger_text')}; font-weight: 600; }}
             QPushButton#timer_chip {{
                 background-color: {tm.color('border')};
                 border: 1px solid {tm.color('border')};
@@ -125,6 +137,11 @@ class FocusTimerWidget(QFrame):
                 background-color: {tm.color('accent')}33;
                 border-color: {tm.color('accent')}80;
                 color: {tm.color('text_main')};
+            }}
+            QPushButton#timer_chip:disabled {{
+                background-color: transparent;
+                border-color: transparent;
+                color: transparent;
             }}
             QPushButton#timer_start_btn {{
                 background-color: {tm.color('accent')};
@@ -152,62 +169,75 @@ class FocusTimerWidget(QFrame):
                 color: {tm.color('text_main')};
             }}
         """)
-        
         self._update_display_color()
 
     def _update_display_color(self) -> None:
         from ui.theme import ThemeManager
         tm = ThemeManager.instance()
-        
-        if self._seconds_remaining == 0 and not self._is_running:
+        if not self._fm.is_active and self._time_display.text() == "00:00":
             self._time_display.setStyleSheet(f"font-size: 42px; font-weight: 900; color: {tm.color('success_text')}; letter-spacing: -1.2px;")
+        elif self._fm.is_active and self._fm.is_strict:
+            self._time_display.setStyleSheet(f"font-size: 42px; font-weight: 900; color: {tm.color('danger_text')}; letter-spacing: -1.2px;")
         else:
             self._time_display.setStyleSheet(f"font-size: 42px; font-weight: 900; color: {tm.color('accent')}; letter-spacing: -1.2px;")
 
     def set_preset(self, minutes: int) -> None:
-        self._timer.stop()
-        self._is_running = False
-        self._seconds_remaining = minutes * 60
-        self._time_display.setText(self._format_time(self._seconds_remaining))
-        self._start_btn.setText("▶ Start Focus")
+        if self._fm.is_active: return
+        self._selected_minutes = minutes
+        self._time_display.setText(self._format_time(minutes * 60))
         self._status_lbl.setText(f"Preset set to {minutes} minutes")
         self._update_display_color()
 
-    def _on_tick(self) -> None:
-        if self._seconds_remaining > 0:
-            self._seconds_remaining -= 1
-            self._time_display.setText(self._format_time(self._seconds_remaining))
+    def _on_tick(self, seconds: int) -> None:
+        self._time_display.setText(self._format_time(seconds))
+
+    def _on_state_changed(self, is_active: bool) -> None:
+        self._sync_ui_state()
+
+    def _sync_ui_state(self):
+        if self._fm.is_active:
+            self._start_btn.hide()
+            for chip in self._chips: chip.hide()
+            self._strict_chk.setEnabled(False)
+            self._strict_chk.setChecked(self._fm.is_strict)
+            self._status_lbl.setText("Focusing... Blocklist active.")
         else:
-            self._timer.stop()
-            self._is_running = False
+            self._start_btn.show()
+            for chip in self._chips: chip.show()
+            self._strict_chk.setEnabled(True)
             self._start_btn.setText("▶ Start Focus")
-            self._status_lbl.setText("Session complete! Take a break 🎉")
-            self._update_display_color()
-            self.focus_completed.emit()
+            self._time_display.setText(self._format_time(self._selected_minutes * 60))
+            if self._time_display.text() == "00:00":
+                 self._status_lbl.setText("Session complete! Take a break 🎉")
+            else:
+                 self._status_lbl.setText("Ready to focus — select preset or start")
+        self._update_display_color()
 
     def _toggle_timer(self) -> None:
-        if self._is_running:
-            self._timer.stop()
-            self._is_running = False
-            self._start_btn.setText("▶ Resume")
-            self._status_lbl.setText("Paused")
-        else:
-            if self._seconds_remaining == 0:
-                self._seconds_remaining = self.DEFAULT_FOCUS_M * 60
-            self._timer.start()
-            self._is_running = True
-            self._start_btn.setText("⏸ Pause")
-            self._status_lbl.setText("Focusing...")
-            self._update_display_color()
+        if not self._fm.is_active:
+            from PySide6.QtWidgets import QMessageBox
+            if self._strict_chk.isChecked() and not self._fm._pin_manager.is_enabled():
+                QMessageBox.warning(self, "PIN Required", "You must configure a PIN in Settings > Protection to use Strict Mode.")
+                self._strict_chk.setChecked(False)
+                return
+            self._fm.start_focus(self._selected_minutes, strict_mode=self._strict_chk.isChecked())
 
-    def _reset_timer(self) -> None:
-        self._timer.stop()
-        self._is_running = False
-        self._seconds_remaining = self.DEFAULT_FOCUS_M * 60
-        self._time_display.setText(self._format_time(self._seconds_remaining))
-        self._start_btn.setText("▶ Start Focus")
-        self._status_lbl.setText("Ready to focus — select preset or start")
-        self._update_display_color()
+    def _stop_timer(self) -> None:
+        if not self._fm.is_active:
+            # It's a reset action when not running
+            self._selected_minutes = self.DEFAULT_FOCUS_M
+            self._time_display.setText(self._format_time(self._selected_minutes * 60))
+            self._status_lbl.setText("Ready to focus — select preset or start")
+            self._update_display_color()
+            return
+            
+        if self._fm.is_strict:
+            from ui.widgets.pin_dialog import PinDialog
+            dialog = PinDialog(self._fm._pin_manager, self.window())
+            if dialog.exec():
+                self._fm.stop_focus(provided_pin="verified_by_dialog")
+        else:
+            self._fm.stop_focus()
 
     @staticmethod
     def _format_time(seconds: int) -> str:

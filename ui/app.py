@@ -138,7 +138,10 @@ class DigitalWellbeingApp:
 
             self._updater = Updater()
 
+            self._manual_update_check_in_progress = False
+
             def _on_update_available(info: dict) -> None:
+                self._manual_update_check_in_progress = False
                 # Respect user's "remind me later" within 24 hours
                 from time import time
                 last_dismiss = self._sm.get("last_update_dismissed_ts", "0")
@@ -175,7 +178,13 @@ class DigitalWellbeingApp:
 
                     def _on_update_now():
                         # start download, show progress
-                        self._updater.download_installer(info.get("asset_url"), info.get("asset_name"), info.get("asset_id"))
+                        self._updater.download_installer(
+                            info.get("asset_url"), 
+                            info.get("asset_name"), 
+                            info.get("asset_id"),
+                            info.get("checksum_url"),
+                            info.get("checksum_id")
+                        )
 
                     def _on_download_progress(pct: int):
                         try:
@@ -197,7 +206,7 @@ class DigitalWellbeingApp:
                         except Exception:
                             pass
 
-                    def _on_error(msg: str):
+                    def _on_download_error(msg: str):
                         try:
                             dlg.show_error(msg)
                         except Exception:
@@ -208,14 +217,35 @@ class DigitalWellbeingApp:
 
                     self._updater.download_progress.connect(_on_download_progress)
                     self._updater.download_complete.connect(_on_download_complete)
-                    self._updater.error.connect(_on_error)
+                    self._updater.error.connect(_on_download_error)
 
                     dlg.show()
                 except Exception as exc:
                     logger.exception("Failed to show update dialog: %s", exc)
 
+            def _on_no_update():
+                if self._manual_update_check_in_progress:
+                    from PySide6.QtWidgets import QMessageBox
+                    QMessageBox.information(self._window, "No Updates", "You are on the latest stable version.")
+                    self._manual_update_check_in_progress = False
+
+            def _on_check_error(msg: str):
+                if self._manual_update_check_in_progress:
+                    from PySide6.QtWidgets import QMessageBox
+                    QMessageBox.warning(self._window, "Update Error", f"Failed to check for updates:\n{msg}")
+                    self._manual_update_check_in_progress = False
+
             # Connect and schedule an initial check a few seconds after startup
             self._updater.update_available.connect(_on_update_available)
+            self._updater.no_update.connect(_on_no_update)
+            self._updater.error.connect(_on_check_error)
+            
+            def _handle_manual_update_request():
+                self._manual_update_check_in_progress = True
+                self._updater.check_for_updates(force=True)
+                
+            self._window.manual_update_requested.connect(_handle_manual_update_request)
+
             QTimer.singleShot(5_000, lambda: self._updater.check_for_updates())
         except Exception as exc:
             logger.warning("Updater initialization failed: %s", exc)

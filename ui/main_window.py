@@ -39,23 +39,12 @@ class DataUpdateThread(QThread):
         self.data_changed.emit()
 
 
-from core.updater import check_for_update, UpdateInfo
-
-class UpdateCheckWorker(QThread):
-    finished_check = Signal(object)  # UpdateInfo | None
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-    def run(self):
-        info = check_for_update()
-        self.finished_check.emit(info)
-
 
 class MainWindow(QMainWindow):
     data_changed_signal = Signal()
     quit_requested = Signal()
     focus_completed = Signal()
+    manual_update_requested = Signal()
 
     def __init__(self, tracker: TrackingManager, sleepguard: Optional[SleepGuardController] = None, protection_manager=None, parent=None) -> None:
         super().__init__(parent)
@@ -79,7 +68,6 @@ class MainWindow(QMainWindow):
         self._setup_ui()
         self._connect_tracker()
         self._setup_shortcuts()
-        self._check_for_updates_auto()
 
     def _setup_ui(self) -> None:
         from core.constants import APP_NAME, APP_VERSION
@@ -134,7 +122,7 @@ class MainWindow(QMainWindow):
         self._settings_page = SettingsPage(tracker=self._tracker, protection_manager=self._protection_manager)
         self._settings_page.settings_changed.connect(self._on_settings_changed)
         self._settings_page.theme_changed_req.connect(self._animate_theme_change)
-        self._settings_page.manual_update_requested.connect(self._check_for_updates_manual)
+        self._settings_page.manual_update_requested.connect(self.manual_update_requested.emit)
         self._debug_page = DebugPage(tracker=self._tracker)
 
         self._stack.addWidget(self._dashboard_page)  # 0: Home
@@ -152,62 +140,7 @@ class MainWindow(QMainWindow):
         ThemeManager.instance().theme_changed.connect(self._apply_theme)
         self._apply_theme(ThemeManager.instance().is_dark)
 
-    def _check_for_updates_auto(self) -> None:
-        from settings.manager import SettingsManager
-        from datetime import datetime, timedelta
-        sm = SettingsManager()
-        if not sm.auto_update_enabled:
-            return
 
-        last_check_str = sm.last_update_check
-        if last_check_str:
-            try:
-                last_check = datetime.fromisoformat(last_check_str)
-                if datetime.now() - last_check < timedelta(hours=24):
-                    return
-            except ValueError:
-                pass
-
-        self._run_update_check(is_manual=False)
-
-    def _check_for_updates_manual(self) -> None:
-        self._run_update_check(is_manual=True)
-
-    def _run_update_check(self, is_manual: bool) -> None:
-        if hasattr(self, '_update_worker') and self._update_worker.isRunning():
-            return
-
-        self._update_worker = UpdateCheckWorker(self)
-        def on_finished(info: UpdateInfo | None):
-            from settings.manager import SettingsManager
-            from datetime import datetime
-            from PySide6.QtWidgets import QMessageBox
-            
-            sm = SettingsManager()
-            sm.last_update_check = datetime.now().isoformat()
-            
-            if info:
-                if sm.notify_updates or is_manual:
-                    self._show_update_dialog(info)
-            elif is_manual:
-                QMessageBox.information(
-                    self, "No Updates", "You are on the latest stable version."
-                )
-                
-        self._update_worker.finished_check.connect(on_finished)
-        self._update_worker.start()
-
-    def _show_update_dialog(self, info: UpdateInfo) -> None:
-        from ui.widgets.update_dialog import UpdateDialog
-        from core.constants import APP_VERSION
-        dialog = UpdateDialog(APP_VERSION, info, self)
-        
-        def on_update_success():
-            # Gracefully close the app so installer can overwrite files
-            self.close()
-            
-        dialog.update_successful.connect(on_update_success)
-        dialog.show()
 
     def _setup_shortcuts(self) -> None:
         self._dev_shortcut = QShortcut(QKeySequence("Ctrl+Shift+D"), self)
@@ -272,27 +205,17 @@ class MainWindow(QMainWindow):
         dialog.activateWindow()
         logger.info("[SLEEPGUARD_UI] Dialog shown non-blocking (show + raise + activateWindow)")
 
-        # If app is minimized to tray or hidden, also notify via tray so user can open app to cancel
-        try:
-            from settings.manager import SettingsManager
-            sm = SettingsManager()
-            minimize_to_tray = sm.get_bool("minimize_to_tray", default=False)
-        except Exception:
-            minimize_to_tray = False
-
         action_label = action.title() if action else "Action"
-        if minimize_to_tray and (not self.isVisible() or self.isMinimized()):
-            if hasattr(self, "_tray") and self._tray:
-                try:
-                    # Inform the user that a power action is imminent and they can open the app to cancel
-                    self._tray.showMessage(
-                        f"SleepGuard — {action_label} Warning",
-                        f"{action_label} in {countdown_s}s — open the app to cancel.",
-                        QSystemTrayIcon.MessageIcon.Warning,
-                        7000,
-                    )
-                except Exception:
-                    logger.warning("Failed to show tray message for SleepGuard countdown")
+        # Always attempt to send a system notification as a backup warning
+        try:
+            from notifications.notifier import Notifier
+            Notifier().notify(
+                title=f"SleepGuard — {action_label} Warning",
+                message=f"{action_label} in {countdown_s}s — check the app to cancel.",
+                duration=7
+            )
+        except Exception as e:
+            logger.warning("Failed to send SleepGuard system notification: %s", e)
 
         # Log visibility shortly after showing
         QTimer.singleShot(200, lambda: logger.info(f"[SLEEPGUARD_UI] Post-show: dialog visible={dialog.isVisible()}"))

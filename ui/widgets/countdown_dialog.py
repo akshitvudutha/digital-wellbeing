@@ -82,7 +82,7 @@ class ShutdownCountdownDialog(QDialog):
         
         self.setStyleSheet(f"""
             QDialog {{
-                background-color: {tm.color('bg_main')};
+                background-color: {tm.color('surface_elevated')};
                 border: 2px solid {tm.color('danger_border')};
                 border-radius: 16px;
             }}
@@ -95,7 +95,7 @@ class ShutdownCountdownDialog(QDialog):
             QLabel#msg {{ color: {tm.color('text_sub')}; font-size: 12px; font-weight: 500; }}
             QPushButton#primary_action_btn {{
                 background: {tm.color('accent')};
-                color: #ffffff;
+                color: {tm.color('text_main')};
                 padding: 12px;
                 font-weight: 700;
                 border-radius: 10px;
@@ -113,7 +113,7 @@ class ShutdownCountdownDialog(QDialog):
                 border: 1px solid {tm.color('border')};
             }}
             QPushButton#secondary_action_btn:hover {{
-                background: {tm.color('bg_hover')};
+                background: {tm.color('surface_secondary')};
             }}
         """)
 
@@ -169,6 +169,14 @@ class ShutdownCountdownDialog(QDialog):
         )
 
     def _on_tick(self) -> None:
+        from tracker.idle import get_idle_seconds
+        
+        # If user became active during countdown
+        if get_idle_seconds() < 2.0:
+            logger.info("[SLEEPGUARD_DIALOG] Auto-cancelling because user activity detected (idle < 2.0s).")
+            self._on_cancel()
+            return
+            
         if self._remaining_s > 0:
             self._remaining_s -= 1
             m, s = divmod(self._remaining_s, 60)

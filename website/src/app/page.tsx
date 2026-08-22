@@ -123,23 +123,29 @@ export default function Home() {
           </div>
         </section>
 
-        {/* LIMITS SECTION */}
+        {/* FOCUS MODE SECTION */}
         <section className="py-24 bg-card/30 border-y border-border/40">
           <div className="container mx-auto px-4 md:px-8">
             <div className="flex flex-col md:flex-row items-center gap-12">
               <div className="flex-1 space-y-6">
-                <h2 className="text-3xl md:text-5xl font-bold tracking-tight">Set your limits.</h2>
+                {siteConfig.version >= "3.0.0" && (
+                  <div className="inline-flex items-center rounded-full border border-border bg-accent/10 px-3 py-1 text-sm font-medium text-accent mb-2">
+                    <span className="flex h-2 w-2 rounded-full bg-accent mr-2"></span>
+                    New in v3.0.0
+                  </div>
+                )}
+                <h2 className="text-3xl md:text-5xl font-bold tracking-tight">Focus without compromise.</h2>
                 <p className="text-lg text-foreground/70 leading-relaxed">
-                  Easily set strict usage limits for specific, distracting applications and websites. Once you hit your limit, NYW intervenes to protect your productivity.
+                  Enter deep work with our completely rebuilt Focus Mode. Set your preset, define your blocklist, and let NYW eliminate distractions across both apps and websites.
                 </p>
                 <ul className="space-y-4">
                   <li className="flex items-center gap-3">
                     <div className="bg-accent/20 p-2 rounded-full"><Settings className="h-5 w-5 text-accent" /></div>
-                    <span className="font-medium text-foreground/90">Application Timers</span>
+                    <span className="font-medium text-foreground/90">Browser Title & Hosts Blocking</span>
                   </li>
                   <li className="flex items-center gap-3">
-                    <div className="bg-accent/20 p-2 rounded-full"><Settings className="h-5 w-5 text-accent" /></div>
-                    <span className="font-medium text-foreground/90">Website Timers</span>
+                    <div className="bg-red-500/20 p-2 rounded-full"><Lock className="h-5 w-5 text-red-500" /></div>
+                    <span className="font-medium text-foreground/90">Strict Mode PIN Protection</span>
                   </li>
                 </ul>
               </div>
@@ -277,13 +283,30 @@ export default function Home() {
             <p className="text-xl text-foreground/70 mb-10">
               Download NYW today and start building healthier digital habits on Windows.
             </p>
-            <Link href={siteConfig.links.download}>
-              <Button size="lg" className="rounded-full font-bold h-14 px-8 text-lg gap-2 shadow-xl shadow-accent/20">
-                <Download className="h-6 w-6" />
-                Download v{siteConfig.version} for Windows
-              </Button>
-            </Link>
-            <p className="mt-6 text-sm text-foreground/50">Free, private, and open-source.</p>
+            <div className="flex flex-col items-center justify-center gap-4">
+              <Link href={siteConfig.links.download}>
+                <Button size="lg" className="rounded-full font-bold h-14 px-8 text-lg gap-2 shadow-xl shadow-accent/20">
+                  <Download className="h-6 w-6" />
+                  Download v{siteConfig.version} for Windows
+                </Button>
+              </Link>
+              
+              <div className="flex gap-4 mt-6">
+                <Link href={siteConfig.links.reportBug} target="_blank" rel="noopener noreferrer">
+                  <Button variant="outline" size="sm" className="rounded-full gap-2 border-border/50 bg-background/50 backdrop-blur-sm hover:bg-accent/10">
+                    <Shield className="h-4 w-4" />
+                    Report a Bug
+                  </Button>
+                </Link>
+                <Link href={siteConfig.links.requestFeature} target="_blank" rel="noopener noreferrer">
+                  <Button variant="outline" size="sm" className="rounded-full gap-2 border-border/50 bg-background/50 backdrop-blur-sm hover:bg-accent/10">
+                    <Bell className="h-4 w-4" />
+                    Request Feature
+                  </Button>
+                </Link>
+              </div>
+            </div>
+            <p className="mt-8 text-sm text-foreground/50">Free, private, and open-source.</p>
           </div>
         </section>
       </main>

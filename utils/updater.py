@@ -142,11 +142,31 @@ class Updater(QObject):
             if not chosen:
                 self.error.emit("No suitable installer asset found in release")
                 return
+                
             asset_name = chosen.get("name")
             asset_url = chosen.get("browser_download_url")
             asset_id = chosen.get("id")
+            
+            # Find checksum asset if available
+            checksum_asset = None
+            for a in assets:
+                if a.get("name", "").endswith(".sha256"):
+                    checksum_asset = a
+                    break
+                    
+            checksum_url = checksum_asset.get("browser_download_url") if checksum_asset else None
+            checksum_id = checksum_asset.get("id") if checksum_asset else None
+            
             notes = best_release.get("body", "")
-            payload = {"version": best_version, "notes": notes, "asset_name": asset_name, "asset_url": asset_url, "asset_id": asset_id}
+            payload = {
+                "version": best_version, 
+                "notes": notes, 
+                "asset_name": asset_name, 
+                "asset_url": asset_url, 
+                "asset_id": asset_id,
+                "checksum_url": checksum_url,
+                "checksum_id": checksum_id
+            }
             self.update_available.emit(payload)
         except HTTPError as e:
             logger.exception("Updater HTTP error: %s", e)
@@ -160,19 +180,18 @@ class Updater(QObject):
         finally:
             self._checking.clear()
 
-    def download_installer(self, asset_url: str, asset_name: str, asset_id: Optional[int] = None) -> None:
+    def download_installer(self, asset_url: str, asset_name: str, asset_id: Optional[int] = None, checksum_url: Optional[str] = None, checksum_id: Optional[int] = None) -> None:
         if self._download_thread and self._download_thread.is_alive():
             logger.info("Download already in progress")
             return
-        self._download_thread = threading.Thread(target=self._download_thread_fn, args=(asset_url, asset_name, asset_id), daemon=True)
+        self._download_thread = threading.Thread(target=self._download_thread_fn, args=(asset_url, asset_name, asset_id, checksum_url, checksum_id), daemon=True)
         self._download_thread.start()
 
-    def _download_thread_fn(self, asset_url: str, asset_name: str, asset_id: Optional[int]) -> None:
+    def _download_thread_fn(self, asset_url: str, asset_name: str, asset_id: Optional[int], checksum_url: Optional[str], checksum_id: Optional[int]) -> None:
         try:
             logger.info("Updater: downloading asset. asset_id=%s, url=%s", str(asset_id), asset_url)
             headers = {"User-Agent": APP_NAME}
             req_url = asset_url
-            # If token present and asset_id provided, use the API asset endpoint to avoid redirect/auth issues (private releases)
             if self._token and asset_id:
                 req_url = f"{self._api_base}/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases/assets/{asset_id}"
                 headers["Accept"] = "application/octet-stream"
@@ -196,9 +215,36 @@ class Updater(QObject):
                         if total:
                             percent = int(written * 100 / total)
                             self.download_progress.emit(percent)
-                # If total provided, validate size
                 if total and written != total:
                     raise IOError("Downloaded size does not match Content-Length")
+                    
+                # Download and Verify Checksum
+                if checksum_url:
+                    chk_req_url = checksum_url
+                    if self._token and checksum_id:
+                        chk_req_url = f"{self._api_base}/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases/assets/{checksum_id}"
+                    
+                    try:
+                        chk_req = Request(chk_req_url, headers=headers)
+                        with urlopen(chk_req, timeout=15) as chk_resp:
+                            expected_hash = chk_resp.read().decode('utf-8').strip().split()[0].lower()
+                            
+                        import hashlib
+                        sha256_hash = hashlib.sha256()
+                        with open(out_path, "rb") as f:
+                            for byte_block in iter(lambda: f.read(4096), b""):
+                                sha256_hash.update(byte_block)
+                                
+                        actual_hash = sha256_hash.hexdigest().lower()
+                        if actual_hash != expected_hash:
+                            out_path.unlink(missing_ok=True)
+                            raise ValueError(f"Checksum verification failed! Expected: {expected_hash}, Actual: {actual_hash}")
+                        logger.info("Checksum verified successfully.")
+                    except Exception as ce:
+                        logger.warning(f"Checksum verification process encountered an error: {ce}")
+                        if isinstance(ce, ValueError):
+                            raise ce # Propagate the checksum mismatch error
+                            
                 logger.info("Updater: download complete %s", out_path)
                 self.download_complete.emit(str(out_path))
         except Exception as e:
@@ -222,8 +268,8 @@ class Updater(QObject):
             tmp_dir.mkdir(parents=True, exist_ok=True)
             ps1 = tmp_dir / f"{APP_NAME.replace(' ','_')}_run_update.ps1"
 
-            # PowerShell script: start installer and wait, then cleanup and relaunch app
-            ps_contents = f"Start-Process -FilePath '{str(p)}' -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait\nStart-Sleep -Seconds 1\nTry {{ Remove-Item -LiteralPath '{str(p)}' -Force -ErrorAction SilentlyContinue }} Catch {{}}\nTry {{ Remove-Item -LiteralPath $PSCommandPath -Force -ErrorAction SilentlyContinue }} Catch {{}}\nStart-Process -FilePath '{app_exec}'\n"
+            # Use /SILENT instead of /VERYSILENT so user sees the progress, per requirements.
+            ps_contents = f"Start-Process -FilePath '{str(p)}' -ArgumentList '/SILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait\nStart-Sleep -Seconds 1\nTry {{ Remove-Item -LiteralPath '{str(p)}' -Force -ErrorAction SilentlyContinue }} Catch {{}}\nTry {{ Remove-Item -LiteralPath $PSCommandPath -Force -ErrorAction SilentlyContinue }} Catch {{}}\nStart-Process -FilePath '{app_exec}'\n"
 
             with open(ps1, "w", encoding="utf-8") as f:
                 f.write(ps_contents)

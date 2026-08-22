@@ -126,6 +126,7 @@ class SleepGuardController(QObject):
         except Exception:
             pass
         logger.info("[SLEEPGUARD] Warning cancelled by user. Applied cooldown=%ss", cooldown)
+        logger.info("SLEEPGUARD_TRIGGER ACTION=CANCEL IDLE_SECONDS=0 MEDIA_STATE=%s QUICK_TEST=N/A COUNTDOWN=N/A USER_INTERRUPTION=TRUE POWER_RESULT=N/A ERROR_CODE=0 FINAL_RESULT=CANCELLED", self._media_engine.is_playing)
 
     def execute_power_action(self, action: str = "") -> bool:
         """Execute the configured (or specified) power action with safety validation.
@@ -153,14 +154,21 @@ class SleepGuardController(QObject):
 
         # Safety guard: check if condition is still satisfied (user didn't move mouse)
         # Check standard idle timeout without media mode complexities, just to see if user is actually away.
+        import os
         from tracker.idle import get_idle_seconds
         idle_s = get_idle_seconds()
         timeout_s = self._settings.idle_timeout_minutes * 60
+        qt_env = os.getenv("NYW_QUICK_TEST")
+        is_quick_test = bool(qt_env and qt_env.isdigit())
+        if is_quick_test:
+            timeout_s = int(qt_env)
+            
         if idle_s < (timeout_s * 0.5): # Use a generous 50% buffer to avoid race conditions but catch recent activity
             logger.error(
                 "[SLEEPGUARD] SAFETY GUARD: User became active during countdown. "
                 "Current idle=%.1f, required=%d. Cancelling execution.", idle_s, timeout_s
             )
+            logger.info("SLEEPGUARD_TRIGGER ACTION=%s IDLE_SECONDS=%.1f MEDIA_STATE=%s QUICK_TEST=%s COUNTDOWN=0 USER_INTERRUPTION=TRUE POWER_RESULT=N/A ERROR_CODE=0 FINAL_RESULT=CANCELLED", action, idle_s, self._media_engine.is_playing, "TRUE" if is_quick_test else "FALSE")
             return False
 
         # Safety guard: log the final action before execution
@@ -169,8 +177,10 @@ class SleepGuardController(QObject):
             "Configured action: '%s'.",
             action, ts, self._settings.sleepguard_action,
         )
-
-        return self._shutdown_mgr.execute_action(action)
+        
+        result = self._shutdown_mgr.execute_action(action)
+        logger.info("SLEEPGUARD_TRIGGER ACTION=%s IDLE_SECONDS=%.1f MEDIA_STATE=%s QUICK_TEST=%s COUNTDOWN=0 USER_INTERRUPTION=FALSE POWER_RESULT=%s ERROR_CODE=0 FINAL_RESULT=%s", action, idle_s, self._media_engine.is_playing, "TRUE" if is_quick_test else "FALSE", "SUCCESS" if result else "FAILED", "EXECUTED" if result else "FAILED")
+        return result
 
     # Legacy backward-compatible method
     def execute_shutdown(self) -> bool:
@@ -195,10 +205,13 @@ class SleepGuardController(QObject):
             idle_s = get_idle_seconds()
             timeout_s = self._settings.idle_timeout_minutes * 60
             
-            # Quick Test Override
-            test_timeout = self._settings.testing_idle_timeout_s
-            if test_timeout > 0:
-                timeout_s = test_timeout
+            # Quick Test Override via Env Var (Developer Only)
+            import os
+            qt_env = os.getenv("NYW_QUICK_TEST")
+            is_quick_test = False
+            if qt_env and qt_env.isdigit():
+                timeout_s = int(qt_env)
+                is_quick_test = True
                 
             media_timeout_s = self._settings.media_idle_timeout_minutes * 60
             mode = self._settings.shutdown_mode
@@ -255,6 +268,8 @@ class SleepGuardController(QObject):
                     idle_s, timeout_s, action, countdown,
                 )
                 self._idle_fired.set()
+                
+                logger.info("SLEEPGUARD_TRIGGER ACTION=%s IDLE_SECONDS=%.1f MEDIA_STATE=%s QUICK_TEST=%s COUNTDOWN=%d USER_INTERRUPTION=FALSE POWER_RESULT=PENDING ERROR_CODE=0 FINAL_RESULT=PENDING", action, idle_s, media_playing, "TRUE" if is_quick_test else "FALSE", countdown)
 
                 logger.info(
                     "[SLEEPGUARD] Emitting shutdown_warning_triggered(countdown=%d, action='%s')",

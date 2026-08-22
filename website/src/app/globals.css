@@ -17,31 +17,31 @@
 
 @layer base {
   :root {
-    /* Dark mode by default for premium look */
-    --background: #09090b;
-    --foreground: #fafafa;
-    --primary: #fafafa;
-    --primary-foreground: #18181b;
-    --card: #18181b;
-    --card-foreground: #fafafa;
-    --border: #27272a;
-    --glass: rgba(24, 24, 27, 0.4);
-    --glass-border: rgba(255, 255, 255, 0.08);
-    --accent: #3b82f6; /* Subtle blue */
+    /* Dark mode by default for premium look - Deep Windows 11 Mica-like */
+    --background: #0f1014;
+    --foreground: #ffffff;
+    --primary: #ffffff;
+    --primary-foreground: #000000;
+    --card: rgba(255, 255, 255, 0.03);
+    --card-foreground: #ffffff;
+    --border: rgba(255, 255, 255, 0.08);
+    --glass: rgba(20, 20, 24, 0.65);
+    --glass-border: rgba(255, 255, 255, 0.12);
+    --accent: #4cc2ff; /* Vibrant Fluent Blue */
   }
 
   @media (prefers-color-scheme: light) {
     :root {
-      --background: #ffffff;
-      --foreground: #09090b;
-      --primary: #18181b;
-      --primary-foreground: #fafafa;
-      --card: #f4f4f5;
-      --card-foreground: #09090b;
-      --border: #e4e4e7;
-      --glass: rgba(255, 255, 255, 0.6);
-      --glass-border: rgba(0, 0, 0, 0.08);
-      --accent: #2563eb;
+      --background: #f3f3f3; /* Windows 11 Light Mica */
+      --foreground: #1c1c1c;
+      --primary: #000000;
+      --primary-foreground: #ffffff;
+      --card: rgba(255, 255, 255, 0.5);
+      --card-foreground: #1c1c1c;
+      --border: rgba(0, 0, 0, 0.06);
+      --glass: rgba(255, 255, 255, 0.85);
+      --glass-border: rgba(0, 0, 0, 0.05);
+      --accent: #0067c0;
     }
   }
 }
@@ -58,15 +58,15 @@
 
 .glass-panel {
   background: var(--glass);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
   border: 1px solid var(--glass-border);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
 }
 
 .text-gradient {
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  background-image: linear-gradient(to right, #60a5fa, #a78bfa);
+  background-image: linear-gradient(135deg, #4cc2ff 0%, #a78bfa 100%);
 }

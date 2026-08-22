@@ -86,38 +86,45 @@ class ThemeManager(QObject):
     def _get_tokens(self, dark_mode: bool) -> Dict[str, str]:
         if dark_mode:
             return {
-                "bg": "transparent", # Transparent for Mica / Pure black via palette
-                "window_bg": "#1C1C1E",
-                "card_bg": "#121212",
-                "card_hover": "#1A1A1A",
-                "card_pressed": "#101010",
-                "border": "#2A2A2A",
-                "border_hover": "#3A3A3A",
-                "text_main": "#FFFFFF",
-                "text_sub": "rgba(255, 255, 255, 0.7)",
-                "text_muted": "rgba(255, 255, 255, 0.4)",
-                "accent": "#3B82F6",
-                "accent_hover": "#60A5FA",
+                "bg": "transparent",
+                "window_bg": "#0D1117",  # Deep Canvas
+                "surface": "rgba(22, 27, 34, 0.75)", # Cards
+                "surface_elevated": "rgba(28, 33, 40, 0.85)", # Hover Cards
+                "surface_secondary": "rgba(33, 38, 45, 0.95)",
+                "card_bg": "rgba(22, 27, 34, 0.75)",
+                "card_hover": "rgba(28, 33, 40, 0.85)",
+                "card_pressed": "rgba(22, 27, 34, 0.95)",
+                "border": "rgba(255, 255, 255, 0.08)",
+                "border_hover": "rgba(47, 129, 247, 0.35)",
+                "input_bg": "#161B22",
+                "input_border": "rgba(255, 255, 255, 0.12)",
+                "input_hover": "rgba(47, 129, 247, 0.55)",
+                "text_main": "#F0F6FC",
+                "text_sub": "#8B949E",
+                "text_muted": "rgba(240, 246, 252, 0.4)",
+                "accent": "#2F81F7",
+                "accent_hover": "#388BFD",
+                "accent_pressed": "#1F6FEB",
                 "track": "rgba(255, 255, 255, 0.05)",
                 "center_circle": "transparent",
                 "grid": "rgba(255, 255, 255, 0.05)",
                 
                 # Semantic
-                "success_bg": "rgba(74, 222, 128, 0.15)",
-                "success_border": "rgba(74, 222, 128, 0.3)",
-                "success_text": "#4ADE80",
+                "success_bg": "rgba(35, 134, 54, 0.15)",
+                "success_border": "rgba(35, 134, 54, 0.3)",
+                "success_text": "#3FB950",
                 
-                "warning_bg": "rgba(250, 204, 21, 0.15)",
-                "warning_border": "rgba(250, 204, 21, 0.3)",
-                "warning_text": "#FACC15",
+                "warning_bg": "rgba(210, 153, 34, 0.15)",
+                "warning_border": "rgba(210, 153, 34, 0.3)",
+                "warning_text": "#D29922",
                 
-                "danger_bg": "rgba(244, 63, 94, 0.15)",
-                "danger_border": "rgba(244, 63, 94, 0.25)",
-                "danger_text": "#FB7185",
+                "danger_bg": "rgba(248, 81, 73, 0.15)",
+                "danger_border": "rgba(248, 81, 73, 0.25)",
+                "danger_text": "#F85149",
                 
-                "info_bg": "rgba(56, 189, 248, 0.15)",
-                "info_border": "rgba(56, 189, 248, 0.25)",
-                "info_text": "#38bdf8",
+                "info_bg": "rgba(47, 129, 247, 0.15)",
+                "info_border": "rgba(47, 129, 247, 0.25)",
+                "info_text": "#2F81F7",
                 
                 "indigo_bg": "rgba(99, 102, 241, 0.1)",
                 "indigo_border": "rgba(99, 102, 241, 0.2)",
@@ -130,17 +137,24 @@ class ThemeManager(QObject):
         else:
             return {
                 "bg": "transparent",
-                "window_bg": "#F3F3F3",
-                "card_bg": "rgba(255, 255, 255, 0.85)",
-                "card_hover": "rgba(255, 255, 255, 1.0)",
-                "card_pressed": "rgba(255, 255, 255, 0.7)",
-                "border": "rgba(0, 0, 0, 0.08)",
-                "border_hover": "rgba(0, 0, 0, 0.15)",
-                "text_main": "#1C1C1C",
-                "text_sub": "rgba(0, 0, 0, 0.6)",
-                "text_muted": "rgba(0, 0, 0, 0.4)",
-                "accent": "#2563EB",
+                "window_bg": "#F3F5F9",
+                "surface": "rgba(255, 255, 255, 0.75)",
+                "surface_elevated": "rgba(255, 255, 255, 0.95)",
+                "surface_secondary": "#FFFFFF",
+                "card_bg": "rgba(255, 255, 255, 0.75)",
+                "card_hover": "rgba(255, 255, 255, 0.95)",
+                "card_pressed": "rgba(245, 245, 245, 0.95)",
+                "border": "rgba(0, 0, 0, 0.05)",
+                "border_hover": "rgba(0, 120, 212, 0.35)",
+                "input_bg": "rgba(255, 255, 255, 0.9)",
+                "input_border": "rgba(0, 0, 0, 0.08)",
+                "input_hover": "#0078d4",
+                "text_main": "#0F172A",
+                "text_sub": "#64748B",
+                "text_muted": "rgba(15, 23, 42, 0.4)",
+                "accent": "#0078D4",
                 "accent_hover": "#3B82F6",
+                "accent_pressed": "#1D4ED8",
                 "track": "rgba(0, 0, 0, 0.05)",
                 "center_circle": "transparent",
                 "grid": "rgba(0, 0, 0, 0.05)",
@@ -152,19 +166,19 @@ class ThemeManager(QObject):
                 
                 "warning_bg": "rgba(250, 204, 21, 0.15)",
                 "warning_border": "rgba(250, 204, 21, 0.3)",
-                "warning_text": "#d97706",
+                "warning_text": "#D97706",
                 
                 "danger_bg": "rgba(244, 63, 94, 0.15)",
                 "danger_border": "rgba(244, 63, 94, 0.25)",
-                "danger_text": "#e11d48",
+                "danger_text": "#E11D48",
                 
                 "info_bg": "rgba(56, 189, 248, 0.15)",
                 "info_border": "rgba(56, 189, 248, 0.25)",
-                "info_text": "#0284c7",
+                "info_text": "#0284C7",
                 
                 "indigo_bg": "rgba(99, 102, 241, 0.1)",
                 "indigo_border": "rgba(99, 102, 241, 0.2)",
-                "indigo_text": "#4f46e5",
+                "indigo_text": "#4F46E5",
                 
                 "window_gradient": "transparent",
                 "primary_btn_gradient": "rgba(0, 0, 0, 0.05)",
@@ -212,22 +226,106 @@ class ThemeManager(QObject):
         scroll_hover = "rgba(255, 255, 255, 0.3)" if dark_mode else "rgba(0, 0, 0, 0.3)"
         
         glass_styles = f"""
-        * {{ font-family: 'Segoe UI Variable Display', 'Segoe UI Variable', 'Segoe UI', 'San Francisco', sans-serif; outline: none; }}
+        QWidget {{
+            color: {self.color('text_main')};
+            font-family: "Segoe UI Variable Text", "Segoe UI", "Inter", -apple-system, sans-serif;
+            font-size: 13px;
+            border: none;
+            outline: none;
+        }}
         QMainWindow, QWidget#content_area {{
             background: transparent;
         }}
+        
+        /* ─── Scrollbars ───────────────────────────────────────────────────────── */
         QScrollArea {{ border: none; background: transparent; }}
         QScrollBar:vertical {{ border: none; background: transparent; width: 6px; margin: 0px; }}
         QScrollBar::handle:vertical {{ background: {scroll_handle}; min-height: 30px; border-radius: 3px; }}
         QScrollBar::handle:vertical:hover {{ background: {scroll_hover}; }}
         QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0px; }}
+        QScrollBar:horizontal {{ border: none; background: transparent; height: 6px; margin: 0px; }}
+        QScrollBar::handle:horizontal {{ background: {scroll_handle}; min-width: 30px; border-radius: 3px; }}
+
+        /* ─── Shared Components ────────────────────────────────────────────────── */
+        QComboBox, QSpinBox, QLineEdit {{
+            background-color: {self.color('input_bg')};
+            border: 1px solid {self.color('input_border')};
+            border-radius: 10px;
+            padding: 8px 14px;
+            color: {self.color('text_main')};
+            font-size: 13px;
+        }}
+        QComboBox:hover, QSpinBox:hover, QLineEdit:hover, QComboBox:focus, QSpinBox:focus, QLineEdit:focus {{
+            border-color: {self.color('input_hover')};
+            background-color: {self.color('surface_secondary')};
+        }}
+        QComboBox::drop-down {{
+            subcontrol-origin: padding;
+            subcontrol-position: top right;
+            width: 28px;
+            border: none;
+        }}
+        QComboBox::down-arrow {{
+            image: none; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid {self.color('text_sub')}; width: 0; height: 0; margin-right: 8px;
+        }}
+        QComboBox QAbstractItemView {{
+            background-color: {self.color('surface_secondary')};
+            border: 1px solid {self.color('border')};
+            border-radius: 10px;
+            selection-background-color: rgba(47, 129, 247, 0.15);
+            selection-color: {self.color('accent')};
+            padding: 4px;
+            outline: none;
+        }}
+        QComboBox QAbstractItemView::item {{
+            padding: 10px 14px;
+            border-radius: 8px;
+            color: {self.color('text_main')};
+        }}
+        QComboBox QAbstractItemView::item:hover {{
+            background-color: rgba(47, 129, 247, 0.1);
+        }}
+        QProgressBar {{
+            background-color: {self.color('border')};
+            border-radius: 4px;
+            text-align: center;
+            color: transparent;
+        }}
+        QProgressBar::chunk {{
+            background-color: {self.color('accent')};
+            border-radius: 4px;
+        }}
+        QCheckBox {{
+            color: {self.color('text_main')};
+            spacing: 12px;
+            font-size: 13px;
+            font-weight: 600;
+        }}
+        QCheckBox::indicator {{
+            width: 20px;
+            height: 20px;
+            border-radius: 6px;
+            border: 2px solid {self.color('input_border')};
+            background-color: transparent;
+        }}
+        QCheckBox::indicator:hover {{
+            border-color: {self.color('accent')};
+        }}
+        QCheckBox::indicator:checked {{
+            background-color: {self.color('accent')};
+            border-color: {self.color('accent')};
+        }}
+        QToolTip {{
+            background-color: {self.color('surface_secondary')};
+            color: {self.color('text_main')};
+            border: 1px solid {self.color('border')};
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 12px;
+        }}
         """
 
-        base_dir = Path(__file__).parent.parent
-        qss_path = base_dir / "assets" / "styles" / ("dark_theme.qss" if dark_mode else "light_theme.qss")
-        static_qss = qss_path.read_text(encoding="utf-8") if qss_path.exists() else ""
-        
-        app.setStyleSheet(glass_styles + "\n" + static_qss)
+        app.setStyleSheet(glass_styles)
 
 def apply_mica(hwnd: int, dark_mode: bool = True) -> None:
     """Applies Windows 11 Mica backdrop to the specified window handle."""
