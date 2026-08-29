@@ -14,6 +14,7 @@ from tracker.categorizer import display_name as get_display_name
 
 
 from ui.widgets.fluent import FluentCard
+from ui.icons import get_icon
 
 class SmartInsightsCard(FluentCard):
     """Smart Digital Wellbeing Insights card with personalized health suggestions."""
@@ -34,7 +35,7 @@ class SmartInsightsCard(FluentCard):
         layout.setSpacing(14)
 
         hdr = QHBoxLayout()
-        self._lbl = QLabel("💡 Smart Wellbeing Insights")
+        self._lbl = QLabel("Smart Wellbeing Insights")
         self._lbl.setObjectName("section_header")
         hdr.addWidget(self._lbl)
         hdr.addStretch()
@@ -89,12 +90,13 @@ class SmartInsightsCard(FluentCard):
             rl.setSpacing(16)
 
             # Icon circle pill
-            ic_box = QLabel(icon)
+            ic_box = QLabel()
             ic_box.setFixedSize(32, 32)
             ic_box.setAlignment(Qt.AlignmentFlag.AlignCenter)
             ic_box.setStyleSheet(
-                f"background-color: {color}18; color: {color}; border: 1px solid {color}30; border-radius: 8px; font-size: 14px;"
+                f"background-color: {color}18; border: 1px solid {color}30; border-radius: 8px;"
             )
+            ic_box.setPixmap(get_icon(icon, color=color, size=16).pixmap(16, 16))
 
             t_lbl = QLabel(tip)
             t_lbl.setObjectName("insight_text")
@@ -113,7 +115,7 @@ class SmartInsightsCard(FluentCard):
         tm = ThemeManager.instance()
 
         if total_s == 0:
-            tips.append(("Tracking has started. Your screen time insights and personalized habits will update automatically as you use applications today.", "🌱", tm.color('accent')))
+            tips.append(("Insufficient data to generate meaningful insights for today.", "leaf", tm.color('accent')))
             return tips
 
         comp = self._engine.get_yesterday_comparison()
@@ -122,39 +124,39 @@ class SmartInsightsCard(FluentCard):
         prod_today = sum(c for k, c in comp["today_cats"].items() if k in ("programming", "productivity", "education", "utilities"))
         prod_yest = sum(c for k, c in comp["yesterday_cats"].items() if k in ("programming", "productivity", "education", "utilities"))
         
-        if prod_yest > 0:
+        if prod_yest > 300:
             pct_prod = ((prod_today - prod_yest) / prod_yest) * 100
             if pct_prod > 10:
-                tips.append((f"Productivity increased by {int(pct_prod)}% compared to yesterday.", "🚀", tm.color('success_text')))
+                tips.append((f"Productivity increased by {int(pct_prod)}% compared to yesterday.", "trend_up", tm.color('success_text')))
             elif pct_prod < -20:
-                tips.append((f"Productivity dropped by {int(abs(pct_prod))}% compared to yesterday.", "📉", tm.color('warning_text')))
+                tips.append((f"Productivity dropped by {int(abs(pct_prod))}% compared to yesterday.", "trend_down", tm.color('warning_text')))
 
         # Compare Browsers
         browser_today = comp["today_cats"].get("browser", 0)
         browser_yest = comp["yesterday_cats"].get("browser", 0)
         
-        if browser_yest > 0:
+        if browser_yest > 300:
             pct_browser = ((browser_today - browser_yest) / browser_yest) * 100
             if pct_browser < -15:
-                tips.append((f"You spent {int(abs(pct_browser))}% less time on browsers than yesterday.", "🌐", tm.color('info_text')))
+                tips.append((f"You spent {int(abs(pct_browser))}% less time on browsers than yesterday.", "globe", tm.color('info_text')))
             elif pct_browser > 30 and browser_today > 1800:
-                tips.append((f"Browser usage is {int(pct_browser)}% higher than yesterday. Consider a focus session.", "⌛", tm.color('warning_text')))
+                tips.append((f"Browser usage is {int(pct_browser)}% higher than yesterday. Consider a focus session.", "hourglass", tm.color('warning_text')))
 
         # Streak calculation
         long_term = self._engine.get_long_term_analytics()
         streak = long_term.get("current_streak", 0)
         
         if streak >= 3:
-            tips.append((f"You achieved your screen time goal for {streak} consecutive days.", "🔥", tm.color('accent')))
+            tips.append((f"You achieved your screen time goal for {streak} consecutive days.", "flame", tm.color('accent')))
             
         # Top app highlight (fallback)
         if len(tips) < 3 and summary.top_apps:
             top_app_name = get_display_name(summary.top_apps[0]["process_name"])
             top_app_dur = AnalyticsEngine.format_duration_short(summary.top_apps[0]["total_s"])
-            tips.append((f"{top_app_name} is your most active application today with {top_app_dur} usage.", "📊", tm.color('info_text')))
+            tips.append((f"{top_app_name} is your most active application today with {top_app_dur} usage.", "bar_chart", tm.color('info_text')))
             
         if not tips:
-             tips.append(("Moderate screen time today. Perfectly balanced digital routine detected.", "✨", tm.color('accent')))
+             tips.append(("Data is currently insufficient for robust comparison.", "sparkles", tm.color('text_sub')))
 
         return tips[:3]
 
@@ -179,18 +181,18 @@ class SmartInsightsCard(FluentCard):
         if active_s > 0:
             prod_pct = (productive_s / active_s) * 100
             if prod_pct >= 60:
-                tips.append((f"Great productivity flow! {prod_pct:.0f}% of screen time was focused high-value work.", "🎯", tm.color('success_text')))
+                tips.append((f"{prod_pct:.0f}% of screen time was allocated to high-value productivity tasks.", "target", tm.color('success_text')))
             elif prod_pct < 30 and active_s > 1800:
-                tips.append(("High entertainment/social load detected on this day.", "⌛", tm.color('warning_text')))
+                tips.append((f"Entertainment load comprised {(100-prod_pct):.0f}% of screen time.", "hourglass", tm.color('warning_text')))
 
         if total_s > 6 * 3600:
-            tips.append(("Screen time exceeded 6 hours.", "👀", tm.color('danger_text')))
+            tips.append(("Screen time exceeded 6 hours.", "eye", tm.color('danger_text')))
         elif total_s < 2 * 3600:
-            tips.append(("Moderate screen time. Perfectly balanced digital routine.", "✨", tm.color('accent')))
+            tips.append(("Screen time remained under 2 hours.", "sparkles", tm.color('accent')))
 
         if apps:
             top_app_name = get_display_name(apps[0]["process_name"])
             top_app_dur = AnalyticsEngine.format_duration_short(apps[0]["total_s"])
-            tips.append((f"Primary focus was {top_app_name} with {top_app_dur} of active engagement.", "📊", tm.color('info_text')))
+            tips.append((f"Primary focus was {top_app_name} with {top_app_dur} of active engagement.", "bar_chart", tm.color('info_text')))
 
         return tips[:3]

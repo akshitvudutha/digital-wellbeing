@@ -9,11 +9,8 @@ from PySide6.QtWidgets import QApplication
 app = QApplication.instance() or QApplication(sys.argv)
 
 # Apply theme
-from ui.theme import apply_windows11_dark_palette, load_stylesheet
-apply_windows11_dark_palette(app)
-ss = load_stylesheet()
-if ss:
-    app.setStyleSheet(ss)
+from ui.theme import ThemeManager
+ThemeManager.instance().set_theme("dark", app)
 
 errors = []
 
@@ -50,20 +47,46 @@ except Exception as e:
 # Settings Page V2
 try:
     from ui.pages.settings import SettingsPage
-    p = SettingsPage()
+    from protection.core import ProtectionManager
+    from database.repository import Repository
+    from tracker.manager import TrackingManager
+    repo = Repository()
+    tracker = TrackingManager()
+    protection_manager = ProtectionManager(repo)
+    p = SettingsPage(tracker=tracker, protection_manager=protection_manager)
     print("[OK] SettingsPage V2 — instantiated")
+
+    # Settings Navigation Regression Test
+    expected_categories = [
+        "Protection & PIN",
+        "General",
+        "Tracking",
+        "SleepGuard",
+        "Data Management",
+        "Updates & About"
+    ]
+    assert p._sidebar.count() == len(expected_categories), f"Expected {len(expected_categories)} sidebar items, found {p._sidebar.count()}"
+    
+    for i, expected_name in enumerate(expected_categories):
+        item = p._sidebar.item(i)
+        assert item.text() == expected_name, f"Sidebar index {i} mismatch: expected {expected_name}, got {item.text()}"
+        
+        # Click the item (triggers _on_sidebar_changed which updates stack index)
+        p._sidebar.setCurrentRow(i)
+        
+        # Verify deterministic mapping
+        current_stack_index = p._stack.currentIndex()
+        assert current_stack_index == i, f"Stack mismatch on '{expected_name}': sidebar index {i} mapped to stack index {current_stack_index}"
+        
+    print("[OK] SettingsPage Navigation — 1:1 deterministic mapping verified")
+
 except Exception as e:
+    import traceback
     errors.append(f"[FAIL] SettingsPage V2: {e}")
     print(errors[-1])
+    traceback.print_exc()
 
-# About Page V2
-try:
-    from ui.pages.about import AboutPage
-    p = AboutPage()
-    print("[OK] AboutPage V2 — instantiated")
-except Exception as e:
-    errors.append(f"[FAIL] AboutPage V2: {e}")
-    print(errors[-1])
+
 
 # Widgets
 try:

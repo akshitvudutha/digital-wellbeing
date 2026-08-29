@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 import threading
 from contextlib import contextmanager
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Generator, List, Optional
 
@@ -944,3 +944,60 @@ class Repository:
                 )
         except Exception as e:
             logger.error("Failed to clean up test database data: %s", e)
+
+    # ─── App Locker ───────────────────────────────────────────────────────────
+
+    def get_locked_apps(self) -> List[dict]:
+        """Return all locked apps as a list of dicts with keys:
+        process_name, display_name, exe_path, icon_path, added_at."""
+        try:
+            with self._cursor() as cur:
+                cur.execute(
+                    "SELECT process_name, display_name, exe_path, icon_path, added_at "
+                    "FROM app_locker_apps ORDER BY display_name COLLATE NOCASE"
+                )
+                return [dict(row) for row in cur.fetchall()]
+        except Exception as e:
+            logger.error("get_locked_apps failed: %s", e)
+            return []
+
+    def add_locked_app(self, process_name: str, display_name: str,
+                       exe_path: str = "", icon_path: Optional[str] = None) -> bool:
+        """Insert or replace a locked app entry. Returns True on success."""
+        try:
+            added_at = datetime.now(timezone.utc).isoformat()
+            with self._cursor() as cur:
+                cur.execute(
+                    "INSERT OR REPLACE INTO app_locker_apps "
+                    "(process_name, display_name, exe_path, icon_path, added_at) "
+                    "VALUES (?, ?, ?, ?, ?)",
+                    (process_name.lower(), display_name, exe_path, icon_path, added_at),
+                )
+            return True
+        except Exception as e:
+            logger.error("add_locked_app failed for %s: %s", process_name, e)
+            return False
+
+    def remove_locked_app(self, process_name: str) -> bool:
+        """Remove a locked app by process name. Returns True on success."""
+        try:
+            with self._cursor() as cur:
+                cur.execute(
+                    "DELETE FROM app_locker_apps WHERE process_name = ?",
+                    (process_name.lower(),),
+                )
+            return True
+        except Exception as e:
+            logger.error("remove_locked_app failed for %s: %s", process_name, e)
+            return False
+
+    def clear_locked_apps(self) -> bool:
+        """Remove ALL locked app entries. Returns True on success."""
+        try:
+            with self._cursor() as cur:
+                cur.execute("DELETE FROM app_locker_apps")
+            return True
+        except Exception as e:
+            logger.error("clear_locked_apps failed: %s", e)
+            return False
+

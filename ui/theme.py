@@ -79,7 +79,7 @@ class ThemeManager(QObject):
         # Notify all widgets to update dynamic styles
         self.theme_changed.emit(self._is_dark)
 
-    def color(self, token: str, default: str = "#ff00ff") -> str:
+    def color(self, token: str, default: str = "transparent") -> str:
         """Get a specific theme color by token name."""
         return self._tokens.get(token, default)
 
@@ -87,102 +87,110 @@ class ThemeManager(QObject):
         if dark_mode:
             return {
                 "bg": "transparent",
-                "window_bg": "#0D1117",  # Deep Canvas
-                "surface": "rgba(22, 27, 34, 0.75)", # Cards
-                "surface_elevated": "rgba(28, 33, 40, 0.85)", # Hover Cards
-                "surface_secondary": "rgba(33, 38, 45, 0.95)",
-                "card_bg": "rgba(22, 27, 34, 0.75)",
-                "card_hover": "rgba(28, 33, 40, 0.85)",
-                "card_pressed": "rgba(22, 27, 34, 0.95)",
-                "border": "rgba(255, 255, 255, 0.08)",
-                "border_hover": "rgba(47, 129, 247, 0.35)",
-                "input_bg": "#161B22",
+                "window_bg": "transparent",      # Allows Mica to show through fully
+                "sidebar_bg": "rgba(28, 28, 28, 0.5)",  # Glass sidebar
+                "surface": "rgba(36, 36, 36, 0.65)",     # Translucent charcoal cards
+                "surface_elevated": "#2a2a2a",   # OPAQUE for dense data (settings, charts)
+                "surface_secondary": "rgba(45, 45, 45, 0.4)", # Soft secondary surface
+                "surface_hover": "rgba(45, 45, 45, 0.75)",
+                "surface_pressed": "rgba(32, 32, 32, 0.8)",
+                "card_bg": "rgba(36, 36, 36, 0.65)",
+                "card_hover": "rgba(45, 45, 45, 0.75)",
+                "card_pressed": "rgba(32, 32, 32, 0.8)",
+                "border": "rgba(255, 255, 255, 0.08)",   # Very subtle borders
+                "border_strong": "rgba(255, 255, 255, 0.15)",
+                "border_hover": "rgba(255, 255, 255, 0.2)",
+                "input_bg": "rgba(45, 45, 45, 0.6)",     # Slightly lighter translucent
                 "input_border": "rgba(255, 255, 255, 0.12)",
-                "input_hover": "rgba(47, 129, 247, 0.55)",
-                "text_main": "#F0F6FC",
-                "text_sub": "#8B949E",
-                "text_muted": "rgba(240, 246, 252, 0.4)",
-                "accent": "#2F81F7",
-                "accent_hover": "#388BFD",
-                "accent_pressed": "#1F6FEB",
-                "track": "rgba(255, 255, 255, 0.05)",
+                "input_hover": "rgba(79, 79, 79, 0.8)",
+                "text_main": "#F3F3F3",          # Readable white
+                "text_sub": "#A0A0A0",           # Soft gray
+                "text_muted": "#757575",
+                "accent": "#60CDFF",             # Standard Fluent Blue Dark
+                "accent_hover": "#54B9ED",
+                "accent_pressed": "#409CCB",
+                "track": "rgba(42, 42, 42, 0.8)",
                 "center_circle": "transparent",
                 "grid": "rgba(255, 255, 255, 0.05)",
                 
                 # Semantic
-                "success_bg": "rgba(35, 134, 54, 0.15)",
-                "success_border": "rgba(35, 134, 54, 0.3)",
-                "success_text": "#3FB950",
+                "success_bg": "rgba(34, 197, 94, 0.15)",
+                "success_border": "rgba(34, 197, 94, 0.3)",
+                "success_text": "#4ADE80",
                 
-                "warning_bg": "rgba(210, 153, 34, 0.15)",
-                "warning_border": "rgba(210, 153, 34, 0.3)",
-                "warning_text": "#D29922",
+                "warning_bg": "rgba(245, 158, 11, 0.15)",
+                "warning_border": "rgba(245, 158, 11, 0.3)",
+                "warning_text": "#FBBF24",
                 
-                "danger_bg": "rgba(248, 81, 73, 0.15)",
-                "danger_border": "rgba(248, 81, 73, 0.25)",
-                "danger_text": "#F85149",
+                "danger_bg": "rgba(239, 68, 68, 0.15)",
+                "danger_border": "rgba(239, 68, 68, 0.3)",
+                "danger_text": "#F87171",
                 
-                "info_bg": "rgba(47, 129, 247, 0.15)",
-                "info_border": "rgba(47, 129, 247, 0.25)",
-                "info_text": "#2F81F7",
+                "info_bg": "rgba(56, 189, 248, 0.15)",
+                "info_border": "rgba(56, 189, 248, 0.3)",
+                "info_text": "#7DD3FC",
                 
-                "indigo_bg": "rgba(99, 102, 241, 0.1)",
-                "indigo_border": "rgba(99, 102, 241, 0.2)",
-                "indigo_text": "#818cf8",
+                "indigo_bg": "rgba(99, 102, 241, 0.15)",
+                "indigo_border": "rgba(99, 102, 241, 0.3)",
+                "indigo_text": "#818CF8",
                 
                 "window_gradient": "transparent",
-                "primary_btn_gradient": "rgba(255, 255, 255, 0.1)",
-                "primary_btn_hover": "rgba(255, 255, 255, 0.15)",
+                "primary_btn_gradient": "rgba(255, 255, 255, 0.05)",
+                "primary_btn_hover": "rgba(255, 255, 255, 0.1)",
             }
         else:
             return {
                 "bg": "transparent",
-                "window_bg": "#F3F5F9",
-                "surface": "rgba(255, 255, 255, 0.75)",
-                "surface_elevated": "rgba(255, 255, 255, 0.95)",
-                "surface_secondary": "#FFFFFF",
+                "window_bg": "transparent",      # Allows Light Mica to show
+                "sidebar_bg": "rgba(249, 249, 249, 0.6)", # Translucent neutral
+                "surface": "rgba(255, 255, 255, 0.75)",   # Translucent white cards
+                "surface_elevated": "#FFFFFF",   # OPAQUE for dense data
+                "surface_secondary": "rgba(0, 0, 0, 0.04)", # Soft secondary surface
+                "surface_hover": "rgba(255, 255, 255, 0.9)",
+                "surface_pressed": "rgba(240, 240, 240, 0.9)",
                 "card_bg": "rgba(255, 255, 255, 0.75)",
-                "card_hover": "rgba(255, 255, 255, 0.95)",
-                "card_pressed": "rgba(245, 245, 245, 0.95)",
-                "border": "rgba(0, 0, 0, 0.05)",
-                "border_hover": "rgba(0, 120, 212, 0.35)",
-                "input_bg": "rgba(255, 255, 255, 0.9)",
-                "input_border": "rgba(0, 0, 0, 0.08)",
-                "input_hover": "#0078d4",
-                "text_main": "#0F172A",
-                "text_sub": "#64748B",
-                "text_muted": "rgba(15, 23, 42, 0.4)",
-                "accent": "#0078D4",
-                "accent_hover": "#3B82F6",
-                "accent_pressed": "#1D4ED8",
-                "track": "rgba(0, 0, 0, 0.05)",
+                "card_hover": "rgba(255, 255, 255, 0.9)",
+                "card_pressed": "rgba(240, 240, 240, 0.9)",
+                "border": "rgba(0, 0, 0, 0.08)", # Subtle border
+                "border_strong": "rgba(0, 0, 0, 0.15)",
+                "border_hover": "rgba(0, 0, 0, 0.2)",
+                "input_bg": "rgba(249, 249, 249, 0.8)",
+                "input_border": "rgba(0, 0, 0, 0.12)",
+                "input_hover": "rgba(230, 230, 230, 0.9)",
+                "text_main": "#1C1C1C",          # High contrast dark text
+                "text_sub": "#5E5E5E",           # Muted but readable
+                "text_muted": "#8C8C8C",
+                "accent": "#005FB8",             # Standard Fluent Blue Light
+                "accent_hover": "#0067C0",
+                "accent_pressed": "#004C87",
+                "track": "rgba(0, 0, 0, 0.06)",
                 "center_circle": "transparent",
-                "grid": "rgba(0, 0, 0, 0.05)",
+                "grid": "rgba(0, 0, 0, 0.04)",
                 
                 # Semantic
-                "success_bg": "rgba(16, 185, 129, 0.15)",
-                "success_border": "rgba(16, 185, 129, 0.3)",
-                "success_text": "#059669",
+                "success_bg": "rgba(22, 163, 74, 0.1)",
+                "success_border": "rgba(22, 163, 74, 0.25)",
+                "success_text": "#16A34A",
                 
-                "warning_bg": "rgba(250, 204, 21, 0.15)",
-                "warning_border": "rgba(250, 204, 21, 0.3)",
+                "warning_bg": "rgba(217, 119, 6, 0.1)",
+                "warning_border": "rgba(217, 119, 6, 0.25)",
                 "warning_text": "#D97706",
                 
-                "danger_bg": "rgba(244, 63, 94, 0.15)",
-                "danger_border": "rgba(244, 63, 94, 0.25)",
-                "danger_text": "#E11D48",
+                "danger_bg": "rgba(220, 38, 38, 0.1)",
+                "danger_border": "rgba(220, 38, 38, 0.25)",
+                "danger_text": "#DC2626",
                 
-                "info_bg": "rgba(56, 189, 248, 0.15)",
-                "info_border": "rgba(56, 189, 248, 0.25)",
+                "info_bg": "rgba(2, 132, 199, 0.1)",
+                "info_border": "rgba(2, 132, 199, 0.25)",
                 "info_text": "#0284C7",
                 
-                "indigo_bg": "rgba(99, 102, 241, 0.1)",
-                "indigo_border": "rgba(99, 102, 241, 0.2)",
+                "indigo_bg": "rgba(79, 70, 229, 0.1)",
+                "indigo_border": "rgba(79, 70, 229, 0.2)",
                 "indigo_text": "#4F46E5",
                 
                 "window_gradient": "transparent",
-                "primary_btn_gradient": "rgba(0, 0, 0, 0.05)",
-                "primary_btn_hover": "rgba(0, 0, 0, 0.08)",
+                "primary_btn_gradient": "rgba(15, 23, 42, 0.04)",
+                "primary_btn_hover": "rgba(15, 23, 42, 0.08)",
             }
 
     def _apply_palette(self, app: QApplication, dark_mode: bool) -> None:
@@ -229,7 +237,7 @@ class ThemeManager(QObject):
         QWidget {{
             color: {self.color('text_main')};
             font-family: "Segoe UI Variable Text", "Segoe UI", "Inter", -apple-system, sans-serif;
-            font-size: 13px;
+            font-size: 14px;
             border: none;
             outline: none;
         }}
@@ -239,25 +247,44 @@ class ThemeManager(QObject):
         
         /* ─── Scrollbars ───────────────────────────────────────────────────────── */
         QScrollArea {{ border: none; background: transparent; }}
-        QScrollBar:vertical {{ border: none; background: transparent; width: 6px; margin: 0px; }}
-        QScrollBar::handle:vertical {{ background: {scroll_handle}; min-height: 30px; border-radius: 3px; }}
+        QScrollBar:vertical {{ border: none; background: transparent; width: 8px; margin: 0px; }}
+        QScrollBar::handle:vertical {{ background: {scroll_handle}; min-height: 40px; border-radius: 4px; }}
         QScrollBar::handle:vertical:hover {{ background: {scroll_hover}; }}
         QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0px; }}
-        QScrollBar:horizontal {{ border: none; background: transparent; height: 6px; margin: 0px; }}
-        QScrollBar::handle:horizontal {{ background: {scroll_handle}; min-width: 30px; border-radius: 3px; }}
+        QScrollBar:horizontal {{ border: none; background: transparent; height: 8px; margin: 0px; }}
+        QScrollBar::handle:horizontal {{ background: {scroll_handle}; min-width: 40px; border-radius: 4px; }}
 
         /* ─── Shared Components ────────────────────────────────────────────────── */
+        QFrame#v2_card, QFrame#stat_card {{
+            background-color: {self.color('card_bg')};
+            border: 1px solid {self.color('border')};
+            border-radius: 12px;
+        }}
+        QFrame#v2_card:hover, QFrame#stat_card:hover {{
+            background-color: {self.color('card_hover')};
+            border: 1px solid {self.color('border_hover')};
+        }}
+        
+        QFrame#dense_card {{
+            background-color: {self.color('surface_elevated')};
+            border: 1px solid {self.color('border')};
+            border-radius: 12px;
+        }}
+        QFrame#dense_card:hover {{
+            border: 1px solid {self.color('border_hover')};
+        }}
+        
         QComboBox, QSpinBox, QLineEdit {{
             background-color: {self.color('input_bg')};
             border: 1px solid {self.color('input_border')};
-            border-radius: 10px;
-            padding: 8px 14px;
+            border-radius: 6px;
+            padding: 8px 12px;
             color: {self.color('text_main')};
-            font-size: 13px;
+            font-size: 14px;
         }}
         QComboBox:hover, QSpinBox:hover, QLineEdit:hover, QComboBox:focus, QSpinBox:focus, QLineEdit:focus {{
-            border-color: {self.color('input_hover')};
-            background-color: {self.color('surface_secondary')};
+            border-color: {self.color('accent')};
+            background-color: {self.color('surface_elevated')};
         }}
         QComboBox::drop-down {{
             subcontrol-origin: padding;
@@ -269,44 +296,45 @@ class ThemeManager(QObject):
             image: none; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid {self.color('text_sub')}; width: 0; height: 0; margin-right: 8px;
         }}
         QComboBox QAbstractItemView {{
-            background-color: {self.color('surface_secondary')};
+            background-color: {self.color('surface_elevated')};
             border: 1px solid {self.color('border')};
-            border-radius: 10px;
-            selection-background-color: rgba(47, 129, 247, 0.15);
+            border-radius: 8px;
+            selection-background-color: rgba(99, 102, 241, 0.15);
             selection-color: {self.color('accent')};
             padding: 4px;
             outline: none;
         }}
         QComboBox QAbstractItemView::item {{
-            padding: 10px 14px;
-            border-radius: 8px;
+            padding: 8px 12px;
+            border-radius: 6px;
             color: {self.color('text_main')};
         }}
         QComboBox QAbstractItemView::item:hover {{
-            background-color: rgba(47, 129, 247, 0.1);
+            background-color: rgba(99, 102, 241, 0.1);
         }}
         QProgressBar {{
-            background-color: {self.color('border')};
+            background-color: {self.color('track')};
+            border: 1px solid {self.color('border')};
             border-radius: 4px;
             text-align: center;
             color: transparent;
         }}
         QProgressBar::chunk {{
             background-color: {self.color('accent')};
-            border-radius: 4px;
+            border-radius: 3px;
         }}
         QCheckBox {{
             color: {self.color('text_main')};
             spacing: 12px;
-            font-size: 13px;
-            font-weight: 600;
+            font-size: 14px;
+            font-weight: 500;
         }}
         QCheckBox::indicator {{
             width: 20px;
             height: 20px;
             border-radius: 6px;
-            border: 2px solid {self.color('input_border')};
-            background-color: transparent;
+            border: 1px solid {self.color('input_border')};
+            background-color: {self.color('input_bg')};
         }}
         QCheckBox::indicator:hover {{
             border-color: {self.color('accent')};
@@ -316,11 +344,11 @@ class ThemeManager(QObject):
             border-color: {self.color('accent')};
         }}
         QToolTip {{
-            background-color: {self.color('surface_secondary')};
+            background-color: {self.color('surface_elevated')};
             color: {self.color('text_main')};
             border: 1px solid {self.color('border')};
-            border-radius: 8px;
-            padding: 6px 12px;
+            border-radius: 6px;
+            padding: 6px 10px;
             font-size: 12px;
         }}
         """
@@ -392,11 +420,11 @@ def get_app_color(app_name: str) -> str:
     import hashlib
     hash_val = int(hashlib.md5(name.encode()).hexdigest(), 16)
     
-    # Restrict hue to avoid pure purple (260-290 roughly). 
-    # Let's map 0-360, but if it falls in 260-290, shift it.
+    # Restrict hue to avoid pure purple (260-310 roughly). 
+    # Let's map 0-360, but if it falls in 260-310, shift it.
     hue = hash_val % 360
-    if 260 <= hue <= 290:
-        hue = (hue + 50) % 360
+    if 260 <= hue <= 310:
+        hue = (hue + 60) % 360
         
     sat = 60 + (hash_val % 20) # 60-80% saturation (vibrant but not oversaturated)
     light = 50 + (hash_val % 10) # 50-60% lightness

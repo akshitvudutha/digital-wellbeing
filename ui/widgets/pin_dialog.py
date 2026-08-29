@@ -24,6 +24,10 @@ class PinDialog(QDialog):
         self._setup_ui()
         self._apply_theme()
         
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        from ui.theme import ThemeManager, apply_mica
+        apply_mica(int(self.winId()), ThemeManager.instance().is_dark)
+        
     def showEvent(self, event):
         super().showEvent(event)
         self._anim.setStartValue(0.0)

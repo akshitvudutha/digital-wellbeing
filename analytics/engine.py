@@ -109,10 +109,16 @@ class AnalyticsEngine:
         t_active = t_summary.active_time_s
         y_active = y_summary.active_time_s
 
-        if y_active > 0:
-            pct_change = ((t_active - y_active) / y_active) * 100.0
+        # Treat yesterday's usage as 0 if it was less than 5 minutes to avoid absurd percentages
+        eff_y_active = y_active if y_active >= 300.0 else 0.0
+        yesterday_was_zero = (eff_y_active == 0.0)
+
+        if not yesterday_was_zero:
+            pct_change = ((t_active - eff_y_active) / eff_y_active) * 100.0
+            if pct_change > 999.0:
+                pct_change = 999.0
         else:
-            pct_change = 0.0 if t_active == 0 else 100.0
+            pct_change = 0.0 if t_active == 0 else float('inf')
 
         t_cats = {c["category"].lower(): c["total_s"] for c in t_summary.category_breakdown}
         y_cats = {c["category"].lower(): c["total_s"] for c in y_summary.category_breakdown}
@@ -124,6 +130,7 @@ class AnalyticsEngine:
             "is_increase": pct_change > 0,
             "today_cats": t_cats,
             "yesterday_cats": y_cats,
+            "yesterday_was_zero": yesterday_was_zero
         }
 
     def get_trend_insights(self) -> dict:
@@ -138,10 +145,15 @@ class AnalyticsEngine:
         curr_active = curr_week.active_time_s
         prev_active = prev_week.active_time_s
 
-        if prev_active > 0:
-            week_pct_change = ((curr_active - prev_active) / prev_active) * 100.0
+        eff_prev_active = prev_active if prev_active >= 300.0 else 0.0
+        prev_week_was_zero = (eff_prev_active == 0.0)
+
+        if not prev_week_was_zero:
+            week_pct_change = ((curr_active - eff_prev_active) / eff_prev_active) * 100.0
+            if week_pct_change > 999.0:
+                week_pct_change = 999.0
         else:
-            week_pct_change = 0.0
+            week_pct_change = 0.0 if curr_active == 0 else float('inf')
 
         # Category shifts
         curr_cats = {c["category"].lower(): c["total_s"] for c in curr_week.category_breakdown}
@@ -153,8 +165,11 @@ class AnalyticsEngine:
         ent_curr = sum(curr_cats.get(k, 0.0) for k in ("entertainment", "social", "gaming"))
         ent_prev = sum(prev_cats.get(k, 0.0) for k in ("entertainment", "social", "gaming"))
 
-        prod_change = ((prod_curr - prod_prev) / prod_prev * 100.0) if prod_prev > 0 else 0.0
-        ent_change = ((ent_curr - ent_prev) / ent_prev * 100.0) if ent_prev > 0 else 0.0
+        prod_change = ((prod_curr - prod_prev) / prod_prev * 100.0) if prod_prev >= 300.0 else (100.0 if prod_curr >= 300.0 else 0.0)
+        ent_change = ((ent_curr - ent_prev) / ent_prev * 100.0) if ent_prev >= 300.0 else (100.0 if ent_curr >= 300.0 else 0.0)
+
+        if prod_change > 999.0: prod_change = 999.0
+        if ent_change > 999.0: ent_change = 999.0
 
         return {
             "week_pct_change": week_pct_change,
@@ -162,6 +177,7 @@ class AnalyticsEngine:
             "ent_change_pct": ent_change,
             "curr_week_active_s": curr_active,
             "prev_week_active_s": prev_active,
+            "prev_week_was_zero": prev_week_was_zero,
         }
 
     def get_long_term_analytics(self) -> dict:
@@ -192,12 +208,13 @@ class AnalyticsEngine:
         longest_focus = 0.0
         
         for stat in sorted_stats:
-            # Streak
-            if stat.total_screen_time_s <= goal_s and stat.total_screen_time_s > 0:
-                temp_streak += 1
-                best_streak = max(best_streak, temp_streak)
-            else:
-                temp_streak = 0
+            # Streak - Only count days where the PC was used for at least 5 minutes
+            if stat.active_time_s >= 300:
+                if stat.total_screen_time_s <= goal_s:
+                    temp_streak += 1
+                    best_streak = max(best_streak, temp_streak)
+                else:
+                    temp_streak = 0
                 
             # Productivity
             import json
@@ -213,11 +230,11 @@ class AnalyticsEngine:
         # To get current streak, we count backwards from today/yesterday
         current_streak = 0
         for stat in reversed(sorted_stats):
-            # Allow missing a day? Strict consecutive:
-            if stat.total_screen_time_s <= goal_s and stat.total_screen_time_s > 0:
-                current_streak += 1
-            else:
-                break
+            if stat.active_time_s >= 300:
+                if stat.total_screen_time_s <= goal_s:
+                    current_streak += 1
+                else:
+                    break
                 
         # Estimate longest sessions across all time
         for stat in all_stats:

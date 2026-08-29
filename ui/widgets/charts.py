@@ -19,7 +19,7 @@ class HourlyIntensityChart(QFrame):
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
-        self.setObjectName("v2_card")
+        self.setObjectName("dense_card")
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setMinimumHeight(320)
         self._setup_ui()
@@ -137,7 +137,7 @@ class DailyScreenTimeChart(QFrame):
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
-        self.setObjectName("v2_card")
+        self.setObjectName("dense_card")
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setMinimumHeight(320)
         self._day_strings: List[str] = []

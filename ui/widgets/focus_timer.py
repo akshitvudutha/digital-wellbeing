@@ -6,8 +6,62 @@ from __future__ import annotations
 
 from PySide6.QtCore import QTimer, Qt, Signal
 from PySide6.QtWidgets import (
-    QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget,
+    QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget, QLineEdit, QScrollArea
 )
+from ui.theme import ThemeManager
+
+class ChipWidget(QFrame):
+    removed = Signal(str)
+    
+    def __init__(self, text: str, parent=None):
+        super().__init__(parent)
+        self.text_val = text
+        self.setObjectName("chip")
+        
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(12, 4, 8, 4)
+        layout.setSpacing(6)
+        
+        self.lbl = QLabel(text)
+        self.lbl.setObjectName("chip_text")
+        
+        self.btn = QPushButton("×")
+        self.btn.setObjectName("chip_close")
+        self.btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn.clicked.connect(lambda: self.removed.emit(self.text_val))
+        self.btn.setFixedSize(16, 16)
+        
+        layout.addWidget(self.lbl)
+        layout.addWidget(self.btn)
+        
+        from ui.theme import ThemeManager
+        ThemeManager.instance().theme_changed.connect(lambda _: self._apply_theme())
+        self._apply_theme()
+        
+    def _apply_theme(self):
+        tm = ThemeManager.instance()
+        self.setStyleSheet(f"""
+            QFrame#chip {{
+                background-color: {tm.color('surface_elevated')};
+                border: 1px solid {tm.color('border')};
+                border-radius: 12px;
+            }}
+            QLabel#chip_text {{
+                color: {tm.color('text_main')};
+                font-size: 12px;
+                font-weight: 500;
+            }}
+            QPushButton#chip_close {{
+                background: transparent;
+                border: none;
+                color: {tm.color('text_sub')};
+                font-weight: bold;
+                font-size: 14px;
+            }}
+            QPushButton#chip_close:hover {{
+                color: {tm.color('danger_text')};
+            }}
+        """)
 
 class FocusTimerWidget(QFrame):
     """Focus Session / Pomodoro Timer widget with quick duration chips."""
@@ -47,7 +101,7 @@ class FocusTimerWidget(QFrame):
         layout.setSpacing(14)
 
         hdr = QHBoxLayout()
-        self._lbl = QLabel("🧘 Focus Session Timer")
+        self._lbl = QLabel("Focus Session")
         self._lbl.setObjectName("section_header")
         hdr.addWidget(self._lbl)
         
@@ -58,6 +112,10 @@ class FocusTimerWidget(QFrame):
         hdr.addStretch()
         hdr.addWidget(self._strict_chk)
         layout.addLayout(hdr)
+        
+        desc = QLabel("Boost productivity by blocking distracting websites and apps.")
+        desc.setStyleSheet("color: #A0A0A0; font-size: 13px; margin-bottom: 8px;")
+        layout.addWidget(desc)
 
         center_layout = QVBoxLayout()
         center_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -90,6 +148,50 @@ class FocusTimerWidget(QFrame):
             self._chips.append(chip)
 
         layout.addLayout(self._chips_row)
+        
+        layout.addSpacing(12)
+        
+        # Blocklist Section
+        blocklist_hdr = QLabel("Blocked Apps & Sites")
+        blocklist_hdr.setObjectName("timer_status")
+        layout.addWidget(blocklist_hdr)
+        
+        self._blocklist_container = QWidget()
+        self._blocklist_layout = QHBoxLayout(self._blocklist_container)
+        self._blocklist_layout.setContentsMargins(0, 0, 0, 0)
+        self._blocklist_layout.setSpacing(8)
+        self._blocklist_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        
+        # Wrap in scroll area
+        self._blocklist_scroll = QScrollArea()
+        self._blocklist_scroll.setWidgetResizable(True)
+        self._blocklist_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self._blocklist_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self._blocklist_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self._blocklist_scroll.setFixedHeight(40)
+        self._blocklist_scroll.setWidget(self._blocklist_container)
+        
+        layout.addWidget(self._blocklist_scroll)
+        
+        # Add Input
+        input_row = QHBoxLayout()
+        self._block_input = QLineEdit()
+        self._block_input.setPlaceholderText("Enter app or domain (e.g., youtube.com)")
+        self._block_input.setObjectName("block_input")
+        self._block_input.returnPressed.connect(self._add_block_item)
+        
+        self._add_block_btn = QPushButton("Add")
+        self._add_block_btn.setObjectName("timer_chip")
+        self._add_block_btn.clicked.connect(self._add_block_item)
+        
+        input_row.addWidget(self._block_input, 1)
+        input_row.addWidget(self._add_block_btn)
+        
+        layout.addLayout(input_row)
+        
+        layout.addSpacing(16)
+        
+        self._refresh_blocklist_ui()
 
         # Controls Row
         controls = QHBoxLayout()
@@ -143,6 +245,17 @@ class FocusTimerWidget(QFrame):
                 border-color: transparent;
                 color: transparent;
             }}
+            QLineEdit#block_input {{
+                background-color: {tm.color('input_bg')};
+                border: 1px solid {tm.color('input_border')};
+                border-radius: 6px;
+                padding: 6px 12px;
+                color: {tm.color('text_main')};
+                font-size: 13px;
+            }}
+            QLineEdit#block_input:focus {{
+                border-color: {tm.color('accent')};
+            }}
             QPushButton#timer_start_btn {{
                 background-color: {tm.color('accent')};
                 color: #ffffff;
@@ -187,6 +300,35 @@ class FocusTimerWidget(QFrame):
         self._time_display.setText(self._format_time(minutes * 60))
         self._status_lbl.setText(f"Preset set to {minutes} minutes")
         self._update_display_color()
+        
+    def _refresh_blocklist_ui(self) -> None:
+        while self._blocklist_layout.count():
+            item = self._blocklist_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+                
+        items = self._fm.blocklist
+        for text in items:
+            chip = ChipWidget(text)
+            chip.removed.connect(self._remove_block_item)
+            self._blocklist_layout.addWidget(chip)
+            
+    def _add_block_item(self) -> None:
+        text = self._block_input.text().strip().lower()
+        if text:
+            items = self._fm.blocklist
+            if text not in items:
+                items.append(text)
+                self._fm.save_blocklist(items)
+                self._refresh_blocklist_ui()
+            self._block_input.clear()
+            
+    def _remove_block_item(self, text: str) -> None:
+        items = self._fm.blocklist
+        if text in items:
+            items.remove(text)
+            self._fm.save_blocklist(items)
+            self._refresh_blocklist_ui()
 
     def _on_tick(self, seconds: int) -> None:
         self._time_display.setText(self._format_time(seconds))
@@ -200,15 +342,24 @@ class FocusTimerWidget(QFrame):
             for chip in self._chips: chip.hide()
             self._strict_chk.setEnabled(False)
             self._strict_chk.setChecked(self._fm.is_strict)
-            self._status_lbl.setText("Focusing... Blocklist active.")
+            if self._fm.system_blocking_active:
+                self._status_lbl.setText("Website blocking: ✓ System blocking active")
+            elif self._fm.blocklist:
+                self._status_lbl.setText("Website blocking: ⚠ Elevated permission required")
+            else:
+                self._status_lbl.setText("Focusing... No websites blocked.")
+            self._block_input.setEnabled(False)
+            self._add_block_btn.setEnabled(False)
         else:
             self._start_btn.show()
             for chip in self._chips: chip.show()
             self._strict_chk.setEnabled(True)
+            self._block_input.setEnabled(True)
+            self._add_block_btn.setEnabled(True)
             self._start_btn.setText("▶ Start Focus")
             self._time_display.setText(self._format_time(self._selected_minutes * 60))
             if self._time_display.text() == "00:00":
-                 self._status_lbl.setText("Session complete! Take a break 🎉")
+                 self._status_lbl.setText("Session complete! Take a break")
             else:
                  self._status_lbl.setText("Ready to focus — select preset or start")
         self._update_display_color()
@@ -235,7 +386,9 @@ class FocusTimerWidget(QFrame):
             from ui.widgets.pin_dialog import PinDialog
             dialog = PinDialog(self._fm._pin_manager, self.window())
             if dialog.exec():
-                self._fm.stop_focus(provided_pin="verified_by_dialog")
+                # PIN was already verified inside PinDialog._verify_pin().
+                # Use the dedicated post-dialog stop method to avoid a bogus second validation.
+                self._fm.stop_focus_after_pin_dialog()
         else:
             self._fm.stop_focus()
 

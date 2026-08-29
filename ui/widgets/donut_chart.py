@@ -356,9 +356,9 @@ class CategoryBreakdownCard(QFrame):
     """Complete, responsive Category Breakdown Card combining Donut Chart and Legend without overlapping."""
     category_clicked = Signal(str)
 
-    def __init__(self, title: str = "🍩 Category Breakdown Today", parent=None) -> None:
+    def __init__(self, title: str = "Category Breakdown", parent=None) -> None:
         super().__init__(parent)
-        self.setObjectName("v2_card")
+        self.setObjectName("dense_card")
         self._setup_ui(title)
         
         from ui.theme import ThemeManager
@@ -417,11 +417,11 @@ class CategoryBreakdownCard(QFrame):
             self.donut.set_data(
                 segments,
                 center_text=AnalyticsEngine.format_duration_short(active_seconds),
-                center_subtext="Active Time",
+                center_subtext="Total Screen Time",
             )
         else:
             self.donut.set_data(
                 [("Active", 1.0, tm.color('accent'))],
                 center_text="0m",
-                center_subtext="Active Time",
+                center_subtext="Total Screen Time",
             )

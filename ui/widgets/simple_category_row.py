@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 
 from core.constants import AppCategory, CATEGORY_ICONS
 from analytics.engine import AnalyticsEngine
+from ui.icons import get_icon
 
 from ui.widgets.fluent import FluentCard
 
@@ -38,12 +39,13 @@ class ClickableCategoryCard(FluentCard):
         self._apply_theme(ThemeManager.instance().is_dark)
 
     def _setup_ui(self, duration_s: float) -> None:
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 20, 16, 20)
-        layout.setSpacing(12)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(16, 12, 16, 12)
+        layout.setSpacing(16)
+        layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         
-        self.setFixedSize(140, 140)
+        self.setFixedHeight(72)
+        self.setMinimumWidth(220)
 
         cat_enum = self._category if isinstance(self._category, AppCategory) else None
         if not cat_enum:
@@ -52,28 +54,35 @@ class ClickableCategoryCard(FluentCard):
             except ValueError:
                 pass
                 
-        icon_text = CATEGORY_ICONS.get(cat_enum, "📌") if cat_enum else "📌"
+        icon_text = CATEGORY_ICONS.get(cat_enum, "apps") if cat_enum else "apps"
         cat_name = self._category.value.title() if isinstance(self._category, AppCategory) else str(self._category).title()
 
         # Category Icon
-        self._icon_lbl = QLabel(icon_text)
+        self._icon_lbl = QLabel()
         self._icon_lbl.setObjectName("cat_icon_lbl")
-        self._icon_lbl.setFixedSize(36, 36)
+        self._icon_lbl.setFixedSize(40, 40)
         self._icon_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._icon_name = icon_text
         layout.addWidget(self._icon_lbl)
 
-        # Center Column (Name)
+        # Text Column
+        text_layout = QVBoxLayout()
+        text_layout.setSpacing(4)
+        text_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        
+        # Name
         self._name_lbl = QLabel(cat_name)
         self._name_lbl.setObjectName("cat_name_lbl")
-        self._name_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(self._name_lbl)
+        text_layout.addWidget(self._name_lbl)
         
-        # Bottom Column (Duration)
+        # Duration
         engine = AnalyticsEngine()
         self._dur_lbl = QLabel(engine.format_duration_short(duration_s))
         self._dur_lbl.setObjectName("cat_dur_lbl")
-        self._dur_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(self._dur_lbl)
+        text_layout.addWidget(self._dur_lbl)
+        
+        layout.addLayout(text_layout)
+        layout.addStretch()
 
     def _apply_theme(self, is_dark: bool) -> None:
         if not hasattr(self, "_category"):
@@ -96,10 +105,13 @@ class ClickableCategoryCard(FluentCard):
                 border-color: {cat_color};
             }}
             QLabel#cat_icon_lbl {{ 
-                background-color: transparent;
-                color: {cat_color};
-                font-size: 28px;
+                background-color: {cat_color}18;
+                border: 1px solid {cat_color}30;
+                border-radius: 8px;
             }}
-            QLabel#cat_name_lbl {{ color: {tm.color('text_main')}; font-size: 15px; font-weight: 600; letter-spacing: 0.3px; }}
-            QLabel#cat_dur_lbl {{ color: {tm.color('text_sub')}; font-size: 13px; font-weight: 500; }}
+            QLabel#cat_name_lbl {{ color: {tm.color('text_main')}; font-size: 14px; font-weight: 700; letter-spacing: 0.2px; }}
+            QLabel#cat_dur_lbl {{ color: {tm.color('text_sub')}; font-size: 12px; font-weight: 500; font-family: monospace; }}
         """)
+        
+        pix = get_icon(self._icon_name, color=cat_color, size=20).pixmap(20, 20)
+        self._icon_lbl.setPixmap(pix)

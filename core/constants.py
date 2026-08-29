@@ -63,16 +63,16 @@ CATEGORY_COLORS: dict[AppCategory, str] = {
 }
 
 CATEGORY_ICONS: dict[AppCategory, str] = {
-    AppCategory.BROWSER: "🌐",
-    AppCategory.PROGRAMMING: "💻",
-    AppCategory.GAMING: "🎮",
-    AppCategory.COMMUNICATION: "💬",
-    AppCategory.PRODUCTIVITY: "📊",
-    AppCategory.ENTERTAINMENT: "🎬",
-    AppCategory.SYSTEM: "⚙️",
-    AppCategory.UTILITIES: "🔧",
-    AppCategory.EDUCATION: "🎓",
-    AppCategory.SOCIAL: "👥",
-    AppCategory.FINANCE: "💰",
-    AppCategory.OTHER: "📌",
+    AppCategory.BROWSER: "globe",
+    AppCategory.PROGRAMMING: "system",
+    AppCategory.GAMING: "gamepad",
+    AppCategory.COMMUNICATION: "message",
+    AppCategory.PRODUCTIVITY: "bar_chart",
+    AppCategory.ENTERTAINMENT: "play",
+    AppCategory.SYSTEM: "system",
+    AppCategory.UTILITIES: "system",
+    AppCategory.EDUCATION: "info",
+    AppCategory.SOCIAL: "user",
+    AppCategory.FINANCE: "bar_chart",
+    AppCategory.OTHER: "apps",
 }

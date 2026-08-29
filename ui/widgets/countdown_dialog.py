@@ -72,7 +72,10 @@ class ShutdownCountdownDialog(QDialog):
 
         self._setup_ui()
         
-        from ui.theme import ThemeManager
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        from ui.theme import ThemeManager, apply_mica
+        apply_mica(int(self.winId()), ThemeManager.instance().is_dark)
+
         ThemeManager.instance().theme_changed.connect(self._apply_theme)
         self._apply_theme(ThemeManager.instance().is_dark)
 

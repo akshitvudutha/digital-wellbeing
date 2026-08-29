@@ -16,7 +16,19 @@ a = Analysis(
         (str(project_root / 'version.json'), '.'),
         (str(project_root / 'file_version_info.txt'), '.'),
     ],
-    hiddenimports=[],
+    hiddenimports=[
+        # WinRT Windows Hello / UserConsentVerifier
+        # PyInstaller cannot auto-detect these due to dynamic WinRT loading
+        'winrt.windows.security.credentials.ui',
+        'winrt.windows.security',
+        'winrt._winrt_windows_security_credentials_ui',
+        'winrt.windows.foundation',
+        'winrt.windows.foundation.collections',
+        'winrt._winrt_windows_foundation',
+        'winrt._winrt_windows_foundation_collections',
+        'winrt.runtime',
+        'winrt._winrt',
+    ],
     hookspath=[],
     runtime_hooks=[],
     excludes=[],

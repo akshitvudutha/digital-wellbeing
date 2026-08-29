@@ -10,7 +10,8 @@ from typing import Optional
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QPushButton,
-    QScrollArea, QStackedWidget, QVBoxLayout, QWidget, QProgressBar
+    QScrollArea, QStackedWidget, QVBoxLayout, QWidget, QProgressBar,
+    QButtonGroup, QRadioButton
 )
 
 from analytics.engine import AnalyticsEngine
@@ -38,6 +39,7 @@ class ActivityPage(QWidget):
         self._sm = SettingsManager()
         self._current_date = date.today()
         self._chart_end_date = date.today()
+        self._time_range = 7  # Default to 7 Days
         self._setup_ui()
         self._refresh()
 
@@ -87,46 +89,69 @@ class ActivityPage(QWidget):
         # Header Title
         hdr_box = QVBoxLayout()
         hdr_box.setSpacing(4)
-        title = QLabel("Activity & Trends")
+        title = QLabel("Usage & Trends")
         title.setObjectName("page_title")
-        subtitle = QLabel("Interactive analytics dashboard. Click on the chart to explore historical data.")
+        subtitle = QLabel("Comprehensive overview of your digital habits.")
         subtitle.setObjectName("page_subtitle")
         hdr_box.addWidget(title)
         hdr_box.addWidget(subtitle)
         self._content_layout.addLayout(hdr_box)
 
-        # 1. Primary Navigation Graph
-        # Week Navigation Header
-        nav_layout = QHBoxLayout()
+        # 1. Time Range Toggles
+        self._range_group = QButtonGroup(self)
+        range_layout = QHBoxLayout()
+        range_layout.setSpacing(0)
         
-        self._btn_prev_week = QPushButton("< Previous Week")
-        self._btn_prev_week.setObjectName("nav_btn_small")
-        self._btn_prev_week.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._btn_prev_week.clicked.connect(self._on_prev_week)
+        self._btn_today = QPushButton("Today")
+        self._btn_today.setCheckable(True)
+        self._btn_today.setObjectName("segment_btn_left")
         
-        self._btn_this_week = QPushButton("Last 7 Days")
-        self._btn_this_week.setObjectName("nav_btn_small")
-        self._btn_this_week.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._btn_this_week.clicked.connect(self._on_this_week)
+        self._btn_7d = QPushButton("7 Days")
+        self._btn_7d.setCheckable(True)
+        self._btn_7d.setChecked(True)
+        self._btn_7d.setObjectName("segment_btn_mid")
         
-        self._btn_next_week = QPushButton("Next Week >")
-        self._btn_next_week.setObjectName("nav_btn_small")
-        self._btn_next_week.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._btn_next_week.clicked.connect(self._on_next_week)
+        self._btn_30d = QPushButton("30 Days")
+        self._btn_30d.setCheckable(True)
+        self._btn_30d.setObjectName("segment_btn_right")
         
-        nav_layout.addWidget(self._btn_prev_week)
-        nav_layout.addStretch()
-        nav_layout.addWidget(self._btn_this_week)
-        nav_layout.addStretch()
-        nav_layout.addWidget(self._btn_next_week)
+        self._range_group.addButton(self._btn_today, 1)
+        self._range_group.addButton(self._btn_7d, 7)
+        self._range_group.addButton(self._btn_30d, 30)
         
-        self._content_layout.addLayout(nav_layout)
+        range_layout.addWidget(self._btn_today)
+        range_layout.addWidget(self._btn_7d)
+        range_layout.addWidget(self._btn_30d)
+        range_layout.addStretch()
         
+        self._range_group.idClicked.connect(self._on_range_changed)
+        self._content_layout.addLayout(range_layout)
+        
+        # 2. Primary Navigation Graph
         self._chart = DailyScreenTimeChart()
         self._chart.day_selected.connect(self._on_day_selected)
         self._content_layout.addWidget(self._chart)
 
-        # 3. Long Term Analytics Layout
+        # 3. Category Breakdown (New)
+        lbl_cat = QLabel("Category Breakdown")
+        lbl_cat.setObjectName("section_header")
+        self._content_layout.addWidget(lbl_cat)
+        
+        from ui.widgets.flow_layout import FlowLayout
+        self._category_layout = FlowLayout()
+        self._category_layout.setSpacing(12)
+        self._content_layout.addLayout(self._category_layout)
+        
+        # 4. Applications List (New)
+        lbl_apps = QLabel("Top Applications")
+        lbl_apps.setObjectName("section_header")
+        self._content_layout.addWidget(lbl_apps)
+        
+        self._apps_layout = QVBoxLayout()
+        self._apps_layout.setSpacing(8)
+        self._content_layout.addLayout(self._apps_layout)
+
+        # 5. Long Term Analytics Layout
         self._analytics_layout = QVBoxLayout()
         self._analytics_layout.setSpacing(20)
         self._content_layout.addLayout(self._analytics_layout)
@@ -207,16 +232,38 @@ class ActivityPage(QWidget):
             QLabel#metric_hdr {{ color: {tm.color('text_sub')}; font-weight: 600; }}
             QLabel#metric_val_success {{ font-size: 24px; font-weight: 800; color: {tm.color('text_main')}; }}
             QLabel#section_header {{ font-size: 14px; font-weight: 700; color: {tm.color('accent')}; letter-spacing: 1.2px; margin-top: 10px; }}
-            QPushButton#nav_btn_small {{
-                background: transparent;
+            
+            /* Segmented Control Buttons */
+            QPushButton#segment_btn_left, QPushButton#segment_btn_mid, QPushButton#segment_btn_right {{
+                background: {tm.color('surface')};
                 border: 1px solid {tm.color('border')};
-                border-radius: 6px;
-                color: {tm.color('text_main')};
-                padding: 6px 12px;
+                color: {tm.color('text_sub')};
+                padding: 6px 16px;
                 font-weight: 600;
+                font-size: 13px;
             }}
-            QPushButton#nav_btn_small:hover {{ background: {tm.color('card_hover')}; }}
-            QPushButton#nav_btn_small:disabled {{ color: {tm.color('text_muted')}; border-color: transparent; }}
+            QPushButton#segment_btn_left {{
+                border-top-left-radius: 6px;
+                border-bottom-left-radius: 6px;
+                border-right: none;
+            }}
+            QPushButton#segment_btn_mid {{
+                border-radius: 0px;
+                border-right: none;
+            }}
+            QPushButton#segment_btn_right {{
+                border-top-right-radius: 6px;
+                border-bottom-right-radius: 6px;
+            }}
+            QPushButton#segment_btn_left:hover, QPushButton#segment_btn_mid:hover, QPushButton#segment_btn_right:hover {{
+                background: {tm.color('surface_elevated')};
+                color: {tm.color('text_main')};
+            }}
+            QPushButton#segment_btn_left:checked, QPushButton#segment_btn_mid:checked, QPushButton#segment_btn_right:checked {{
+                background: {tm.color('accent')};
+                color: #FFFFFF;
+                border: 1px solid {tm.color('accent')};
+            }}
         """)
         
         self._refresh()
@@ -224,42 +271,84 @@ class ActivityPage(QWidget):
     def _refresh(self) -> None:
         if self._main_stack.currentIndex() == 0:
             self._update_chart()
-            self._update_day_details(self._current_date)
 
     def _update_chart(self) -> None:
         end_d = self._chart_end_date
-        start_d = end_d - timedelta(days=6)
+        start_d = end_d - timedelta(days=self._time_range - 1)
         daily_pts = self._engine.get_daily_chart_data(start_d, end_d)
-        self._chart.update_data(daily_pts)
         
-        # Update button states
-        self._btn_next_week.setEnabled(self._chart_end_date < date.today())
+        # Don't show chart if it's just "Today"
+        if self._time_range == 1:
+            self._chart.setVisible(False)
+        else:
+            self._chart.setVisible(True)
+            self._chart.update_data(daily_pts)
+            
+        summary = self._update_lists(start_d, end_d)
+        self._update_day_details(start_d, end_d, summary)
         
-    def _on_prev_week(self) -> None:
-        self._chart_end_date -= timedelta(days=7)
-        self._update_chart()
-        
-    def _on_next_week(self) -> None:
-        self._chart_end_date += timedelta(days=7)
-        if self._chart_end_date > date.today():
-            self._chart_end_date = date.today()
-        self._update_chart()
-        
-    def _on_this_week(self) -> None:
+    def _on_range_changed(self, range_id: int) -> None:
+        self._time_range = range_id
         self._chart_end_date = date.today()
-        self._update_chart()
+        self._refresh()
+        
+    def _update_lists(self, start_d: date, end_d: date) -> None:
+        self._clear_layout(self._category_layout)
+        self._clear_layout(self._apps_layout)
+        
+        # We need aggregated data for the range
+        summary = self._engine.get_custom_summary(start_d, end_d)
+        
+        # Categories
+        cat_breakdown = summary.category_breakdown
+        if not cat_breakdown:
+            lbl = QLabel("No category data recorded.")
+            self._category_layout.addWidget(lbl)
+        else:
+            sorted_cats = sorted(cat_breakdown, key=lambda x: float(x.get("total_s", 0)), reverse=True)
+            for item in sorted_cats:
+                dur = float(item.get("total_s", 0))
+                if dur > 60:  # Only show > 1 min
+                    from ui.widgets.simple_category_row import ClickableCategoryCard
+                    row = ClickableCategoryCard(item["category"], dur)
+                    self._category_layout.addWidget(row)
+                    
+        # Apps
+        top_apps = summary.top_apps
+        if not top_apps:
+            lbl = QLabel("No application data recorded.")
+            self._apps_layout.addWidget(lbl)
+        else:
+            max_dur = top_apps[0]["total_s"] if top_apps else 0
+            for i, app in enumerate(top_apps[:10]):
+                if app["total_s"] > 60:
+                    row = AppUsageRow(
+                        rank=i+1,
+                        process_name=app["process_name"],
+                        display_name=app.get("display_name", app["process_name"]),
+                        category=app["category"],
+                        duration_s=app["total_s"],
+                        max_duration_s=max_dur
+                    )
+                    self._apps_layout.addWidget(row)
+        return summary
         
     def _on_day_selected(self, date_str: str) -> None:
         selected_dt = datetime.strptime(date_str, "%Y-%m-%d").date()
         self.request_historical_details.emit(selected_dt)
 
-    def _update_day_details(self, target_date: date) -> None:
+    def _update_day_details(self, start_d: date, end_d: date, summary) -> None:
         # Populate Long-Term Analytics
         long_term = self._engine.get_long_term_analytics()
         
-        self._lbl_avg_daily.setText(self._engine.format_duration(long_term.get("avg_daily_s", 0)))
-        self._lbl_avg_weekly.setText(self._engine.format_duration(long_term.get("avg_weekly_s", 0)))
-        self._lbl_avg_monthly.setText(self._engine.format_duration(long_term.get("avg_monthly_s", 0)))
+        self._lbl_avg_daily.setText(self._engine.format_duration(summary.average_daily_s))
+        
+        if (end_d - start_d).days == 0:
+            self._lbl_avg_weekly.setText(self._engine.format_duration(summary.average_daily_s * 7))
+            self._lbl_avg_monthly.setText(self._engine.format_duration(summary.average_daily_s * 30))
+        else:
+            self._lbl_avg_weekly.setText(self._engine.format_duration(summary.average_daily_s * 7))
+            self._lbl_avg_monthly.setText(self._engine.format_duration(summary.average_daily_s * 30))
         
         best_day = long_term.get("most_productive_day")
         if best_day:
@@ -267,7 +356,10 @@ class ActivityPage(QWidget):
         else:
             self._lbl_productive_day.setText("-")
             
-        self._lbl_longest_session.setText("-") # Not fully computed yet
+        if summary.longest_session_app:
+            self._lbl_longest_session.setText(f"{get_display_name(summary.longest_session_app)} ({self._engine.format_duration_short(summary.longest_session_s)})")
+        else:
+            self._lbl_longest_session.setText("-")
         
         self._lbl_current_streak.setText(f"{long_term.get('current_streak', 0)} Days")
         self._lbl_best_streak.setText(f"{long_term.get('best_streak', 0)} Days")

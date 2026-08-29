@@ -57,6 +57,22 @@ def main() -> None:
         action="store_true",
         help="Launch the GUI application minimized to the system tray.",
     )
+    parser.add_argument(
+        "--elevated-helper",
+        action="store_true",
+        help="Run as privileged helper. Requires UAC elevation.",
+    )
+    parser.add_argument(
+        "--action",
+        type=str,
+        help="Elevated helper action (apply or remove).",
+    )
+    parser.add_argument(
+        "--domains",
+        type=str,
+        default="",
+        help="Comma separated domains for elevated helper.",
+    )
     args = parser.parse_args()
 
     from core.logger import logger
@@ -64,6 +80,11 @@ def main() -> None:
     if args.service:
         run_headless_service()
         sys.exit(0)
+        
+    if args.elevated_helper:
+        from protection.focus_manager import FocusManager
+        success = FocusManager.run_elevated_action(args.action, args.domains)
+        sys.exit(0 if success else 1)
 
     logger.info("[LIFECYCLE] Starting NYW GUI Application (main.py entry)")
     try:

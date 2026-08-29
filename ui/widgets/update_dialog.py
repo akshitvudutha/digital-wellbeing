@@ -4,14 +4,12 @@ update_dialog.py - UI for displaying update available and downloading.
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QFont, QIcon
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
-    QTextEdit, QProgressBar, QMessageBox
+    QTextEdit, QProgressBar, QMessageBox, QWidget
 )
-
 
 class UpdateDialog(QDialog):
     update_now = Signal()
@@ -24,46 +22,103 @@ class UpdateDialog(QDialog):
         self.notes = notes
         self._setup_ui()
         self._apply_theme()
+        
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        from ui.theme import ThemeManager, apply_mica
+        apply_mica(int(self.winId()), ThemeManager.instance().is_dark)
 
     def _setup_ui(self):
         from core.constants import APP_NAME
-        self.setWindowTitle(f"{APP_NAME} Update Available")
-        self.setFixedSize(500, 450)
+        self.setWindowTitle("Update Available")
+        self.setFixedSize(520, 560)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(16)
+        layout.setContentsMargins(32, 32, 32, 32)
+        layout.setSpacing(20)
 
-        # Title
-        title_lbl = QLabel(f"A new version of {APP_NAME} is available.")
+        # Title Section
+        header_layout = QVBoxLayout()
+        header_layout.setSpacing(4)
+        
+        title_lbl = QLabel(f"{APP_NAME} Update Available")
         title_lbl.setObjectName("page_title")
         title_lbl.setWordWrap(True)
-        title_lbl.setStyleSheet("font-size: 18px; font-weight: bold;")
-        layout.addWidget(title_lbl)
+        title_font = title_lbl.font()
+        title_font.setPixelSize(22)
+        title_font.setBold(True)
+        title_lbl.setFont(title_font)
+        
+        subtitle_lbl = QLabel("A newer version of NYW is ready to be installed.")
+        subtitle_lbl.setObjectName("subtitle")
+        sub_font = subtitle_lbl.font()
+        sub_font.setPixelSize(14)
+        subtitle_lbl.setFont(sub_font)
+        
+        header_layout.addWidget(title_lbl)
+        header_layout.addWidget(subtitle_lbl)
+        layout.addLayout(header_layout)
 
-        # Versions
-        versions_layout = QHBoxLayout()
-        cur_lbl = QLabel(f"Current version:\n{self.current_version}")
-        new_lbl = QLabel(f"New version:\n{self.new_version}")
-        cur_lbl.setStyleSheet("font-size: 13px; color: gray;")
-        new_lbl.setStyleSheet("font-size: 13px; font-weight: bold;")
-        versions_layout.addWidget(cur_lbl)
-        versions_layout.addWidget(new_lbl)
-        layout.addLayout(versions_layout)
+        # Version Comparison Container
+        version_container = QWidget()
+        version_container.setObjectName("version_container")
+        version_layout = QHBoxLayout(version_container)
+        version_layout.setContentsMargins(16, 16, 16, 16)
+        
+        # Current
+        cur_layout = QVBoxLayout()
+        cur_layout.setSpacing(2)
+        cur_title = QLabel("Current version")
+        cur_title.setObjectName("version_label")
+        cur_val = QLabel(self.current_version)
+        cur_val.setObjectName("version_val")
+        cur_layout.addWidget(cur_title, alignment=Qt.AlignmentFlag.AlignCenter)
+        cur_layout.addWidget(cur_val, alignment=Qt.AlignmentFlag.AlignCenter)
+        
+        # Arrow
+        arrow_lbl = QLabel("↓")
+        arrow_lbl.setObjectName("arrow")
+        arrow_font = arrow_lbl.font()
+        arrow_font.setPixelSize(24)
+        arrow_lbl.setFont(arrow_font)
+        
+        # New
+        new_layout = QVBoxLayout()
+        new_layout.setSpacing(2)
+        new_title = QLabel("New version")
+        new_title.setObjectName("version_label")
+        new_val = QLabel(self.new_version)
+        new_val.setObjectName("new_version_val")
+        new_layout.addWidget(new_title, alignment=Qt.AlignmentFlag.AlignCenter)
+        new_layout.addWidget(new_val, alignment=Qt.AlignmentFlag.AlignCenter)
+        
+        version_layout.addStretch()
+        version_layout.addLayout(cur_layout)
+        version_layout.addStretch()
+        version_layout.addWidget(arrow_lbl, alignment=Qt.AlignmentFlag.AlignCenter)
+        version_layout.addStretch()
+        version_layout.addLayout(new_layout)
+        version_layout.addStretch()
+        
+        layout.addWidget(version_container)
 
         # Release Notes
-        notes_lbl = QLabel("What's new:")
-        notes_lbl.setStyleSheet("font-size: 14px; font-weight: 600;")
+        notes_lbl = QLabel("What's New")
+        notes_lbl.setObjectName("notes_title")
+        notes_font = notes_lbl.font()
+        notes_font.setPixelSize(14)
+        notes_font.setBold(True)
+        notes_lbl.setFont(notes_font)
         layout.addWidget(notes_lbl)
 
         self.notes_text = QTextEdit()
         self.notes_text.setReadOnly(True)
-        self.notes_text.setPlainText(self.notes)
-        layout.addWidget(self.notes_text)
+        self.notes_text.setMarkdown(self.notes)
+        layout.addWidget(self.notes_text, stretch=1)
 
         # Progress bar (hidden initially)
         self.progress_layout = QVBoxLayout()
+        self.progress_layout.setSpacing(8)
         self.progress_lbl = QLabel("Downloading update...")
         self.progress_lbl.setVisible(False)
         self.progress_bar = QProgressBar()
@@ -76,16 +131,19 @@ class UpdateDialog(QDialog):
 
         # Buttons
         self.btn_layout = QHBoxLayout()
-        self.btn_layout.addStretch()
+        self.btn_layout.setSpacing(12)
         
         from ui.widgets.fluent import FluentButton
         self.later_btn = FluentButton("Later", primary=False)
+        self.later_btn.setMinimumWidth(120)
         self.later_btn.clicked.connect(self._on_later_clicked)
         
         self.update_btn = FluentButton("Update Now", primary=True)
+        self.update_btn.setMinimumWidth(120)
         self.update_btn.clicked.connect(self._on_update_clicked)
 
         self.btn_layout.addWidget(self.later_btn)
+        self.btn_layout.addStretch()
         self.btn_layout.addWidget(self.update_btn)
         layout.addLayout(self.btn_layout)
 
@@ -94,14 +152,44 @@ class UpdateDialog(QDialog):
             from ui.theme import ThemeManager
             tm = ThemeManager.instance()
             self.setStyleSheet(f"""
-                QDialog {{ background: {tm.color('bg_main')}; }}
-                QLabel {{ color: {tm.color('text_main')}; }}
+                QDialog {{
+                    background-color: {tm.color('window_bg')};
+                }}
+                QLabel {{ 
+                    color: {tm.color('text_main')}; 
+                }}
+                QLabel#subtitle {{
+                    color: {tm.color('text_sub')};
+                }}
+                QLabel#version_label {{
+                    color: {tm.color('text_sub')};
+                    font-size: 12px;
+                }}
+                QLabel#version_val {{
+                    color: {tm.color('text_main')};
+                    font-size: 16px;
+                    font-weight: 500;
+                }}
+                QLabel#new_version_val {{
+                    color: {tm.color('accent')};
+                    font-size: 18px;
+                    font-weight: bold;
+                }}
+                QLabel#arrow {{
+                    color: {tm.color('text_sub')};
+                }}
+                QWidget#version_container {{
+                    background-color: {tm.color('card_bg')};
+                    border: 1px solid {tm.color('border')};
+                    border-radius: 12px;
+                }}
                 QTextEdit {{
-                    background: {tm.color('card_bg')};
+                    background-color: {tm.color('card_bg')};
                     color: {tm.color('text_main')};
                     border: 1px solid {tm.color('border')};
                     border-radius: 8px;
-                    padding: 8px;
+                    padding: 12px;
+                    font-size: 13px;
                 }}
                 QProgressBar {{
                     background: {tm.color('card_bg')};
@@ -141,5 +229,6 @@ class UpdateDialog(QDialog):
         self.progress_bar.setVisible(False)
         self.update_btn.setEnabled(True)
         self.later_btn.setEnabled(True)
+        self.notes_text.setEnabled(True)
         QMessageBox.critical(self, "Update Failed", f"Update couldn't be completed.\n{msg}")
         self.reject()

@@ -12,11 +12,12 @@ class WebsiteLimitOverlayDialog(QDialog):
     override_requested = Signal(str, str) # process_name, domain
     close_tab_requested = Signal(str, str) # process_name, domain
 
-    def __init__(self, process_name: str, domain: str, limit_seconds: int, parent=None):
+    def __init__(self, process_name: str, domain: str, limit_seconds: int, is_strict: bool = False, parent=None):
         super().__init__(parent, Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
         self.process_name = process_name
         self.domain = domain
         self.limit_seconds = limit_seconds
+        self.is_strict = is_strict
         
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
@@ -25,10 +26,11 @@ class WebsiteLimitOverlayDialog(QDialog):
         self.setLayout(QVBoxLayout(self))
         self.layout().setContentsMargins(0, 0, 0, 0)
         
-        self.setStyleSheet("""
-            QDialog {
-                background-color: rgba(0, 0, 0, 220); /* Darken entire browser */
-            }
+        bg_color = "rgba(0, 0, 0, 255)" if self.is_strict else "rgba(0, 0, 0, 220)"
+        self.setStyleSheet(f"""
+            QDialog {{
+                background-color: {bg_color}; /* Darken entire browser */
+            }}
             QFrame#inner_frame {
                 background-color: rgba(30, 30, 30, 255);
                 border-radius: 16px;
@@ -100,6 +102,13 @@ class WebsiteLimitOverlayDialog(QDialog):
         self._position_timer = QTimer(self)
         self._position_timer.timeout.connect(self._update_position)
         self._position_timer.start(50) # Update position frequently to stick to browser
+        
+        if self.is_strict:
+            self.btn_override.hide()
+            self._auto_close_timer = QTimer(self)
+            self._auto_close_timer.setSingleShot(True)
+            self._auto_close_timer.timeout.connect(self._on_close_tab)
+            self._auto_close_timer.start(3000)
 
     def _find_browser_hwnd(self) -> int:
         hwnd = win32gui.GetForegroundWindow()

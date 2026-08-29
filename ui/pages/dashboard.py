@@ -15,9 +15,11 @@ from PySide6.QtWidgets import (
 )
 
 from analytics.engine import AnalyticsEngine
-from ui.widgets.hero_card import HeroCard
-from ui.widgets.screen_time_card import ActiveScreenTimeCard
+from ui.widgets.primary_metric_card import PrimaryMetricCard
+from ui.widgets.kpi_cards import KPICard
+from ui.widgets.quick_actions import QuickActionsRow
 from ui.widgets.simple_category_row import ClickableCategoryCard
+from ui.widgets.flow_layout import FlowLayout
 
 class ClickableCategoryRow(ClickableCategoryCard):
     clicked = Signal(str)
@@ -97,19 +99,40 @@ class DashboardPage(QWidget):
         scroll.setWidget(inner)
         main_layout.addWidget(scroll, 1)
 
-        # 1. Hero Summary
-        self._hero = HeroCard()
-        self._hero.focus_requested.connect(self.request_focus_session.emit)
-        # Clicking hero also goes to details
-        self._hero.card_clicked.connect(self.request_screen_time_details.emit)
-        self._inner_layout.addWidget(self._hero)
-
-        # 2. Large Interactive Screen Time Card
-        self._screen_time_card = ActiveScreenTimeCard()
-        self._screen_time_card.card_clicked.connect(self.request_screen_time_details.emit)
-        self._screen_time_card.app_clicked.connect(self._on_dashboard_app_clicked)
-        self._inner_layout.addWidget(self._screen_time_card)
-
+        # 1. Top Section (Primary Metric + KPIs)
+        top_row = QHBoxLayout()
+        top_row.setSpacing(24)
+        
+        # Left: Primary Metric
+        self._primary_metric = PrimaryMetricCard()
+        self._primary_metric.card_clicked.connect(self.request_screen_time_details.emit)
+        top_row.addWidget(self._primary_metric, stretch=2)
+        
+        # Right: KPIs Layout
+        kpi_layout = QVBoxLayout()
+        kpi_layout.setSpacing(16)
+        
+        self._kpi_active = KPICard("Active Time")
+        self._kpi_idle = KPICard("Idle Time")
+        
+        kpi_layout.addWidget(self._kpi_active)
+        kpi_layout.addWidget(self._kpi_idle)
+        top_row.addLayout(kpi_layout, stretch=1)
+        
+        self._inner_layout.addLayout(top_row)
+        
+        self._inner_layout.addSpacing(16)
+        
+        # 2. Quick Actions
+        actions_label = FluentLabel("Quick Actions", FluentLabel.Style.HEADING)
+        self._inner_layout.addWidget(actions_label)
+        
+        self._quick_actions = QuickActionsRow()
+        self._quick_actions.action_focus.connect(self.request_focus_session.emit)
+        self._quick_actions.action_locker.connect(lambda: self._navigate(3) if self._navigate else None)
+        self._quick_actions.action_settings.connect(lambda: self._navigate(7) if self._navigate else None)
+        self._inner_layout.addWidget(self._quick_actions)
+        
         self._inner_layout.addSpacing(16)
 
         # 3. Most Used Categories (Android style)
@@ -118,10 +141,7 @@ class DashboardPage(QWidget):
         self._inner_layout.addWidget(self._cats_label)
 
         self._cats_container = QWidget()
-        self._cats_layout = QHBoxLayout(self._cats_container)
-        self._cats_layout.setContentsMargins(0, 0, 0, 0)
-        self._cats_layout.setSpacing(16)
-        self._cats_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        self._cats_layout = FlowLayout(self._cats_container, margin=0, hSpacing=16, vSpacing=16)
         self._inner_layout.addWidget(self._cats_container)
 
         self._inner_layout.addStretch()
@@ -178,21 +198,17 @@ class DashboardPage(QWidget):
         comp = self._engine.get_yesterday_comparison()
         pct = abs(comp["pct_change"])
         
-        # Update Hero Card
-        self._hero.set_data(
+        # Update Primary Metric
+        self._primary_metric.set_data(
             formatted_total,
             pct,
             not comp["is_increase"],
-            active_seconds=summary.active_time_s,
-            category_breakdown=summary.category_breakdown,
+            comp.get("yesterday_was_zero", False)
         )
-
-        # Update Screen Time Interactive Card
-        self._screen_time_card.set_data(
-            active_s=summary.active_time_s,
-            category_breakdown=summary.category_breakdown,
-            top_apps=summary.top_apps
-        )
+        
+        # Update KPIs
+        self._kpi_active.set_value(self._engine.format_duration(summary.active_time_s))
+        self._kpi_idle.set_value(self._engine.format_duration(summary.idle_time_s))
         
         # Update Top Categories
         while self._cats_layout.count():

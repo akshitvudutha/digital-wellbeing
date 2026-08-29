@@ -3,6 +3,7 @@
 
 [Setup]
 SourceDir=..
+AppId=Digital Wellbeing
 AppName=NYW
 AppVersion={#MyAppVersion}
 AppPublisher=Akshit Vudutha
@@ -36,6 +37,17 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 Name: "startup"; Description: "Start NYW automatically when Windows boots"; GroupDescription: "Startup:"; Flags: unchecked
+
+[InstallDelete]
+; Clean up legacy shortcuts from v2.5.2 and earlier
+Type: files; Name: "{userprograms}\Digital Wellbeing\Digital Wellbeing.lnk"
+Type: dirifempty; Name: "{userprograms}\Digital Wellbeing"
+Type: files; Name: "{commonprograms}\Digital Wellbeing\Digital Wellbeing.lnk"
+Type: dirifempty; Name: "{commonprograms}\Digital Wellbeing"
+Type: files; Name: "{userdesktop}\Digital Wellbeing.lnk"
+Type: files; Name: "{commondesktop}\Digital Wellbeing.lnk"
+Type: files; Name: "{userstartup}\Digital Wellbeing.lnk"
+Type: files; Name: "{commonstartup}\Digital Wellbeing.lnk"
 
 [Files]
 Source: "dist\DigitalWellbeing\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs

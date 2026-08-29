@@ -100,6 +100,7 @@ _SYSTEM_IGNORED_PROCESSES = {
     "winlogon.exe",
     "smss.exe",
     "lockapp.exe",
+    "digitalwellbeing.exe",
 }
 
 # LRU Cache mapping pid -> (process_name, exe_path, cache_timestamp)

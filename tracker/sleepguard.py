@@ -64,6 +64,7 @@ class SleepGuardController(QObject):
         self._paused = not self._settings.sleepguard_enabled
         self._idle_fired.clear()
         self._force_trigger.clear()
+        self._waiting_for_first_activity = True
 
         self._media_engine.start()
 
@@ -196,13 +197,26 @@ class SleepGuardController(QObject):
         self.media_state_changed.emit(info)
 
     def _poll_loop(self) -> None:
+        import time
+        start_time = time.time()
         while self._running:
             time.sleep(1.0)
             # If already triggered, paused, or not running, skip
             if not self._running or self._paused or self._idle_fired.is_set():
                 continue
 
+            # Startup grace period: do not trigger in the first 30 seconds
+            if time.time() - start_time < 30.0:
+                continue
+
             idle_s = get_idle_seconds()
+            if getattr(self, "_waiting_for_first_activity", False):
+                if idle_s < 2.0:
+                    self._waiting_for_first_activity = False
+                    logger.info("[SLEEPGUARD] User activity detected. SleepGuard is now armed.")
+                else:
+                    continue
+
             timeout_s = self._settings.idle_timeout_minutes * 60
             
             # Quick Test Override via Env Var (Developer Only)

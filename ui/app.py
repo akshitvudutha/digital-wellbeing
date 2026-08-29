@@ -141,16 +141,12 @@ class DigitalWellbeingApp:
             self._manual_update_check_in_progress = False
 
             def _on_update_available(info: dict) -> None:
+                is_manual = self._manual_update_check_in_progress
                 self._manual_update_check_in_progress = False
-                # Respect user's "remind me later" within 24 hours
-                from time import time
-                last_dismiss = self._sm.get("last_update_dismissed_ts", "0")
-                try:
-                    last_ts = float(last_dismiss)
-                except Exception:
-                    last_ts = 0.0
-                if time() - last_ts < 24 * 3600:
-                    logger.info("Update available but user dismissed within 24h. Skipping dialog.")
+                
+                # If this was an automatic background check and the user already dismissed it this session, skip.
+                if not is_manual and getattr(self, "_update_dismissed_this_session", False):
+                    logger.info("Update available but user dismissed it this session. Skipping dialog.")
                     return
 
                 # Never interrupt active SleepGuard countdown or focus sessions
@@ -213,7 +209,7 @@ class DigitalWellbeingApp:
                             logger.error("Update dialog error: %s", msg)
 
                     dlg.update_now.connect(_on_update_now)
-                    dlg.later.connect(lambda: self._sm.set("last_update_dismissed_ts", str(time())))
+                    dlg.later.connect(lambda: setattr(self, "_update_dismissed_this_session", True))
 
                     self._updater.download_progress.connect(_on_download_progress)
                     self._updater.download_complete.connect(_on_download_complete)

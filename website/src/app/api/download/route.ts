@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 export const runtime = 'edge';
 
 // Required minimum version for the website to serve
-const MIN_VERSION = '2.5.2';
+const MIN_VERSION = '3.1.3';
 
 function parseVersion(v: string): number[] {
   const match = v.match(/(\d+\.\d+\.\d+)/);

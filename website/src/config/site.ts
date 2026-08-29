@@ -1,8 +1,8 @@
 export const siteConfig = {
   name: "NYW",
-  description: "Digital wellbeing for Windows.",
+  description: "A premium Windows productivity app and screen time tracker. Features app blocking, strict focus mode, App Locker, and digital wellbeing insights for Windows 10 & 11.",
   developer: "Akshit",
-  version: "2.5.2",
+  version: "3.1.3",
   links: {
     github: "https://github.com/akshitvudutha/digital-wellbeing",
     releases: "https://github.com/akshitvudutha/digital-wellbeing/releases",

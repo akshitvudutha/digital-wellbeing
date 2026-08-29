@@ -32,6 +32,7 @@ class FocusManager(QObject):
         self._pin_manager = PINManager(repo)
         self._is_active = False
         self._is_strict = False
+        self._system_blocking_active = False
         self._seconds_remaining = 0
         
         self._blocklist = ["youtube.com", "facebook.com", "twitter.com", "instagram.com", "reddit.com", "tiktok.com"]
@@ -43,21 +44,40 @@ class FocusManager(QObject):
         self._timer.timeout.connect(self._on_tick)
         
         # Ensure any lingering hosts blocks from a previous crash are cleared on startup
-        self._remove_hosts_blocking()
+        self._check_stale_markers()
         
         # Load settings from DB
         stored_block = self._repo.get_setting("focus_blocklist")
         if stored_block:
-            self._blocklist = [d.strip() for d in stored_block.split(",") if d.strip()]
+            self._blocklist = list(set([self._normalize_domain(d) for d in stored_block.split(",") if d.strip()]))
             
         stored_allow = self._repo.get_setting("focus_allowlist")
         if stored_allow:
-            self._allowlist = [a.strip() for a in stored_allow.split(",") if a.strip()]
+            self._allowlist = [a.strip().lower() for a in stored_allow.split(",") if a.strip()]
             
         stored_response = self._repo.get_setting("focus_app_block_response")
         if stored_response:
             self._app_block_response = stored_response
 
+    def _normalize_domain(self, domain_str: str) -> str:
+        from urllib.parse import urlparse
+        s = domain_str.strip().lower()
+        if not s:
+            return ""
+        if not s.startswith("http://") and not s.startswith("https://"):
+            s = "https://" + s
+        parsed = urlparse(s)
+        domain = parsed.netloc or parsed.path
+        domain = domain.split('/')[0] # remove path
+        domain = domain.split(':')[0] # remove port
+        if domain.startswith("www."):
+            domain = domain[4:]
+        return domain
+
+    @property
+    def system_blocking_active(self) -> bool:
+        return self._system_blocking_active
+        
     @property
     def is_active(self) -> bool:
         return self._is_active
@@ -79,7 +99,8 @@ class FocusManager(QObject):
         return self._app_block_response
 
     def save_blocklist(self, domains: List[str]) -> None:
-        self._blocklist = [d.strip().lower() for d in domains if d.strip()]
+        normalized = [self._normalize_domain(d) for d in domains if d.strip()]
+        self._blocklist = list(set([d for d in normalized if d]))
         self._repo.set_setting("focus_blocklist", ",".join(self._blocklist))
         if self._is_active:
             self._apply_hosts_blocking()
@@ -119,14 +140,32 @@ class FocusManager(QObject):
                 logger.warning("Focus session stop denied: Invalid PIN.")
                 return False
                 
+        return self._do_stop()
+
+    def stop_focus_after_pin_dialog(self) -> bool:
+        """Stop focus unconditionally after the PIN dialog has already verified the PIN.
+        
+        MUST only be called from code that has already run PinDialog.exec() and
+        received QDialog.Accepted.  Never expose this path to un-validated input.
+        """
+        if not self._is_active:
+            return True
+        return self._do_stop()
+
+    def _do_stop(self) -> bool:
+        """Internal: perform the actual session teardown."""
         self._is_active = False
         self._is_strict = False
         self._seconds_remaining = 0
         self._timer.stop()
         self._remove_hosts_blocking()
-        
+        if hasattr(self, '_overlay') and self._overlay:
+            try:
+                self._overlay.close()
+            except Exception:
+                pass
         self.focus_state_changed.emit(False)
-        logger.info("Focus session stopped manually.")
+        logger.info("Focus session stopped.")
         return True
 
     def _on_tick(self) -> None:
@@ -139,7 +178,7 @@ class FocusManager(QObject):
                 import win32gui
                 import win32process
                 import psutil
-                from tracker.browser import BrowserURLProvider
+                from tracker.browser_url import BrowserURLProvider
                 from tracker.foreground import _get_real_window_pid
                 
                 hwnd = win32gui.GetForegroundWindow()
@@ -165,10 +204,12 @@ class FocusManager(QObject):
                     
                 # 1. Check Website Blocks (if browser)
                 if p_name in ["chrome.exe", "msedge.exe", "brave.exe", "firefox.exe"]:
-                        domain = BrowserURLProvider.get_active_domain(hwnd, p_name)
-                        if domain and any(b in domain for b in self._blocklist):
-                            self._show_overlay(p_name, domain)
-                            return
+                    domain = BrowserURLProvider.get_active_domain(hwnd, p_name)
+                    if domain:
+                        for b in self._blocklist:
+                            if domain == b or domain.endswith("." + b):
+                                self._show_overlay(p_name, domain)
+                                return
                             
                     # 2. Check App Blocks
                     is_blocked = False
@@ -217,7 +258,7 @@ class FocusManager(QObject):
             return
             
         from ui.widgets.website_overlay import WebsiteLimitOverlayDialog
-        self._overlay = WebsiteLimitOverlayDialog(process_name, domain, self._seconds_remaining)
+        self._overlay = WebsiteLimitOverlayDialog(process_name, domain, self._seconds_remaining, self._is_strict)
         
         # Override text for Focus Mode
         msg_lbl = self._overlay.findChild(QLabel, "") # The message label doesn't have an object name in the original
@@ -246,7 +287,7 @@ class FocusManager(QObject):
             from ui.widgets.pin_dialog import PinDialog
             dialog = PinDialog(self._pin_manager)
             if dialog.exec():
-                self.stop_focus("verified")
+                self.stop_focus_after_pin_dialog()
                 if hasattr(self, '_overlay') and self._overlay:
                     self._overlay.close()
         else:
@@ -254,61 +295,137 @@ class FocusManager(QObject):
             if hasattr(self, '_overlay') and self._overlay:
                 self._overlay.close()
 
-    def _has_admin(self) -> bool:
+
+
+
+    def _check_stale_markers(self) -> None:
         try:
-            return ctypes.windll.shell32.IsUserAnAdmin() != 0
+            with open(HOSTS_PATH, 'r', encoding='utf-8') as f:
+                content = f.read()
+            if NYW_MARKER_START in content:
+                logger.info("Stale hosts marker found on startup. Prompting UAC for cleanup.")
+                self._remove_hosts_blocking()
         except Exception:
-            return False
+            pass
+
+    def _run_elevated_helper(self, action: str, domains: str = "") -> bool:
+        import sys
+        import ctypes
+        from ctypes import wintypes
+        import os
+        
+        class SHELLEXECUTEINFOW(ctypes.Structure):
+            _fields_ = [
+                ("cbSize", wintypes.DWORD),
+                ("fMask", ctypes.c_ulong),
+                ("hwnd", wintypes.HWND),
+                ("lpVerb", wintypes.LPCWSTR),
+                ("lpFile", wintypes.LPCWSTR),
+                ("lpParameters", wintypes.LPCWSTR),
+                ("lpDirectory", wintypes.LPCWSTR),
+                ("nShow", ctypes.c_int),
+                ("hInstApp", wintypes.HINSTANCE),
+                ("lpIDList", ctypes.c_void_p),
+                ("lpClass", wintypes.LPCWSTR),
+                ("hkeyClass", wintypes.HKEY),
+                ("dwHotKey", wintypes.DWORD),
+                ("hIconOrMonitor", wintypes.HANDLE),
+                ("hProcess", wintypes.HANDLE),
+            ]
+
+        SEE_MASK_NOCLOSEPROCESS = 0x00000040
+        INFINITE = 0xFFFFFFFF
+        
+        if getattr(sys, 'frozen', False):
+            exe = sys.executable
+            args = f"--elevated-helper --action {action} --domains \"{domains}\""
+        else:
+            exe = sys.executable
+            main_script = os.path.abspath(sys.argv[0])
+            args = f"\"{main_script}\" --elevated-helper --action {action} --domains \"{domains}\""
+            
+        sei = SHELLEXECUTEINFOW()
+        sei.cbSize = ctypes.sizeof(SHELLEXECUTEINFOW)
+        sei.fMask = SEE_MASK_NOCLOSEPROCESS
+        sei.lpVerb = "runas"
+        sei.lpFile = exe
+        sei.lpParameters = args
+        sei.nShow = 0  # SW_HIDE
+        
+        shell32 = ctypes.windll.shell32
+        kernel32 = ctypes.windll.kernel32
+        
+        if shell32.ShellExecuteExW(ctypes.byref(sei)):
+            hProcess = sei.hProcess
+            if hProcess:
+                kernel32.WaitForSingleObject(hProcess, INFINITE)
+                exit_code = wintypes.DWORD()
+                kernel32.GetExitCodeProcess(hProcess, ctypes.byref(exit_code))
+                kernel32.CloseHandle(hProcess)
+                return exit_code.value == 0
+            return True
+        return False
 
     def _apply_hosts_blocking(self) -> None:
-        if not self._has_admin():
-            logger.warning("No admin privileges to modify hosts file. Relying solely on browser title inspection overlay.")
+        if not self._blocklist:
+            self._system_blocking_active = False
             return
             
-        try:
-            with open(HOSTS_PATH, 'r', encoding='utf-8') as f:
-                content = f.read()
-                
-            # Remove existing NYW block
-            content = self._strip_nyw_block(content)
-            
-            # Add new block
-            block_lines = [NYW_MARKER_START]
-            for domain in self._blocklist:
-                block_lines.append(f"127.0.0.1 {domain}")
-                block_lines.append(f"127.0.0.1 www.{domain}")
-            block_lines.append(NYW_MARKER_END)
-            
-            new_content = content.rstrip() + "\n\n" + "\n".join(block_lines) + "\n"
-            
-            with open(HOSTS_PATH, 'w', encoding='utf-8') as f:
-                f.write(new_content)
-                
-            # Flush DNS
-            os.system("ipconfig /flushdns")
-            logger.info("Hosts file updated and DNS flushed.")
-        except Exception as e:
-            logger.error(f"Failed to apply hosts blocking: {e}")
+        domains_str = ",".join(self._blocklist)
+        success = self._run_elevated_helper("apply", domains_str)
+        if success:
+            self._system_blocking_active = True
+            logger.info("Elevated hosts application succeeded.")
+        else:
+            self._system_blocking_active = False
+            logger.warning("Elevated hosts application failed or denied.")
 
     def _remove_hosts_blocking(self) -> None:
-        if not self._has_admin():
-            return
-            
-        try:
-            with open(HOSTS_PATH, 'r', encoding='utf-8') as f:
-                content = f.read()
-                
-            new_content = self._strip_nyw_block(content)
-            
-            with open(HOSTS_PATH, 'w', encoding='utf-8') as f:
-                f.write(new_content)
-                
-            os.system("ipconfig /flushdns")
-            logger.info("Hosts file blocking removed.")
-        except Exception as e:
-            logger.error(f"Failed to remove hosts blocking: {e}")
+        self._run_elevated_helper("remove")
+        self._system_blocking_active = False
 
-    def _strip_nyw_block(self, content: str) -> str:
+    @classmethod
+    def run_elevated_action(cls, action: str, domains: str = "") -> bool:
+        """This runs inside the elevated helper process."""
+        try:
+            if action == "apply":
+                cls._do_apply_hosts(domains)
+            elif action == "remove":
+                cls._do_remove_hosts()
+            return True
+        except Exception as e:
+            logger.error(f"Elevated helper failed: {e}")
+            return False
+
+    @staticmethod
+    def _do_apply_hosts(domains_str: str) -> None:
+        domains = [d.strip() for d in domains_str.split(",") if d.strip()]
+        with open(HOSTS_PATH, 'r', encoding='utf-8') as f:
+            content = f.read()
+        content = FocusManager._strip_nyw_block(content)
+        block_lines = [NYW_MARKER_START]
+        for domain in domains:
+            block_lines.append(f"127.0.0.1 {domain}")
+            block_lines.append(f"127.0.0.1 www.{domain}")
+        block_lines.append(NYW_MARKER_END)
+        new_content = content.rstrip() + "\n\n" + "\n".join(block_lines) + "\n"
+        with open(HOSTS_PATH, 'w', encoding='utf-8') as f:
+            f.write(new_content)
+        os.system("ipconfig /flushdns")
+        logger.info("Hosts file updated by helper.")
+
+    @staticmethod
+    def _do_remove_hosts() -> None:
+        with open(HOSTS_PATH, 'r', encoding='utf-8') as f:
+            content = f.read()
+        new_content = FocusManager._strip_nyw_block(content)
+        with open(HOSTS_PATH, 'w', encoding='utf-8') as f:
+            f.write(new_content)
+        os.system("ipconfig /flushdns")
+        logger.info("Hosts file blocking removed by helper.")
+
+    @staticmethod
+    def _strip_nyw_block(content: str) -> str:
         if NYW_MARKER_START not in content:
             return content
             

@@ -44,11 +44,16 @@ class WellbeingNotifier:
 
         tot_str = AnalyticsEngine.format_duration(summary.active_time_s)
         w_shift = trends["week_pct_change"]
-        sign = "↑" if w_shift >= 0 else "↓"
+        
+        if trends.get("prev_week_was_zero", False) or w_shift == float('inf'):
+            shift_text = "New activity"
+        else:
+            sign = "↑" if w_shift >= 0 else "↓"
+            shift_text = f"{sign}{abs(w_shift):.0f}% vs last week"
 
         title = f"{APP_NAME} — Weekly Summary"
         message = (
-            f"Screen Time This Week: {tot_str} ({sign}{abs(w_shift):.0f}% vs last week)\n"
+            f"Screen Time This Week: {tot_str} ({shift_text})\n"
             f"Daily Average: {AnalyticsEngine.format_duration(summary.average_daily_s)}"
         )
 

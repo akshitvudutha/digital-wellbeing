@@ -24,6 +24,10 @@ from ui.widgets.limit_dialog import LimitReachedDialog, PinOverrideDialog
 from ui.pages.debug import DebugPage
 from ui.pages.settings import SettingsPage
 from ui.pages.wellbeing import WellbeingPage
+from ui.pages.app_locker import AppLockerPage
+from ui.pages.insights import InsightsPage
+from ui.pages.history import HistoryPage
+from ui.pages.sleepguard_page import SleepGuardPage
 from ui.widgets.animated_stacked_widget import AnimatedStackedWidget
 from ui.widgets.countdown_dialog import ShutdownCountdownDialog
 
@@ -119,21 +123,51 @@ class MainWindow(QMainWindow):
         self._activity_page.request_historical_details.connect(self._navigate_to_screen_time_details)
         self._wellbeing_page = WellbeingPage(sleepguard=self._sleepguard)
         self._wellbeing_page.focus_completed.connect(self.focus_completed.emit)
+        self._app_locker_page = AppLockerPage()
+        self._insights_page = InsightsPage()
+        self._sleepguard_page = SleepGuardPage(sleepguard=self._sleepguard)
+        self._history_page = HistoryPage()
         self._settings_page = SettingsPage(tracker=self._tracker, protection_manager=self._protection_manager)
         self._settings_page.settings_changed.connect(self._on_settings_changed)
         self._settings_page.theme_changed_req.connect(self._animate_theme_change)
         self._settings_page.manual_update_requested.connect(self.manual_update_requested.emit)
         self._debug_page = DebugPage(tracker=self._tracker)
 
-        self._stack.addWidget(self._dashboard_page)  # 0: Home
-        self._stack.addWidget(self._activity_page)   # 1: Activity & Trends
-        self._stack.addWidget(self._wellbeing_page)  # 2: Focus & SleepGuard
-        self._stack.addWidget(self._settings_page)   # 3: Settings & Data
-        self._stack.addWidget(self._debug_page)      # 4: Dev Mode (Hidden)
-        self._stack.addWidget(self._screen_time_details_page) # 5: Screen Time Details
-        self._stack.addWidget(self._app_details_page)         # 6: App Details
+        self._stack.addWidget(self._dashboard_page)         # 0: Home
+        self._stack.addWidget(self._activity_page)          # 1: Usage
+        self._stack.addWidget(self._wellbeing_page)         # 2: Focus
+        self._stack.addWidget(self._app_locker_page)        # 3: App Locker
+        self._stack.addWidget(self._insights_page)          # 4: Insights
+        self._stack.addWidget(self._sleepguard_page)        # 5: SleepGuard
+        self._stack.addWidget(self._history_page)           # 6: History
+        self._stack.addWidget(self._settings_page)          # 7: Settings
+        self._stack.addWidget(self._debug_page)             # 8: Dev Mode
+        self._stack.addWidget(self._screen_time_details_page) # 9: Screen Time Details
+        self._stack.addWidget(self._app_details_page)         # 10: App Details
 
-        root_layout.addWidget(self._stack, 1)
+        # Wire App Locker lock events to auth dialog
+        from protection.app_locker import AppLockerManager
+        self._app_locker_mgr = AppLockerManager.instance()
+        self._app_locker_mgr.lock_triggered.connect(self._show_lock_auth_dialog)
+
+        # Global Header
+        self._header_widget = QWidget()
+        header_layout = QHBoxLayout(self._header_widget)
+        header_layout.setContentsMargins(36, 16, 36, 0)
+        
+        self._global_status_lbl = QLabel("Ready")
+        self._global_status_lbl.setObjectName("global_status")
+        header_layout.addWidget(self._global_status_lbl)
+        header_layout.addStretch()
+        
+        # Add Header and Stack to a vertical layout
+        content_container = QWidget()
+        content_layout = QVBoxLayout(content_container)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.addWidget(self._header_widget)
+        content_layout.addWidget(self._stack, 1)
+
+        root_layout.addWidget(content_container, 1)
         if self._nav_buttons:
             self._nav_buttons[0].click()
 
@@ -165,7 +199,7 @@ class MainWindow(QMainWindow):
     def _toggle_dev_mode(self) -> None:
         from core.logger import logger
         logger.info("[DEV MODE] Hidden developer shortcut Ctrl+Shift+D activated")
-        self._navigate(4)
+        self._navigate(8)  # Dev Mode is now page 8
 
     def _show_shutdown_warning_dialog(self, countdown_s: int, action: str = "lock") -> None:
         from core.logger import logger
@@ -261,6 +295,7 @@ class MainWindow(QMainWindow):
             self._dashboard_page,
             self._activity_page,
             self._wellbeing_page,
+            self._app_locker_page,
             self._settings_page,
             self._debug_page,
             self._screen_time_details_page,
@@ -274,19 +309,58 @@ class MainWindow(QMainWindow):
                     logger.warning("Error refreshing %s: %s", type(page).__name__, exc)
         logger.info("[REFRESH] Global refresh complete.")
 
+    def _show_lock_auth_dialog(self, process_name: str) -> None:
+        """Called when AppLockerManager detects a locked app in the foreground."""
+        from core.logger import logger
+        from database.repository import Repository
+        from protection.pin import PINManager
+        from ui.widgets.auth_dialog import AppLockerAuthDialog
+
+        try:
+            repo = Repository()
+            pin_manager = PINManager(repo)
+            alm = self._app_locker_mgr
+
+            # Get display name
+            locked_apps = alm.get_locked_apps()
+            display_name = next(
+                (a["display_name"] for a in locked_apps if a["process_name"] == process_name),
+                process_name,
+            )
+
+            dialog = AppLockerAuthDialog(
+                process_name=process_name,
+                display_name=display_name,
+                pin_manager=pin_manager,
+                auth_method=alm.auth_method.value,
+                parent=None,  # Top-level so it shows even when NYW is minimized
+            )
+
+            from PySide6.QtWidgets import QDialog
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                alm.grant_temporary_access(process_name)
+                logger.info("App Locker: access granted to %s", process_name)
+            else:
+                alm.on_auth_canceled()
+                logger.info("App Locker: access denied for %s", process_name)
+        except Exception as exc:
+            logger.error("_show_lock_auth_dialog error: %s", exc)
+            # Always clear the dialog_open flag so the next tick can try again
+            if hasattr(self, "_app_locker_mgr"):
+                self._app_locker_mgr.on_auth_canceled()
+
     def _navigate_to_screen_time_details(self, target_date=None) -> None:
         from datetime import date
         if isinstance(target_date, date):
-            # Need to clear history so Back button goes back to Activity Trends
             self._screen_time_details_page.refresh(target_date)
-            self._navigate(5)
+            self._navigate(9)
         else:
             self._screen_time_details_page.refresh()
-            self._navigate(5)
+            self._navigate(9)
 
     def _navigate_to_app_details(self, process_name: str) -> None:
         self._app_details_page.set_app(process_name)
-        self._navigate(6)
+        self._navigate(10)
 
     def _build_sidebar(self) -> QFrame:
         sidebar = QFrame()
@@ -339,25 +413,46 @@ class MainWindow(QMainWindow):
         scroll.setWidget(nav_container)
         layout.addWidget(scroll, 1)
 
-        self._home_btn = QPushButton("  🏠   Home")
-        self._activity_btn = QPushButton("  📈   Activity Trends")
-        self._focus_btn = QPushButton("  🎯   Focus")
+        from ui.icons import get_icon
+
+        self._home_btn = QPushButton("  Home")
+        self._home_btn.setIcon(get_icon("home"))
+        
+        self._activity_btn = QPushButton("  Usage")
+        self._activity_btn.setIcon(get_icon("usage"))
+        
+        self._focus_btn = QPushButton("  Focus")
+        self._focus_btn.setIcon(get_icon("focus"))
+        
+        self._locker_btn = QPushButton("  App Locker")
+        self._locker_btn.setIcon(get_icon("lock"))
+        
+        self._insights_btn = QPushButton("  Insights")
+        self._insights_btn.setIcon(get_icon("insights"))
+        
+        self._sleepguard_btn = QPushButton("  SleepGuard")
+        self._sleepguard_btn.setIcon(get_icon("sleepguard"))
         
         # Dev Mode button is intentionally removed from the production UI.
         # It remains accessible via Ctrl+Shift+D shortcut.
-        self._debug_btn = QPushButton("  🐛   Dev Mode")
+        self._debug_btn = QPushButton("  Dev Mode")
         self._debug_btn.setVisible(False)
 
         self._nav_buttons = [
-            self._home_btn,
-            self._activity_btn,
-            self._focus_btn,
-            self._debug_btn
+            self._home_btn,       # idx 0 → page 0 (Home)
+            self._activity_btn,   # idx 1 → page 1 (Usage)
+            self._focus_btn,      # idx 2 → page 2 (Focus)
+            self._locker_btn,     # idx 3 → page 3 (Locker)
+            self._insights_btn,   # idx 4 → page 4 (Insights)
+            self._sleepguard_btn, # idx 5 → page 5 (SleepGuard)
+            self._debug_btn,      # idx 6 → page 8 (hidden Dev Mode)
         ]
 
         for i, btn in enumerate(self._nav_buttons):
             btn.setObjectName("nav_btn")
-            btn.clicked.connect(lambda checked, idx=i: self._navigate(idx))
+            # Map navigation index to the actual page index in the stack
+            page_map = {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 8}
+            btn.clicked.connect(lambda checked, idx=page_map[i]: self._navigate(idx))
             nav_layout.addWidget(btn)
 
         nav_layout.addStretch()
@@ -368,16 +463,15 @@ class MainWindow(QMainWindow):
         footer_layout.setContentsMargins(0, 0, 0, 16)
         footer_layout.setSpacing(12)
         
-        self._settings_btn = QPushButton("  ⚙️   Settings")
+        self._settings_btn = QPushButton("  Settings")
+        self._settings_btn.setIcon(get_icon("settings"))
         self._settings_btn.setObjectName("nav_btn")
-        self._settings_btn.clicked.connect(lambda: self._navigate(3))
+        self._settings_btn.clicked.connect(lambda: self._navigate(7))  # Settings is now page 7
         footer_layout.addWidget(self._settings_btn)
         
-        # We append to _nav_buttons list but NOT the nav_layout so it can be managed for highlighting
-        self._nav_buttons.insert(3, self._settings_btn)
-        
+        # Append to _nav_buttons for active-state tracking (index 7 in the list)
+        self._nav_buttons.insert(7, self._settings_btn)
 
-        
         layout.addWidget(footer_widget)
 
         return sidebar
@@ -418,6 +512,11 @@ class MainWindow(QMainWindow):
                 color: {tm.color('text_main')};
                 border: 1px solid {active_border};
             }}
+            QLabel#global_status {{
+                color: {tm.color('text_sub')};
+                font-weight: 600;
+                font-size: 12px;
+            }}
         """)
         
         self._logo_lbl.setStyleSheet(f"font-size: 16px; font-weight: 700; color: {tm.color('text_main')}; letter-spacing: -0.2px;")
@@ -435,7 +534,7 @@ class MainWindow(QMainWindow):
         if curr_idx == page_idx:
             return
 
-        if page_idx < 5:
+        if page_idx <= 7:
             # Main sidebar navigation, clear history
             self._navigation_history.clear()
         else:

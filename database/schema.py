@@ -70,6 +70,16 @@ CREATE TABLE IF NOT EXISTS website_sessions (
 );
 """
 
+CREATE_APP_LOCKER_APPS = """
+CREATE TABLE IF NOT EXISTS app_locker_apps (
+    process_name    TEXT PRIMARY KEY,
+    display_name    TEXT NOT NULL,
+    exe_path        TEXT NOT NULL DEFAULT '',
+    icon_path       TEXT,
+    added_at        TEXT NOT NULL
+);
+"""
+
 
 CREATE_INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_sessions_start      ON app_sessions(start_time);",
@@ -122,6 +132,7 @@ ALL_DDL = [
     CREATE_SETTINGS,
     CREATE_EVENT_LOG,
     CREATE_WEBSITE_SESSIONS,
+    CREATE_APP_LOCKER_APPS,
     *CREATE_INDEXES,
 ]
 
@@ -144,4 +155,8 @@ DEFAULT_SETTINGS = {
     "notifications_enabled": "true",
     "daily_limit_minutes": "480",
     "export_path": "",
+    # App Locker defaults
+    "app_locker_enabled": "false",
+    "app_locker_auth_method": "hello_pin",  # hello | pin | hello_pin
+    "app_locker_auth_duration": "15_min",   # every_launch | 5_min | 15_min | until_close
 }

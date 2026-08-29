@@ -7,16 +7,20 @@ from __future__ import annotations
 from datetime import date, timedelta
 from pathlib import Path
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QSize
 from PySide6.QtWidgets import (
     QComboBox, QFileDialog, QFrame, QHBoxLayout, QLabel, QMessageBox,
     QPushButton, QScrollArea, QSpinBox, QVBoxLayout, QWidget,
+    QListWidget, QListWidgetItem, QStackedWidget
 )
+
+from ui.widgets.fluent import FluentButton
 
 from database.repository import Repository
 from settings.manager import SettingsManager
 from utils.autostart import disable_autostart, enable_autostart, is_autostart_enabled
 from utils.csv_exporter import CSVExporter
+from ui.theme import ThemeManager
 
 
 class SettingsPage(QWidget):
@@ -29,522 +33,418 @@ class SettingsPage(QWidget):
         self._sm = SettingsManager()
         self._tracker = tracker
         self._protection_manager = protection_manager
+        
+        # Track settings state changes
+        self._pending_changes = False
+        
         self._setup_ui()
         self._load_values()
         
-        from ui.theme import ThemeManager
         ThemeManager.instance().theme_changed.connect(self._apply_theme)
         self._apply_theme(ThemeManager.instance().is_dark)
 
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(32, 28, 32, 28)
-        layout.setSpacing(0)
+        layout.setSpacing(20)
 
         title_box = QVBoxLayout()
-        title_box.setSpacing(2)
+        title_box.setSpacing(4)
         title = QLabel("Settings")
         title.setObjectName("page_title")
-        subtitle = QLabel("System preferences, screen time goals, SleepGuard rules, and data management")
+        subtitle = QLabel("Manage application preferences, tracking behavior, and data.")
         subtitle.setObjectName("page_subtitle")
         title_box.addWidget(title)
         title_box.addWidget(subtitle)
-
         layout.addLayout(title_box)
-        layout.addSpacing(24)
 
-        self._scroll = QScrollArea()
-        self._scroll.setWidgetResizable(True)
-        self._scroll.setFrameShape(QFrame.Shape.NoFrame)
-        inner = QWidget()
-        inner.setObjectName("content_area")
-        inner_layout = QVBoxLayout(inner)
-        inner_layout.setContentsMargins(0, 0, 0, 0)
-        inner_layout.setSpacing(20)
-        self._scroll.setWidget(inner)
-        layout.addWidget(self._scroll, 1)
-
-        if self._protection_manager:
-            from ui.widgets.protection_section import ProtectionSection
-            
-            # Privacy & Security Section
-            protection_section = self._make_section("🔒 Privacy & Security")
-            prot_l = protection_section.layout()
-            self._protection_widget = ProtectionSection(self._protection_manager)
-            prot_l.addWidget(self._protection_widget)
-            inner_layout.addWidget(protection_section)
-
-        # 1. Appearance Section
-        appearance_section = self._make_section("🎨 Appearance & Theme")
-        app_l = appearance_section.layout()
-
-        theme_row = QHBoxLayout()
-        theme_col = QVBoxLayout()
-        theme_lbl = QLabel("Application Theme")
-        theme_lbl.setObjectName("setting_label")
-        theme_desc = QLabel("Select visual theme mode (System, Dark, or Light)")
-        theme_desc.setObjectName("setting_desc")
-        theme_col.addWidget(theme_lbl)
-        theme_col.addWidget(theme_desc)
-        theme_row.addLayout(theme_col, 1)
-
-        self._theme_combo = QComboBox()
-        self._theme_combo.addItem("System Default", "system")
-        self._theme_combo.addItem("Dark Theme", "dark")
-        self._theme_combo.addItem("Light Theme", "light")
-        self._theme_combo.setFixedWidth(160)
-        self._theme_combo.currentIndexChanged.connect(self._on_theme_combo_changed)
-        theme_row.addWidget(self._theme_combo)
-        app_l.addLayout(theme_row)
-
-        inner_layout.addWidget(appearance_section)
-
-        # 2. Tracking Section
-        tracking_section = self._make_section("Tracking & Startup Preferences")
-        t_l = tracking_section.layout()
-
-        idle_row = QHBoxLayout()
-        idle_col = QVBoxLayout()
-        idle_lbl = QLabel("Activity Idle Threshold")
-        idle_lbl.setObjectName("setting_label")
-        idle_desc = QLabel("Minutes of inactivity before marking status as idle")
-        idle_desc.setObjectName("setting_desc")
-        idle_col.addWidget(idle_lbl)
-        idle_col.addWidget(idle_desc)
-        idle_row.addLayout(idle_col, 1)
-
-        self._idle_spin = QSpinBox()
-        self._idle_spin.setRange(1, 60)
-        self._idle_spin.setSuffix(" min")
-        self._idle_spin.setFixedWidth(110)
-        idle_row.addWidget(self._idle_spin)
-        t_l.addLayout(idle_row)
-
-        t_l.addWidget(self._separator())
-
-        self._autostart_check = self._toggle_row(
-            t_l,
-            "Start with Windows Login",
-            "Automatically launch NYW when Windows starts",
-        )
-
-        t_l.addWidget(self._separator())
-
-        self._minimize_tray_check = self._toggle_row(
-            t_l,
-            "Minimize to Tray on Window Close",
-            "Keep tracking in system tray when clicking the window X button",
-        )
-
-        t_l.addWidget(self._separator())
-
-        self._debug_tracking_check = self._toggle_row(
-            t_l,
-            "Enable Tracking Diagnostics (Debug Mode)",
-            "Log structured events asynchronously to tracking_debug.log and enable real-time tracking inspector",
-        )
-        inner_layout.addWidget(tracking_section)
-
-        # 2. SleepGuard Rules Section
-        sg_section = self._make_section("🌙 SleepGuard Protection Rules")
-        sg_l = sg_section.layout()
-
-        self._sg_enable_check = self._toggle_row(
-            sg_l,
-            "SleepGuard Protection",
-            "Monitor idle time and trigger automatic PC action during bedtime",
-        )
-
-        sg_l.addWidget(self._separator())
-
-        sg_action_row = QHBoxLayout()
-        sg_action_col = QVBoxLayout()
-        sg_act_lbl = QLabel("Action when timer ends")
-        sg_act_lbl.setObjectName("setting_label")
-        sg_act_desc = QLabel("Power action to execute when SleepGuard bedtime countdown completes")
-        sg_act_desc.setObjectName("setting_desc")
-        sg_action_col.addWidget(sg_act_lbl)
-        sg_action_col.addWidget(sg_act_desc)
-        sg_action_row.addLayout(sg_action_col, 1)
-
-        self._sg_action_combo = QComboBox()
-        self._sg_action_combo.addItem("Lock", "lock")
-        self._sg_action_combo.addItem("Sleep", "sleep")
-        self._sg_action_combo.addItem("Hibernate", "hibernate")
-        self._sg_action_combo.addItem("Shut down", "shutdown")
-        self._sg_action_combo.setFixedWidth(160)
-        sg_action_row.addWidget(self._sg_action_combo)
-        sg_l.addLayout(sg_action_row)
-
-        sg_l.addWidget(self._separator())
-
-        sg_mode_row = QHBoxLayout()
-        sg_mode_col = QVBoxLayout()
-        sg_m_lbl = QLabel("Media playback behavior")
-        sg_m_lbl.setObjectName("setting_label")
-        sg_m_desc = QLabel("Behavior when active media (YouTube/Netflix/Spotify) is playing")
-        sg_m_desc.setObjectName("setting_desc")
-        sg_mode_col.addWidget(sg_m_lbl)
-        sg_mode_col.addWidget(sg_m_desc)
-        sg_mode_row.addLayout(sg_mode_col, 1)
-
-        self._sg_mode_combo = QComboBox()
-        self._sg_mode_combo.addItem("Smart - Allow media playback but trigger after the configured media threshold", "smart")
-        self._sg_mode_combo.addItem("Always Allow - Never trigger SleepGuard while media is playing", "media")
-        self._sg_mode_combo.addItem("Strict - Ignore media playback and use the normal idle timer", "strict")
-        self._sg_mode_combo.currentIndexChanged.connect(self._on_sg_mode_changed)
-        sg_mode_row.addWidget(self._sg_mode_combo)
-        sg_l.addLayout(sg_mode_row)
-
-        sg_l.addWidget(self._separator())
-
-        sg_m_row = QHBoxLayout()
-        sg_m_col = QVBoxLayout()
-        sg_m_lbl = QLabel("Media idle timeout")
-        sg_m_lbl.setObjectName("setting_label")
-        sg_m_desc = QLabel("Inactivity threshold before triggering action while media is playing")
-        sg_m_desc.setObjectName("setting_desc")
-        sg_m_col.addWidget(sg_m_lbl)
-        sg_m_col.addWidget(sg_m_desc)
-        sg_m_row.addLayout(sg_m_col, 1)
-
-        self._sg_media_timeout_combo = QComboBox()
-        self._sg_media_timeout_combo.addItem("Never", -1)
-        self._sg_media_timeout_combo.addItem("5 min", 5)
-        self._sg_media_timeout_combo.addItem("10 min", 10)
-        self._sg_media_timeout_combo.addItem("15 min", 15)
-        self._sg_media_timeout_combo.addItem("30 min", 30)
-        self._sg_media_timeout_combo.addItem("60 min", 60)
-        self._sg_media_timeout_combo.setFixedWidth(160)
-        sg_m_row.addWidget(self._sg_media_timeout_combo)
-        sg_l.addLayout(sg_m_row)
-
-        sg_l.addWidget(self._separator())
-
-        sg_t_row = QHBoxLayout()
-        sg_t_col = QVBoxLayout()
-        sg_t_lbl = QLabel("Idle timeout")
-        sg_t_lbl.setObjectName("setting_label")
-        sg_t_desc = QLabel("Minutes of inactivity before triggering the action countdown")
-        sg_t_desc.setObjectName("setting_desc")
-        sg_t_col.addWidget(sg_t_lbl)
-        sg_t_col.addWidget(sg_t_desc)
-        sg_t_row.addLayout(sg_t_col, 1)
-
-        self._sg_timeout_spin = QSpinBox()
-        self._sg_timeout_spin.setRange(5, 120)
-        self._sg_timeout_spin.setSingleStep(5)
-        self._sg_timeout_spin.setSuffix(" min")
-        self._sg_timeout_spin.setFixedWidth(110)
-        sg_t_row.addWidget(self._sg_timeout_spin)
-        sg_l.addLayout(sg_t_row)
-
-        sg_l.addWidget(self._separator())
-
-        # Quick Test Mode
-        test_row = QHBoxLayout()
-        test_col = QVBoxLayout()
-        test_lbl = QLabel("Testing / Quick Test")
-        test_lbl.setObjectName("setting_label")
-        test_desc = QLabel("Override idle timeout for rapid manual verification of SleepGuard")
-        test_desc.setObjectName("setting_desc")
-        test_col.addWidget(test_lbl)
-        test_col.addWidget(test_desc)
-        test_row.addLayout(test_col, 1)
-
-        self._sg_test_timeout_combo = QComboBox()
-        self._sg_test_timeout_combo.addItem("Off (Production)", 0)
-        self._sg_test_timeout_combo.addItem("10 seconds", 10)
-        self._sg_test_timeout_combo.addItem("20 seconds", 20)
-        self._sg_test_timeout_combo.addItem("30 seconds", 30)
-        self._sg_test_timeout_combo.addItem("1 minute", 60)
-        self._sg_test_timeout_combo.setFixedWidth(160)
-        test_row.addWidget(self._sg_test_timeout_combo)
-        sg_l.addLayout(test_row)
-
-        sg_l.addWidget(self._separator())
-
-        sg_c_row = QHBoxLayout()
-        sg_c_col = QVBoxLayout()
-        sg_c_lbl = QLabel("Countdown before action")
-        sg_c_lbl.setObjectName("setting_label")
-        sg_c_desc = QLabel("Seconds to wait during the warning dialog before executing the action")
-        sg_c_desc.setObjectName("setting_desc")
-        sg_c_col.addWidget(sg_c_lbl)
-        sg_c_col.addWidget(sg_c_desc)
-        sg_c_row.addLayout(sg_c_col, 1)
-
-        self._sg_countdown_spin = QSpinBox()
-        self._sg_countdown_spin.setRange(10, 300)
-        self._sg_countdown_spin.setSingleStep(10)
-        self._sg_countdown_spin.setSuffix(" sec")
-        self._sg_countdown_spin.setFixedWidth(110)
-        sg_c_row.addWidget(self._sg_countdown_spin)
-        sg_l.addLayout(sg_c_row)
-
-        inner_layout.addWidget(sg_section)
-
-        # 3. Notifications Section
-        notifications_section = self._make_section("Notifications & Daily Limits")
-        notif_layout = notifications_section.layout()
-
-        self._notif_check = self._toggle_row(
-            notif_layout,
-            "Enable System Notifications",
-            "Receive system tray notifications for screen time milestones and summaries",
-        )
-
-        notif_layout.addWidget(self._separator())
-
-        limit_row = QHBoxLayout()
-        limit_label_col = QVBoxLayout()
-        limit_lbl = QLabel("Daily Screen Time Limit Warning")
-        limit_lbl.setObjectName("setting_label")
-        limit_desc = QLabel("Notify when total screen time exceeds this daily limit")
-        limit_desc.setObjectName("setting_desc")
-        limit_label_col.addWidget(limit_lbl)
-        limit_label_col.addWidget(limit_desc)
-        limit_row.addLayout(limit_label_col, 1)
-
-        self._limit_spin = QSpinBox()
-        self._limit_spin.setRange(30, 1440)
-        self._limit_spin.setSingleStep(30)
-        self._limit_spin.setSuffix(" min")
-        self._limit_spin.setFixedWidth(110)
-        limit_row.addWidget(self._limit_spin)
-        notif_layout.addLayout(limit_row)
-        inner_layout.addWidget(notifications_section)
-
-        # 4. Data Management Section
-        data_section = self._make_section("🗄️ Data Management")
-        data_layout = data_section.layout()
-
-        # History Retention row
-        retention_row = QHBoxLayout()
-        retention_col = QVBoxLayout()
-        retention_lbl = QLabel("History Retention")
-        retention_lbl.setObjectName("setting_label")
-        retention_desc = QLabel("Automatically delete raw tracking data older than this duration (daily summaries are kept forever)")
-        retention_desc.setObjectName("setting_desc")
-        retention_col.addWidget(retention_lbl)
-        retention_col.addWidget(retention_desc)
-        retention_row.addLayout(retention_col, 1)
-
-        self._retention_combo = QComboBox()
-        self._retention_combo.addItem("30 Days", 30)
-        self._retention_combo.addItem("90 Days", 90)
-        self._retention_combo.addItem("1 Year", 365)
-        self._retention_combo.addItem("Unlimited", -1)
-        self._retention_combo.setFixedWidth(160)
-        retention_row.addWidget(self._retention_combo)
-        data_layout.addLayout(retention_row)
-
-        data_layout.addWidget(self._separator())
-
-        # CSV Export row
-        export_row = QHBoxLayout()
-        export_col = QVBoxLayout()
-        export_lbl = QLabel("Export Data (CSV)")
-        export_lbl.setObjectName("setting_label")
-        export_desc = QLabel("Export session records and NYW stats to a CSV file")
-        export_desc.setObjectName("setting_desc")
-        export_col.addWidget(export_lbl)
-        export_col.addWidget(export_desc)
-        export_row.addLayout(export_col, 1)
-
-        self._export_range_combo = QComboBox()
-        self._export_range_combo.addItem("Today", 0)
-        self._export_range_combo.addItem("Past 7 Days", 7)
-        self._export_range_combo.addItem("Past 30 Days", 30)
-        self._export_range_combo.addItem("This Month", 99)
-        export_row.addWidget(self._export_range_combo)
-
-        from ui.widgets.fluent import FluentButton
-        export_btn = FluentButton("📄 Export CSV", primary=False)
-        export_btn.setFixedWidth(130)
-        export_btn.clicked.connect(self._on_export_csv)
-        export_row.addWidget(export_btn)
-        data_layout.addLayout(export_row)
-
-        data_layout.addWidget(self._separator())
-
-        # Backup & Restore DB row
-        db_row = QHBoxLayout()
-        db_col = QVBoxLayout()
-        db_lbl = QLabel("Backup & Restore Database")
-        db_lbl.setObjectName("setting_label")
-        db_desc = QLabel("Save a backup copy of your database or restore from a previous backup")
-        db_desc.setObjectName("setting_desc")
-        db_col.addWidget(db_lbl)
-        db_col.addWidget(db_desc)
-        db_row.addLayout(db_col, 1)
-
-        backup_btn = FluentButton("💾 Backup", primary=False)
-        backup_btn.setFixedWidth(100)
-        backup_btn.clicked.connect(self._on_backup_db)
-        db_row.addWidget(backup_btn)
-
-        restore_btn = FluentButton("📂 Restore", primary=False)
-        restore_btn.setFixedWidth(100)
-        restore_btn.clicked.connect(self._on_restore_db)
-        db_row.addWidget(restore_btn)
-        data_layout.addLayout(db_row)
-
-        data_layout.addWidget(self._separator())
-
-        # Clear History row
-        clear_row = QHBoxLayout()
-        clear_col = QVBoxLayout()
-        clear_lbl = QLabel("Clear Tracking History")
-        clear_lbl.setObjectName("setting_label")
-        clear_desc = QLabel("Permanently delete all recorded application sessions")
-        clear_desc.setObjectName("setting_desc")
-        clear_col.addWidget(clear_lbl)
-        clear_col.addWidget(clear_desc)
-        clear_row.addLayout(clear_col, 1)
-
-        self._clear_btn = FluentButton("🗑️ Clear History", primary=False)
-        self._clear_btn.setObjectName("danger_btn")
-        self._clear_btn.setFixedWidth(140)
-        self._clear_btn.clicked.connect(self._on_clear_history)
-        clear_row.addWidget(self._clear_btn)
-        data_layout.addLayout(clear_row)
-
-        self._data_status_lbl = QLabel("")
-        self._data_status_lbl.setObjectName("data_status_success")
-        data_layout.addWidget(self._data_status_lbl)
-
-        inner_layout.addWidget(data_section)
-
-        # 5. Updates Section
-        updates_section = self._make_section("🔄 Updates")
-        updates_layout = updates_section.layout()
-
-        # Toggles
-        self._auto_update_check = self._toggle_row(
-            updates_layout,
-            "Check for updates automatically",
-            "Automatically check for new versions every 24 hours"
-        )
-        updates_layout.addWidget(self._separator())
-
-        self._notify_update_check = self._toggle_row(
-            updates_layout,
-            "Notify me when an update is available",
-            "Show a notification when a new version is ready to install"
-        )
-        updates_layout.addWidget(self._separator())
-
-        # Version & Check Button
-        update_row = QHBoxLayout()
-        update_col = QVBoxLayout()
-        from core.constants import APP_VERSION
-        upd_lbl = QLabel("Current version:")
-        upd_lbl.setObjectName("setting_label")
-        upd_val = QLabel(f"{APP_VERSION}")
-        upd_val.setObjectName("setting_desc")
-        update_col.addWidget(upd_lbl)
-        update_col.addWidget(upd_val)
-        update_row.addLayout(update_col, 1)
-
-        self._check_update_btn = FluentButton("Check for Updates", primary=False)
-        self._check_update_btn.clicked.connect(lambda: self.manual_update_requested.emit())
-        update_row.addWidget(self._check_update_btn)
-        updates_layout.addLayout(update_row)
-
-        inner_layout.addWidget(updates_section)
-
-        # 6. About Section
-        about_section = self._make_section("ℹ️ About")
-        about_layout = about_section.layout()
+        # Split layout for Sidebar + Stack
+        split_layout = QHBoxLayout()
+        split_layout.setSpacing(24)
         
-        from core.constants import APP_NAME, APP_VERSION
-        app_lbl = QLabel(f"{APP_NAME} v{APP_VERSION}")
-        app_lbl.setObjectName("setting_label")
-        app_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
-        dev_lbl = QLabel("Premium NYW & Screen Time Tracker for Windows")
-        dev_lbl.setObjectName("setting_desc")
-        dev_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
-        about_layout.addWidget(app_lbl)
-        about_layout.addWidget(dev_lbl)
-        inner_layout.addWidget(about_section)
+        # Left Sidebar (QListWidget)
+        self._sidebar = QListWidget()
+        self._sidebar.setObjectName("settings_sidebar")
+        self._sidebar.setFixedWidth(240)
+        self._sidebar.currentRowChanged.connect(self._on_sidebar_changed)
+        split_layout.addWidget(self._sidebar)
 
+        # Right Stacked Widget
+        self._stack = QStackedWidget()
+        split_layout.addWidget(self._stack, 1)
+        
+        layout.addLayout(split_layout, 1)
+        
+        # Build Pages
+        self._build_pages()
+        
+        # Bottom Save button row
         save_row = QHBoxLayout()
         save_row.addStretch()
-        save_btn = FluentButton("💾 Save Settings", primary=True)
-        save_btn.setMinimumWidth(160)
-        save_btn.clicked.connect(self._save)
-        save_row.addWidget(save_btn)
-        inner_layout.addLayout(save_row)
-        inner_layout.addStretch()
+        
+        self._save_btn = FluentButton("Save Changes", primary=True)
+        # self._save_btn.setEnabled(False) # Enable dynamically if tracking dirty state
+        
+        save_row.addWidget(self._save_btn)
+        layout.addLayout(save_row)
 
-    def _make_section(self, title: str) -> QFrame:
-        frame = QFrame()
-        frame.setObjectName("apps_container")
-        layout = QVBoxLayout(frame)
-        layout.setContentsMargins(24, 20, 24, 20)
-        layout.setSpacing(14)
+    def _build_pages(self):
+        categories = []
+        
+        if self._protection_manager:
+            from ui.widgets.protection_section import ProtectionSection
+            prot_page = QWidget()
+            prot_layout = QVBoxLayout(prot_page)
+            prot_layout.setContentsMargins(0, 0, 0, 0)
+            prot_layout.addWidget(ProtectionSection(self._protection_manager))
+            prot_layout.addStretch()
+            categories.append(("Protection & PIN", "Security settings and App Locker PIN"))
+            self._stack.addWidget(self._wrap_scroll(prot_page))
 
+        # 1. Appearance & General
+        app_page = QWidget()
+        app_layout = QVBoxLayout(app_page)
+        app_layout.setContentsMargins(0, 0, 0, 0)
+        
+        app_layout.addWidget(self._create_section_title("Appearance"))
+        
+        theme_row, self._theme_combo = self._create_combo_row(
+            "Application Theme", "Select visual theme mode",
+            [("System Default", "system"), ("Dark Theme", "dark"), ("Light Theme", "light")]
+        )
+        self._theme_combo.currentIndexChanged.connect(self._on_theme_combo_changed)
+        app_layout.addWidget(theme_row)
+        
+        app_layout.addSpacing(16)
+        app_layout.addWidget(self._create_section_title("Startup"))
+        
+        self._autostart_check, row1 = self._create_toggle_row("Start with Windows Login", "Automatically launch NYW when Windows starts")
+        app_layout.addWidget(row1)
+        
+        self._minimize_tray_check, row2 = self._create_toggle_row("Minimize to Tray", "Keep tracking in system tray when closed")
+        app_layout.addWidget(row2)
+
+        app_layout.addStretch()
+        categories.append(("General", "Theme, startup, and appearance"))
+        self._stack.addWidget(self._wrap_scroll(app_page))
+
+        # 2. Tracking & Limits
+        track_page = QWidget()
+        track_layout = QVBoxLayout(track_page)
+        track_layout.setContentsMargins(0, 0, 0, 0)
+        
+        track_layout.addWidget(self._create_section_title("Tracking Behavior"))
+        
+        idle_row, self._idle_spin = self._create_spin_row("Activity Idle Threshold", "Minutes of inactivity before marking status as idle", 1, 60, " min")
+        track_layout.addWidget(idle_row)
+        
+        self._debug_tracking_check, row3 = self._create_toggle_row("Enable Debug Tracking", "Log structured events asynchronously to log files")
+        track_layout.addWidget(row3)
+        
+        track_layout.addSpacing(16)
+        track_layout.addWidget(self._create_section_title("Daily Limits"))
+        
+        self._notif_check, row4 = self._create_toggle_row("System Notifications", "Receive system tray notifications for milestones")
+        track_layout.addWidget(row4)
+        
+        limit_row, self._limit_spin = self._create_spin_row("Screen Time Limit Warning", "Notify when total screen time exceeds this limit", 30, 1440, " min", step=30)
+        track_layout.addWidget(limit_row)
+        
+        track_layout.addStretch()
+        categories.append(("Tracking", "Idle detection and tracking limits"))
+        self._stack.addWidget(self._wrap_scroll(track_page))
+
+        # 3. SleepGuard
+        sg_page = QWidget()
+        sg_layout = QVBoxLayout(sg_page)
+        sg_layout.setContentsMargins(0, 0, 0, 0)
+        
+        sg_layout.addWidget(self._create_section_title("SleepGuard Protection"))
+        
+        self._sg_enable_check, r1 = self._create_toggle_row("Enable SleepGuard", "Monitor idle time and trigger PC action during bedtime")
+        sg_layout.addWidget(r1)
+        
+        sg_a_row, self._sg_action_combo = self._create_combo_row("Action when timer ends", "Power action to execute", [("Lock", "lock"), ("Sleep", "sleep"), ("Hibernate", "hibernate"), ("Shut down", "shutdown")])
+        sg_layout.addWidget(sg_a_row)
+        
+        sg_t_row, self._sg_timeout_spin = self._create_spin_row("Idle timeout", "Minutes of inactivity before warning", 5, 120, " min", step=5)
+        sg_layout.addWidget(sg_t_row)
+        
+        sg_c_row, self._sg_countdown_spin = self._create_spin_row("Countdown before action", "Seconds to wait during the warning dialog", 10, 300, " sec", step=10)
+        sg_layout.addWidget(sg_c_row)
+        
+        sg_layout.addSpacing(16)
+        sg_layout.addWidget(self._create_section_title("Media Playback"))
+        
+        sg_m_row, self._sg_mode_combo = self._create_combo_row("Media behavior", "When active media is playing", [
+            ("Smart - Trigger after media threshold", "smart"),
+            ("Always Allow - Never trigger", "media"),
+            ("Strict - Ignore media", "strict")
+        ])
+        self._sg_mode_combo.currentIndexChanged.connect(self._on_sg_mode_changed)
+        sg_layout.addWidget(sg_m_row)
+        
+        sg_mt_row, self._sg_media_timeout_combo = self._create_combo_row("Media idle timeout", "Threshold before triggering action", [
+            ("Never", -1), ("5 min", 5), ("10 min", 10), ("15 min", 15), ("30 min", 30), ("60 min", 60)
+        ])
+        sg_layout.addWidget(sg_mt_row)
+        
+        sg_layout.addSpacing(16)
+        sg_layout.addWidget(self._create_section_title("Developer"))
+        sg_test_row, self._sg_test_timeout_combo = self._create_combo_row("Quick Test Mode", "Override timeout for rapid testing", [
+            ("Off (Production)", 0), ("10 seconds", 10), ("20 seconds", 20), ("30 seconds", 30), ("1 minute", 60)
+        ])
+        sg_layout.addWidget(sg_test_row)
+        
+        sg_layout.addStretch()
+        categories.append(("SleepGuard", "Distraction blocking parameters"))
+        self._stack.addWidget(self._wrap_scroll(sg_page))
+        
+        # 4. Data Management
+        data_page = QWidget()
+        data_layout = QVBoxLayout(data_page)
+        data_layout.setContentsMargins(0, 0, 0, 0)
+        
+        data_layout.addWidget(self._create_section_title("Data Management"))
+        
+        ret_row, self._retention_combo = self._create_combo_row("History Retention", "Automatically delete old raw tracking data", [
+            ("30 Days", 30), ("90 Days", 90), ("1 Year", 365), ("Unlimited", -1)
+        ])
+        data_layout.addWidget(ret_row)
+        
+        data_layout.addSpacing(16)
+        data_layout.addWidget(self._create_section_title("Export & Backup"))
+        
+        from ui.widgets.fluent import FluentButton
+        export_row, self._export_range_combo = self._create_combo_row("Export Data (CSV)", "Export session records", [
+            ("Today", 0), ("Past 7 Days", 7), ("Past 30 Days", 30), ("This Month", 99)
+        ])
+        btn_exp = FluentButton("Export CSV", primary=False)
+        export_row.layout().addWidget(btn_exp)
+        data_layout.addWidget(export_row)
+        
+        db_row = QFrame()
+        db_row.setObjectName("settings_card")
+        db_l = QHBoxLayout(db_row)
+        db_c = QVBoxLayout()
+        db_lbl = QLabel("Backup & Restore Database")
+        db_lbl.setObjectName("setting_label")
+        db_desc = QLabel("Save or restore your tracking database")
+        db_desc.setObjectName("setting_desc")
+        db_desc.setWordWrap(True)
+        db_c.addWidget(db_lbl)
+        db_c.addWidget(db_desc)
+        btn_bak = FluentButton("Backup", primary=False)
+        btn_bak.clicked.connect(self._on_backup_db)
+        btn_res = FluentButton("Restore", primary=False)
+        btn_res.clicked.connect(self._on_restore_db)
+        db_l.addWidget(btn_bak)
+        db_l.addWidget(btn_res)
+        data_layout.addWidget(db_row)
+        
+        clr_row = QFrame()
+        clr_row.setObjectName("settings_card")
+        clr_l = QHBoxLayout(clr_row)
+        clr_c = QVBoxLayout()
+        clr_lbl = QLabel("Clear Tracking History")
+        clr_lbl.setObjectName("setting_label")
+        clr_desc = QLabel("Permanently delete all recorded sessions")
+        clr_desc.setObjectName("setting_desc")
+        clr_desc.setWordWrap(True)
+        clr_c.addWidget(clr_lbl)
+        self._clear_btn = FluentButton("Clear History", primary=False)
+        self._clear_btn.clicked.connect(self._on_clear_history)
+        clr_l.addWidget(self._clear_btn)
+        data_layout.addWidget(clr_row)
+        
+        self._data_status_lbl = QLabel("")
+        self._data_status_lbl.setObjectName("data_status")
+        data_layout.addWidget(self._data_status_lbl)
+        
+        data_layout.addStretch()
+        categories.append(("Data Management", "Export, backup, and history limits"))
+        self._stack.addWidget(self._wrap_scroll(data_page))
+        
+        # 5. Updates & About
+        upd_page = QWidget()
+        upd_layout = QVBoxLayout(upd_page)
+        upd_layout.setContentsMargins(0, 0, 0, 0)
+        
+        upd_layout.addWidget(self._create_section_title("Updates"))
+        
+        self._auto_update_check, r_upd1 = self._create_toggle_row("Automatic Updates", "Check for new versions every 24 hours")
+        upd_layout.addWidget(r_upd1)
+        
+        self._notify_update_check, r_upd2 = self._create_toggle_row("Update Notifications", "Show a notification when ready")
+        upd_layout.addWidget(r_upd2)
+        
+        from core.constants import APP_VERSION, APP_NAME
+        chk_row = QFrame()
+        chk_row.setObjectName("settings_card")
+        chk_l = QHBoxLayout(chk_row)
+        chk_c = QVBoxLayout()
+        chk_lbl = QLabel(f"Current version: {APP_VERSION}")
+        chk_lbl.setObjectName("setting_label")
+        chk_c.addWidget(chk_lbl)
+        chk_l.addLayout(chk_c, 1)
+        chk_btn = FluentButton("Check for Updates", primary=False)
+        chk_btn.clicked.connect(lambda: self.manual_update_requested.emit())
+        chk_l.addWidget(chk_btn)
+        upd_layout.addWidget(chk_row)
+        
+        upd_layout.addSpacing(16)
+        upd_layout.addWidget(self._create_section_title("About"))
+        
+        about_lbl = QLabel(f"{APP_NAME} v{APP_VERSION}\nPremium Screen Time Tracker for Windows")
+        about_lbl.setObjectName("setting_desc")
+        about_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        upd_layout.addWidget(about_lbl)
+        
+        upd_layout.addStretch()
+        categories.append(("Updates & About", "Version info and updates"))
+        self._stack.addWidget(self._wrap_scroll(upd_page))
+
+        # Populate sidebar
+        for title, desc in categories:
+            item = QListWidgetItem(title)
+            # You could add subtitle using a custom widget, but text is fine
+            item.setToolTip(desc)
+            self._sidebar.addItem(item)
+            
+        self._sidebar.setCurrentRow(0)
+
+    def _wrap_scroll(self, widget: QWidget) -> QScrollArea:
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setWidget(widget)
+        scroll.setStyleSheet("QScrollArea { background: transparent; } QWidget { background: transparent; }")
+        return scroll
+
+    def _create_section_title(self, title: str) -> QLabel:
         lbl = QLabel(title)
         lbl.setObjectName("section_header")
-        layout.addWidget(lbl)
-        layout.addWidget(self._separator())
-        return frame
+        return lbl
 
-    def _separator(self) -> QFrame:
-        line = QFrame()
-        line.setFrameShape(QFrame.Shape.HLine)
-        line.setObjectName("separator")
-        line.setMaximumHeight(1)
-        return line
-
-    def _toggle_row(
-        self, parent_layout, title: str, description: str
-    ):
-        row = QHBoxLayout()
-        label_col = QVBoxLayout()
-        label_col.setSpacing(2)
+    def _create_toggle_row(self, title: str, description: str):
+        row = QFrame()
+        row.setObjectName("settings_card")
+        layout = QHBoxLayout(row)
+        col = QVBoxLayout()
+        col.setSpacing(2)
         lbl = QLabel(title)
         lbl.setObjectName("setting_label")
         desc = QLabel(description)
         desc.setObjectName("setting_desc")
-        label_col.addWidget(lbl)
-        label_col.addWidget(desc)
-        row.addLayout(label_col, 1)
-
+        desc.setWordWrap(True)
+        col.addWidget(lbl)
+        col.addWidget(desc)
+        layout.addLayout(col, 1)
         from ui.widgets.fluent import ToggleSwitch
         check = ToggleSwitch()
-        row.addWidget(check)
-        parent_layout.addLayout(row)
-        return check
+        layout.addWidget(check)
+        return check, row
+
+    def _create_combo_row(self, title: str, description: str, items: list):
+        row = QFrame()
+        row.setObjectName("settings_card")
+        layout = QHBoxLayout(row)
+        col = QVBoxLayout()
+        col.setSpacing(2)
+        lbl = QLabel(title)
+        lbl.setObjectName("setting_label")
+        desc = QLabel(description)
+        desc.setObjectName("setting_desc")
+        desc.setWordWrap(True)
+        col.addWidget(lbl)
+        col.addWidget(desc)
+        layout.addLayout(col, 1)
+        combo = QComboBox()
+        for text, data in items:
+            combo.addItem(text, data)
+        combo.setFixedWidth(180)
+        layout.addWidget(combo)
+        return row, combo
+
+    def _create_spin_row(self, title: str, description: str, min_val: int, max_val: int, suffix: str, step: int = 1):
+        row = QFrame()
+        row.setObjectName("settings_card")
+        layout = QHBoxLayout(row)
+        col = QVBoxLayout()
+        col.setSpacing(2)
+        lbl = QLabel(title)
+        lbl.setObjectName("setting_label")
+        desc = QLabel(description)
+        desc.setObjectName("setting_desc")
+        desc.setWordWrap(True)
+        col.addWidget(lbl)
+        col.addWidget(desc)
+        layout.addLayout(col, 1)
+        spin = QSpinBox()
+        spin.setRange(min_val, max_val)
+        spin.setSingleStep(step)
+        spin.setSuffix(suffix)
+        spin.setFixedWidth(120)
+        layout.addWidget(spin)
+        return row, spin
+
+    def _on_sidebar_changed(self, index: int):
+        self._stack.setCurrentIndex(index)
 
     def _apply_theme(self, is_dark: bool) -> None:
-        from ui.theme import ThemeManager
         tm = ThemeManager.instance()
         
         self.setStyleSheet(f"""
             QLabel#page_title {{ font-size: 28px; font-weight: 800; color: {tm.color('text_main')}; }}
             QLabel#page_subtitle {{ font-size: 14px; color: {tm.color('text_sub')}; }}
-            QLabel#section_header {{ font-size: 15px; font-weight: 700; color: {tm.color('accent')}; letter-spacing: 0.5px; }}
-            QLabel#setting_label {{ color: {tm.color('text_main')}; font-size: 15px; font-weight: 600; }}
-            QLabel#setting_desc {{ color: {tm.color('text_sub')}; font-size: 13px; }}
-            QFrame#apps_container {{ background: {tm.color('card_bg')}; border-radius: 12px; border: 1px solid {tm.color('border')}; }}
-            QFrame#separator {{ background: {tm.color('border')}; }}
+            QLabel#section_header {{ font-size: 14px; font-weight: 700; color: {tm.color('accent')}; letter-spacing: 0.5px; margin-top: 10px; margin-bottom: 4px; }}
+            QLabel#setting_label {{ color: {tm.color('text_main')}; font-size: 14px; font-weight: 600; }}
+            QLabel#setting_desc {{ color: {tm.color('text_sub')}; font-size: 12px; }}
+            
+            QFrame#settings_card {{ 
+                background: {tm.color('surface_elevated')}; 
+                border-radius: 12px; 
+                border: 1px solid {tm.color('border')}; 
+                padding: 16px;
+            }}
+            
+            QListWidget#settings_sidebar {{
+                background: transparent;
+                border: none;
+                outline: none;
+            }}
+            QListWidget#settings_sidebar::item {{
+                background: transparent;
+                color: {tm.color('text_sub')};
+                padding: 10px 16px;
+                border-radius: 8px;
+                margin-bottom: 4px;
+                font-weight: 600;
+                font-size: 14px;
+            }}
+            QListWidget#settings_sidebar::item:hover {{
+                background: {tm.color('surface_hover')};
+                color: {tm.color('text_main')};
+            }}
+            QListWidget#settings_sidebar::item:selected {{
+                background: {tm.color('surface_elevated')};
+                color: {tm.color('accent')};
+                border-left: 3px solid {tm.color('accent')};
+                border-top-left-radius: 0px;
+                border-bottom-left-radius: 0px;
+            }}
             
             QComboBox, QSpinBox {{
-                background-color: {tm.color('primary_btn_gradient')};
-                border: 1px solid {tm.color('border')};
+                background-color: {tm.color('input_bg')};
+                border: 1px solid {tm.color('input_border')};
                 border-radius: 6px;
                 padding: 6px 12px;
                 color: {tm.color('text_main')};
-                font-size: 14px;
+                font-size: 13px;
                 font-weight: 500;
             }}
             QComboBox:hover, QSpinBox:hover {{
-                border: 1px solid {tm.color('border_hover')};
-                background-color: {tm.color('primary_btn_hover')};
+                border: 1px solid {tm.color('accent')};
             }}
             QComboBox::drop-down, QSpinBox::up-button, QSpinBox::down-button {{
                 border: none;
@@ -558,13 +458,25 @@ class SettingsPage(QWidget):
                 border-radius: 6px;
                 outline: none;
             }}
+            
+            QPushButton#danger_btn {{
+                background-color: {tm.color('danger_bg')};
+                color: {tm.color('danger_text')};
+                border: 1px solid {tm.color('danger_border')};
+                border-radius: 6px;
+                padding: 6px 16px;
+                font-weight: 600;
+            }}
+            QPushButton#danger_btn:hover {{
+                background-color: {tm.color('danger_text')};
+                color: white;
+            }}
         """)
         
-        # We need to manually set these if they change dynamically
         if "✗" in self._data_status_lbl.text():
-            self._data_status_lbl.setStyleSheet(f"color: {tm.color('danger_text')}; font-weight: 600; font-size: 11px;")
+            self._data_status_lbl.setStyleSheet(f"color: {tm.color('danger_text')}; font-weight: 600; font-size: 12px;")
         else:
-            self._data_status_lbl.setStyleSheet(f"color: {tm.color('success_text')}; font-weight: 600; font-size: 11px;")
+            self._data_status_lbl.setStyleSheet(f"color: {tm.color('success_text')}; font-weight: 600; font-size: 12px;")
 
     def _on_theme_combo_changed(self) -> None:
         theme_val = self._theme_combo.currentData()
@@ -580,7 +492,6 @@ class SettingsPage(QWidget):
         curr_theme = self._sm.theme
         idx = self._theme_combo.findData(curr_theme)
         if idx >= 0:
-            # Temporarily disconnect to avoid triggering change animation during load
             self._theme_combo.blockSignals(True)
             self._theme_combo.setCurrentIndex(idx)
             self._theme_combo.blockSignals(False)
@@ -597,12 +508,12 @@ class SettingsPage(QWidget):
         idx_act = self._sg_action_combo.findData(curr_action)
         if idx_act >= 0:
             self._sg_action_combo.setCurrentIndex(idx_act)
-        else:
-            self._sg_action_combo.setCurrentIndex(0)
+        
         curr_mode = self._sm.shutdown_mode
         idx = self._sg_mode_combo.findData(curr_mode)
         if idx >= 0:
             self._sg_mode_combo.setCurrentIndex(idx)
+            
         self._sg_timeout_spin.setValue(self._sm.idle_timeout_minutes)
         self._sg_countdown_spin.setValue(self._sm.countdown_seconds)
         
@@ -610,15 +521,11 @@ class SettingsPage(QWidget):
         idx_test = self._sg_test_timeout_combo.findData(test_timeout)
         if idx_test >= 0:
             self._sg_test_timeout_combo.setCurrentIndex(idx_test)
-        else:
-            self._sg_test_timeout_combo.setCurrentIndex(0)
         
         media_timeout = self._sm.media_idle_timeout_minutes
         idx2 = self._sg_media_timeout_combo.findData(media_timeout)
         if idx2 >= 0:
             self._sg_media_timeout_combo.setCurrentIndex(idx2)
-        else:
-            self._sg_media_timeout_combo.setCurrentIndex(3)  # default 15 min
             
         retention = self._sm.get_int("history_retention_days", 30)
         idx3 = self._retention_combo.findData(retention)
@@ -641,95 +548,75 @@ class SettingsPage(QWidget):
             start = end - timedelta(days=days - 1)
 
         file_path, _ = QFileDialog.getSaveFileName(
-            self,
-            "Save Report CSV",
-            str(Path.home() / "Documents" / f"digital_wellbeing_report_{start}_{end}.csv"),
-            "CSV Files (*.csv)",
+            self, "Save Report CSV", str(Path.home() / "Documents" / f"digital_wellbeing_report_{start}_{end}.csv"), "CSV Files (*.csv)",
         )
 
         if file_path:
-            from ui.theme import ThemeManager
             tm = ThemeManager.instance()
             try:
                 exporter = CSVExporter()
                 dest = exporter.export_sessions(start, end, Path(file_path))
                 self._data_status_lbl.setText(f"✓ Report exported to: {dest.name}")
-                self._data_status_lbl.setStyleSheet(f"color: {tm.color('success_text')}; font-weight: 600; font-size: 11px;")
+                self._data_status_lbl.setStyleSheet(f"color: {tm.color('success_text')}; font-weight: 600; font-size: 12px;")
             except Exception as exc:
                 self._data_status_lbl.setText(f"✗ Export failed: {exc}")
-                self._data_status_lbl.setStyleSheet(f"color: {tm.color('danger_text')}; font-weight: 600; font-size: 11px;")
+                self._data_status_lbl.setStyleSheet(f"color: {tm.color('danger_text')}; font-weight: 600; font-size: 12px;")
 
     def _on_backup_db(self) -> None:
         file_path, _ = QFileDialog.getSaveFileName(
-            self,
-            "Backup Database",
-            str(Path.home() / "Documents" / f"digital_wellbeing_backup_{date.today()}.db"),
-            "Database Files (*.db)",
+            self, "Backup Database", str(Path.home() / "Documents" / f"digital_wellbeing_backup_{date.today()}.db"), "Database Files (*.db)",
         )
         if file_path:
-            from ui.theme import ThemeManager
             tm = ThemeManager.instance()
             try:
                 repo = Repository()
                 dest = repo.backup_database(Path(file_path))
                 self._data_status_lbl.setText(f"✓ Database backed up to: {dest.name}")
-                self._data_status_lbl.setStyleSheet(f"color: {tm.color('success_text')}; font-weight: 600; font-size: 11px;")
+                self._data_status_lbl.setStyleSheet(f"color: {tm.color('success_text')}; font-weight: 600; font-size: 12px;")
             except Exception as exc:
                 self._data_status_lbl.setText(f"✗ Backup failed: {exc}")
-                self._data_status_lbl.setStyleSheet(f"color: {tm.color('danger_text')}; font-weight: 600; font-size: 11px;")
+                self._data_status_lbl.setStyleSheet(f"color: {tm.color('danger_text')}; font-weight: 600; font-size: 12px;")
 
     def _on_restore_db(self) -> None:
         reply = QMessageBox.question(
-            self,
-            "Confirm Database Restore",
-            "Restoring database will overwrite your current tracking data. Continue?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
+            self, "Confirm Database Restore", "Restoring database will overwrite your current tracking data. Continue?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No,
         )
         if reply == QMessageBox.StandardButton.Yes:
             file_path, _ = QFileDialog.getOpenFileName(
-                self,
-                "Select Database Backup",
-                str(Path.home() / "Documents"),
-                "Database Files (*.db)",
+                self, "Select Database Backup", str(Path.home() / "Documents"), "Database Files (*.db)",
             )
             if file_path:
-                from ui.theme import ThemeManager
                 tm = ThemeManager.instance()
                 try:
                     repo = Repository()
                     repo.restore_database(Path(file_path))
                     self._data_status_lbl.setText(f"✓ Database restored successfully from: {Path(file_path).name}")
-                    self._data_status_lbl.setStyleSheet(f"color: {tm.color('success_text')}; font-weight: 600; font-size: 11px;")
+                    self._data_status_lbl.setStyleSheet(f"color: {tm.color('success_text')}; font-weight: 600; font-size: 12px;")
                 except Exception as exc:
                     self._data_status_lbl.setText(f"✗ Restore failed: {exc}")
-                    self._data_status_lbl.setStyleSheet(f"color: {tm.color('danger_text')}; font-weight: 600; font-size: 11px;")
+                    self._data_status_lbl.setStyleSheet(f"color: {tm.color('danger_text')}; font-weight: 600; font-size: 12px;")
 
     def _on_clear_history(self) -> None:
         reply = QMessageBox.warning(
-            self,
-            "Confirm Clear History",
-            "Are you sure you want to permanently delete all tracking history? This action cannot be undone.",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
+            self, "Confirm Clear History", "Are you sure you want to permanently delete all tracking history? This action cannot be undone.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No,
         )
         if reply == QMessageBox.StandardButton.Yes:
-            from ui.theme import ThemeManager
             tm = ThemeManager.instance()
             try:
                 repo = Repository()
                 count = repo.clear_all_sessions()
                 self._data_status_lbl.setText(f"✓ Cleared {count} sessions from history.")
-                self._data_status_lbl.setStyleSheet(f"color: {tm.color('success_text')}; font-weight: 600; font-size: 11px;")
+                self._data_status_lbl.setStyleSheet(f"color: {tm.color('success_text')}; font-weight: 600; font-size: 12px;")
             except Exception as exc:
                 self._data_status_lbl.setText(f"✗ Clear history failed: {exc}")
-                self._data_status_lbl.setStyleSheet(f"color: {tm.color('danger_text')}; font-weight: 600; font-size: 11px;")
+                self._data_status_lbl.setStyleSheet(f"color: {tm.color('danger_text')}; font-weight: 600; font-size: 12px;")
 
     def _save(self) -> None:
         theme_val = self._theme_combo.currentData()
         if theme_val:
             self._sm.theme = theme_val
-            # Theme change is handled dynamically now
         self._sm.set_int("idle_threshold_s", self._idle_spin.value() * 60)
         self._sm.set_bool("notifications_enabled", self._notif_check.isChecked())
         self._sm.set_bool("minimize_to_tray", self._minimize_tray_check.isChecked())
@@ -760,7 +647,6 @@ class SettingsPage(QWidget):
         ret_val = self._retention_combo.currentData()
         if ret_val is not None:
             self._sm.set_int("history_retention_days", ret_val)
-            # Trigger cleanup immediately when saved
             if ret_val > 0:
                 from analytics.engine import AnalyticsEngine
                 try:
@@ -784,4 +670,3 @@ class SettingsPage(QWidget):
 
         self.settings_changed.emit()
         QMessageBox.information(self, "Settings Saved", "Settings have been saved successfully.")
-
