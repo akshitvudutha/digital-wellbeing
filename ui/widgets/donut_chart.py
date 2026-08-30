@@ -406,22 +406,24 @@ class CategoryBreakdownCard(QFrame):
         if event.button() == Qt.MouseButton.LeftButton:
             self.category_clicked.emit("All Categories")
 
-    def set_data(self, category_breakdown: list[dict] | None, active_seconds: float) -> None:
+    def set_data(self, category_breakdown: list[dict] | None, active_seconds: float, total_screen_time_s: float = 0.0) -> None:
         """Update legend items and redraw chart ring."""
         segments = self.legend.set_data(category_breakdown, active_seconds)
         
         from ui.theme import ThemeManager
         tm = ThemeManager.instance()
         
+        display_total = total_screen_time_s if total_screen_time_s > 0 else active_seconds
+        
         if active_seconds > 0 and segments:
             self.donut.set_data(
                 segments,
-                center_text=AnalyticsEngine.format_duration_short(active_seconds),
-                center_subtext="Total Screen Time",
+                center_text=AnalyticsEngine.format_duration_short(display_total),
+                center_subtext="TOTAL SCREEN TIME",
             )
         else:
             self.donut.set_data(
                 [("Active", 1.0, tm.color('accent'))],
                 center_text="0m",
-                center_subtext="Total Screen Time",
+                center_subtext="TOTAL SCREEN TIME",
             )

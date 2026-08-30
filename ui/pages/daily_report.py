@@ -171,7 +171,7 @@ class DailyReportPage(QWidget):
         self._lbl_unlocks.setText(f"Device Unlocks: {stat.unlock_count}")
         
         categories = json.loads(stat.category_usage_json)
-        self._breakdown_card.set_data(categories, stat.active_time_s)
+        self._breakdown_card.set_data(categories, stat.active_time_s, stat.total_screen_time_s)
         
         # Apps
         while self._apps_layout.count():

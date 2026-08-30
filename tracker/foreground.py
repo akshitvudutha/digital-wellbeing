@@ -422,11 +422,8 @@ def get_foreground_app(last_known_app: Optional[ForegroundApp] = None) -> Option
         if is_private_browsing(name, title):
             title = "Private Browsing"
 
+        # URL tracking has been permanently disabled in v3.1.5 due to lack of a browser extension
         url = ""
-        name_lower = name.lower()
-        if name_lower in BROWSER_PROCESSES:
-            from tracker.browser_url import BrowserURLProvider
-            url = BrowserURLProvider.get_active_domain(root_hwnd, name_lower) or ""
 
         # Safely detect fullscreen on the root window or the actual foreground window (e.g. video child window)
         is_fs = False

@@ -87,6 +87,9 @@ def main() -> None:
         sys.exit(0 if success else 1)
 
     logger.info("[LIFECYCLE] Starting NYW GUI Application (main.py entry)")
+    FOCUS_ENFORCEMENT_BUILD_MARKER = "FOCUS-V3-1-4-CLOSE-TAB"
+    logger.info(f"[DIAGNOSTICS] {FOCUS_ENFORCEMENT_BUILD_MARKER}")
+    
     try:
         from ui.app import DigitalWellbeingApp
         from utils.debug_lifecycle import log_lifecycle_state

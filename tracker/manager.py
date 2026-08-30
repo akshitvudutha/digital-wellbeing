@@ -90,6 +90,7 @@ class TrackingManager:
         )
         self._thread.start()
         logger.info("[LIFECYCLE] TrackingManager thread started (ident=%s, daemon=%s)", self._thread.ident, self._thread.daemon)
+        
         self._repo.log_event("tracker_start", "Tracking started")
         logger.info("Tracking started")
 
@@ -107,6 +108,7 @@ class TrackingManager:
         self._media_engine.stop()
         self._end_current_session(reason="stop")
         self._end_website_session(datetime.now())
+        
         self._repo.log_event("tracker_stop", "Tracking stopped")
         logger.info("[LIFECYCLE] Tracking stopped — waiting for tracking thread to exit...")
 

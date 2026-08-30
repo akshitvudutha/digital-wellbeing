@@ -40,9 +40,10 @@ class ChipWidget(QFrame):
         
     def _apply_theme(self):
         tm = ThemeManager.instance()
+        # HARDCODE neutral colors to prevent system pink accents from leaking in
         self.setStyleSheet(f"""
             QFrame#chip {{
-                background-color: {tm.color('surface_elevated')};
+                background-color: {tm.color('surface_secondary')};
                 border: 1px solid {tm.color('border')};
                 border-radius: 12px;
             }}
@@ -108,14 +109,14 @@ class FocusTimerWidget(QFrame):
         from PySide6.QtWidgets import QCheckBox
         self._strict_chk = QCheckBox("Strict Mode")
         self._strict_chk.setObjectName("strict_chk")
-        self._strict_chk.setToolTip("Requires PIN to exit early. Blocks websites via hosts file.")
+        self._strict_chk.setToolTip("Requires PIN to exit early. Restricts all apps except allowed apps.")
         hdr.addStretch()
         hdr.addWidget(self._strict_chk)
         layout.addLayout(hdr)
         
-        desc = QLabel("Boost productivity by blocking distracting websites and apps.")
-        desc.setStyleSheet("color: #A0A0A0; font-size: 13px; margin-bottom: 8px;")
-        layout.addWidget(desc)
+        self._desc_lbl = QLabel("Boost productivity by blocking distracting websites and apps.")
+        self._desc_lbl.setObjectName("timer_desc")
+        layout.addWidget(self._desc_lbl)
 
         center_layout = QVBoxLayout()
         center_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -152,9 +153,9 @@ class FocusTimerWidget(QFrame):
         layout.addSpacing(12)
         
         # Blocklist Section
-        blocklist_hdr = QLabel("Blocked Apps & Sites")
-        blocklist_hdr.setObjectName("timer_status")
-        layout.addWidget(blocklist_hdr)
+        allowlist_hdr = QLabel("Blocked Applications")
+        allowlist_hdr.setObjectName("timer_status")
+        layout.addWidget(allowlist_hdr)
         
         self._blocklist_container = QWidget()
         self._blocklist_layout = QHBoxLayout(self._blocklist_container)
@@ -176,7 +177,7 @@ class FocusTimerWidget(QFrame):
         # Add Input
         input_row = QHBoxLayout()
         self._block_input = QLineEdit()
-        self._block_input.setPlaceholderText("Enter app or domain (e.g., youtube.com)")
+        self._block_input.setPlaceholderText("Enter application (e.g., discord.exe)")
         self._block_input.setObjectName("block_input")
         self._block_input.returnPressed.connect(self._add_block_item)
         
@@ -223,11 +224,12 @@ class FocusTimerWidget(QFrame):
                 border-color: {tm.color('border_hover')};
             }}
             QLabel#section_header {{ font-size: 14px; font-weight: 700; color: {tm.color('accent')}; letter-spacing: 1.2px; text-transform: uppercase; }}
+            QLabel#timer_desc {{ color: {tm.color('text_sub')}; font-size: 13px; margin-bottom: 8px; }}
             QLabel#timer_display {{ font-size: 42px; font-weight: 900; color: {tm.color('accent')}; letter-spacing: -1.2px; }}
             QLabel#timer_status {{ color: {tm.color('text_sub')}; font-size: 12px; font-weight: 600; }}
             QCheckBox#strict_chk {{ color: {tm.color('danger_text')}; font-weight: 600; }}
             QPushButton#timer_chip {{
-                background-color: {tm.color('border')};
+                background-color: {tm.color('surface_secondary')};
                 border: 1px solid {tm.color('border')};
                 border-radius: 12px;
                 color: {tm.color('text_sub')};
@@ -236,8 +238,8 @@ class FocusTimerWidget(QFrame):
                 padding: 4px 12px;
             }}
             QPushButton#timer_chip:hover {{
-                background-color: {tm.color('accent')}33;
-                border-color: {tm.color('accent')}80;
+                background-color: {tm.color('border')};
+                border-color: {tm.color('border_strong')};
                 color: {tm.color('text_main')};
             }}
             QPushButton#timer_chip:disabled {{
@@ -307,27 +309,32 @@ class FocusTimerWidget(QFrame):
             if item.widget():
                 item.widget().deleteLater()
                 
-        items = self._fm.blocklist
-        for text in items:
-            chip = ChipWidget(text)
-            chip.removed.connect(self._remove_block_item)
-            self._blocklist_layout.addWidget(chip)
+        items = self._fm.blocked_apps
+        if not items:
+            placeholder = QLabel("No applications blocked. Add apps you want to restrict during Focus.")
+            placeholder.setStyleSheet(f"color: {ThemeManager.instance().color('text_sub')}; font-style: italic; font-size: 12px;")
+            self._blocklist_layout.addWidget(placeholder)
+        else:
+            for text in items:
+                chip = ChipWidget(text)
+                chip.removed.connect(self._remove_block_item)
+                self._blocklist_layout.addWidget(chip)
             
     def _add_block_item(self) -> None:
         text = self._block_input.text().strip().lower()
         if text:
-            items = self._fm.blocklist
+            items = self._fm.blocked_apps
             if text not in items:
                 items.append(text)
-                self._fm.save_blocklist(items)
+                self._fm.save_blocked_apps(items)
                 self._refresh_blocklist_ui()
             self._block_input.clear()
             
     def _remove_block_item(self, text: str) -> None:
-        items = self._fm.blocklist
+        items = self._fm.blocked_apps
         if text in items:
             items.remove(text)
-            self._fm.save_blocklist(items)
+            self._fm.save_blocked_apps(items)
             self._refresh_blocklist_ui()
 
     def _on_tick(self, seconds: int) -> None:
@@ -342,12 +349,10 @@ class FocusTimerWidget(QFrame):
             for chip in self._chips: chip.hide()
             self._strict_chk.setEnabled(False)
             self._strict_chk.setChecked(self._fm.is_strict)
-            if self._fm.system_blocking_active:
-                self._status_lbl.setText("Website blocking: ✓ System blocking active")
-            elif self._fm.blocklist:
-                self._status_lbl.setText("Website blocking: ⚠ Elevated permission required")
+            if self._fm.blocked_apps:
+                self._status_lbl.setText("App blocking: ⚠ Blocklist active")
             else:
-                self._status_lbl.setText("Focusing... No websites blocked.")
+                self._status_lbl.setText("Focusing... No apps blocked.")
             self._block_input.setEnabled(False)
             self._add_block_btn.setEnabled(False)
         else:

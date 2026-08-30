@@ -11,7 +11,7 @@ from PySide6.QtCore import Qt, Signal, QSize
 from PySide6.QtWidgets import (
     QComboBox, QFileDialog, QFrame, QHBoxLayout, QLabel, QMessageBox,
     QPushButton, QScrollArea, QSpinBox, QVBoxLayout, QWidget,
-    QListWidget, QListWidgetItem, QStackedWidget
+    QListWidget, QListWidgetItem, QStackedWidget, QSizePolicy
 )
 
 from ui.widgets.fluent import FluentButton
@@ -83,7 +83,7 @@ class SettingsPage(QWidget):
         save_row.addStretch()
         
         self._save_btn = FluentButton("Save Changes", primary=True)
-        # self._save_btn.setEnabled(False) # Enable dynamically if tracking dirty state
+        self._save_btn.clicked.connect(self._save)
         
         save_row.addWidget(self._save_btn)
         layout.addLayout(save_row)
@@ -362,7 +362,8 @@ class SettingsPage(QWidget):
         combo = QComboBox()
         for text, data in items:
             combo.addItem(text, data)
-        combo.setFixedWidth(180)
+        combo.setMinimumWidth(180)
+        combo.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
         layout.addWidget(combo)
         return row, combo
 
@@ -384,7 +385,8 @@ class SettingsPage(QWidget):
         spin.setRange(min_val, max_val)
         spin.setSingleStep(step)
         spin.setSuffix(suffix)
-        spin.setFixedWidth(120)
+        spin.setMinimumWidth(120)
+        spin.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
         layout.addWidget(spin)
         return row, spin
 

@@ -50,7 +50,7 @@ Type: files; Name: "{userstartup}\Digital Wellbeing.lnk"
 Type: files; Name: "{commonstartup}\Digital Wellbeing.lnk"
 
 [Files]
-Source: "dist\DigitalWellbeing\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
+Source: "dist\DigitalWellbeing\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\NYW"; Filename: "{app}\DigitalWellbeing.exe"

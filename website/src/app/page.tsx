@@ -9,11 +9,11 @@ import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 
 const DEMO_TABS = [
-  { id: "focus", label: "Focus Mode", icon: Zap, video: "/videos/focus-demo.mp4", fallback: "/images/focus.png" },
-  { id: "applocker", label: "App Locker", icon: Lock, video: "/videos/applocker-demo.mp4", fallback: "/images/applocker.png" },
-  { id: "sleepguard", label: "SleepGuard", icon: Moon, video: "/videos/sleepguard-demo.mp4", fallback: "/images/sleepguard.png" },
-  { id: "insights", label: "Insights", icon: ChartPie, video: "/videos/insights-demo.mp4", fallback: "/images/insights.png" },
-  { id: "usage", label: "Usage Analytics", icon: Activity, video: "/videos/usage-demo.mp4", fallback: "/images/usage.png" },
+  { id: "focus", label: "Focus Mode", icon: Zap, video: "/videos/focus-demo.mp4", fallback: "/images/focus-dark.png" },
+  { id: "applocker", label: "App Locker", icon: Lock, video: "/videos/applocker-demo.mp4", fallback: "/images/applocker-dark.png" },
+  { id: "sleepguard", label: "SleepGuard", icon: Moon, video: "/videos/sleepguard-demo.mp4", fallback: "/images/sleepguard-dark.png" },
+  { id: "insights", label: "Insights", icon: ChartPie, video: "/videos/insights-demo.mp4", fallback: "/images/insights-dark.png" },
+  { id: "usage", label: "Usage Analytics", icon: Activity, video: "/videos/usage-demo.mp4", fallback: "/images/usage-dark.png" },
 ]
 
 export default function Home() {
@@ -35,7 +35,7 @@ export default function Home() {
             >
               <div className="inline-flex items-center rounded-full border border-border/50 bg-surface/50 px-3 py-1 text-xs font-semibold backdrop-blur-md mb-8 tracking-wide uppercase text-foreground/80">
                 <span className="flex h-2 w-2 rounded-full bg-accent mr-2 animate-pulse"></span>
-                v{siteConfig.version} for Windows is now available
+                v{siteConfig.version} Preview for Windows is in development
               </div>
               <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight mb-8 leading-[1.1]">
                 Your time deserves <br className="hidden md:block" />
@@ -70,7 +70,7 @@ export default function Home() {
               <div className="relative rounded-2xl border border-border/60 bg-surface/80 p-2 shadow-2xl backdrop-blur-xl">
                 <div className="aspect-[16/10] w-full rounded-xl bg-card border border-border/40 overflow-hidden relative">
                   <Image 
-                    src="/images/dashboard.png" 
+                    src="/images/home-dark.png" 
                     alt="NYW Dashboard displaying total screen time and categories" 
                     fill 
                     className="object-cover object-top"
@@ -154,14 +154,11 @@ export default function Home() {
                           transition={{ duration: 0.3 }}
                           className="absolute inset-2 rounded-xl overflow-hidden bg-card border border-border/50"
                         >
-                          <video 
-                            src={tab.video} 
-                            poster={tab.fallback}
-                            className="w-full h-full object-cover"
-                            autoPlay 
-                            muted 
-                            loop 
-                            playsInline
+                          <Image 
+                            src={tab.fallback}
+                            alt={`NYW ${tab.label} configuration`}
+                            fill
+                            className="object-cover object-top"
                           />
                         </motion.div>
                       )
@@ -203,7 +200,7 @@ export default function Home() {
               </div>
               <div className="flex-1 w-full relative">
                 <div className="rounded-2xl border border-border bg-glass p-2 shadow-2xl backdrop-blur-md rotate-1 hover:rotate-0 transition-transform duration-500">
-                  <Image src="/images/focus.png" alt="Focus Mode configuration" width={800} height={500} className="rounded-xl border border-border/40 w-full" />
+                  <Image src="/images/focus-dark.png" alt="Focus Mode configuration" width={800} height={500} className="rounded-xl border border-border/40 w-full" />
                 </div>
               </div>
             </div>
@@ -228,7 +225,7 @@ export default function Home() {
               </div>
               <div className="flex-1 w-full relative">
                 <div className="rounded-2xl border border-border bg-surface p-2 shadow-2xl -rotate-1 hover:rotate-0 transition-transform duration-500">
-                  <Image src="/images/insights.png" alt="Smart Insights Dashboard" width={800} height={500} className="rounded-xl border border-border/40 w-full" />
+                  <Image src="/images/insights-dark.png" alt="Smart Insights Dashboard" width={800} height={500} className="rounded-xl border border-border/40 w-full" />
                 </div>
               </div>
             </div>
@@ -260,7 +257,7 @@ export default function Home() {
               </div>
               <div className="flex-1 w-full relative">
                 <div className="rounded-2xl border border-border bg-glass p-2 shadow-2xl backdrop-blur-md rotate-1 hover:rotate-0 transition-transform duration-500">
-                  <Image src="/images/applocker.png" alt="App Locker configuration" width={800} height={500} className="rounded-xl border border-border/40 w-full" />
+                  <Image src="/images/applocker-dark.png" alt="App Locker configuration" width={800} height={500} className="rounded-xl border border-border/40 w-full" />
                 </div>
               </div>
             </div>
@@ -296,7 +293,7 @@ export default function Home() {
               </div>
               <div className="flex-1 w-full relative">
                 <div className="rounded-2xl border border-border bg-glass p-2 shadow-2xl backdrop-blur-md -rotate-1 hover:rotate-0 transition-transform duration-500">
-                  <Image src="/images/sleepguard.png" alt="SleepGuard configuration" width={800} height={500} className="rounded-xl border border-border/40 w-full" />
+                  <Image src="/images/sleepguard-dark.png" alt="SleepGuard configuration" width={800} height={500} className="rounded-xl border border-border/40 w-full" />
                 </div>
               </div>
             </div>
@@ -340,7 +337,7 @@ export default function Home() {
               <Link href={siteConfig.links.download}>
                 <Button size="lg" className="rounded-xl font-bold h-16 px-10 text-xl gap-3 shadow-2xl shadow-accent/20 transition-all hover:scale-105">
                   <Download className="h-6 w-6" />
-                  Download v{siteConfig.version} for Windows
+                  Download v{siteConfig.stableVersion} for Windows
                 </Button>
               </Link>
               

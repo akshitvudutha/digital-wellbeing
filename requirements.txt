@@ -4,3 +4,5 @@ psutil>=5.9.8
 pyqtgraph>=0.13.7
 PyInstaller>=6.6.0
 winrt-Windows.Security.Credentials.UI>=3.2.1
+
+uiautomation>=2.0.29

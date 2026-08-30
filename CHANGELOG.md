@@ -7,7 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.1.1] — 2026-08-23
+## [3.1.5] — 2026-08-30
+### Added
+- **Insights & Analytics** — Substantially improved data visualization, usage metrics, and historical reporting pages.
+- **Settings UI** — Cleaned up the settings architecture to be premium, responsive, and functional.
+- **SleepGuard** — Enhanced stability and shutdown warning presentation.
+
+### Changed
+- **Focus Mode** — Focus Mode is currently an Application-Only blocker. Website blocking has been temporarily disabled while the enforcement architecture undergoes refinement.
+
+### Fixed
+- **App Locker** — General stability and reliability improvements for native Windows Hello authentication integration.
+- **Installer & Startup** — Stable and robust installer with automatic process termination on updates and clean application lifecycle management.
 ### Fixed
 - Fixed App Locker UI obscuring the native Windows Hello authentication prompt by intelligently dropping topmost window privileges and presenting a minimal status surface while OS verification is active.
 

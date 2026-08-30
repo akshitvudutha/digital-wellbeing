@@ -247,17 +247,17 @@ class AppLockerManager(QObject):
         self._dialog_open = False
         self._pending_lock = None
         
-        # Restore the minimized window if we have it
+        # Restore the minimized/hidden window if we have it
         if hasattr(self, '_minimized_hwnds') and p in self._minimized_hwnds:
             hwnd = self._minimized_hwnds.pop(p)
             try:
                 import win32gui
                 import win32con
                 win32gui.EnableWindow(hwnd, True)
-                win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+                win32gui.ShowWindow(hwnd, win32con.SW_SHOW)
                 win32gui.SetForegroundWindow(hwnd)
             except Exception as e:
-                logger.warning(f"Failed to restore minimized window for {p}: {e}")
+                logger.warning(f"Failed to restore window for {p}: {e}")
 
         logger.info("Access granted to %s. duration=%s", p, self._auth_duration.value)
 
@@ -328,16 +328,16 @@ class AppLockerManager(QObject):
             if self.is_access_granted(p_name):
                 return
 
-            # Real Blocking: Disable window input entirely and minimize it
+            # Real Blocking: Disable window input entirely and hide it
             import win32con
             if not hasattr(self, '_minimized_hwnds'):
                 self._minimized_hwnds = {}
             self._minimized_hwnds[p_name] = hwnd
             win32gui.EnableWindow(hwnd, False)
-            win32gui.ShowWindow(hwnd, win32con.SW_MINIMIZE)
+            win32gui.ShowWindow(hwnd, win32con.SW_HIDE)
             
             if self._dialog_open:
-                return  # Auth dialog already visible, but we still minimized the app
+                return  # Auth dialog already visible, but we still hid the app
 
             # App is locked and no valid grant — trigger auth
             self._dialog_open = True

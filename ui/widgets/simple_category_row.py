@@ -7,7 +7,7 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import (
-    QFrame, QVBoxLayout, QLabel
+    QFrame, QVBoxLayout, QHBoxLayout, QLabel
 )
 
 from core.constants import AppCategory, CATEGORY_ICONS
@@ -45,7 +45,9 @@ class ClickableCategoryCard(FluentCard):
         layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         
         self.setFixedHeight(72)
-        self.setMinimumWidth(220)
+        self.setMinimumWidth(160)
+        from PySide6.QtWidgets import QSizePolicy
+        self.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
 
         cat_enum = self._category if isinstance(self._category, AppCategory) else None
         if not cat_enum:

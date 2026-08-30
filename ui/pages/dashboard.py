@@ -196,7 +196,7 @@ class DashboardPage(QWidget):
         formatted_total = self._engine.format_duration(summary.active_time_s)
 
         comp = self._engine.get_yesterday_comparison()
-        pct = abs(comp["pct_change"])
+        pct = abs(comp["pct_change"]) if comp["pct_change"] is not None else None
         
         # Update Primary Metric
         self._primary_metric.set_data(

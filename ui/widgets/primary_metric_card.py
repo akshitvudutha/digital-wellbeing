@@ -85,10 +85,10 @@ class PrimaryMetricCard(QFrame):
     def set_data(self, formatted_time: str, pct_change: float, is_decrease: bool, yesterday_was_zero: bool = False):
         self._value_lbl.setText(formatted_time)
         tm = ThemeManager.instance()
-        if yesterday_was_zero:
+        if yesterday_was_zero or pct_change is None:
             self._trend_icon.setText("•")
             self._trend_icon.setStyleSheet(f"color: {tm.color('text_sub')}; font-weight: 800;")
-            self._trend_lbl.setText("New activity")
+            self._trend_lbl.setText("No meaningful baseline")
         elif pct_change == 0:
             self._trend_icon.setText("=")
             self._trend_icon.setStyleSheet(f"color: {tm.color('text_sub')}; font-weight: 800;")
