@@ -67,9 +67,7 @@ jobs:
 
       - name: Run Automated Tests
         run: |
-          pytest test_all.py
-          pytest test_updater.py
-          pytest test_updater_flow.py
+          pytest tests/
 
       - name: Build Application and Installer
         run: python build.py
