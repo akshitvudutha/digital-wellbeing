@@ -376,7 +376,7 @@ class MainWindow(QMainWindow):
         logo_layout.setSpacing(14)
 
         icon_lbl = QLabel()
-        icon_path = Path(__file__).parent.parent / "assets" / "icons" / "app_logo.png"
+        icon_path = Path(__file__).parent.parent / "assets" / "icons" / "app_logo.svg"
         pix = QPixmap(str(icon_path))
         if not pix.isNull():
             icon_lbl.setPixmap(pix.scaled(64, 64, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))

@@ -72,7 +72,7 @@ def capture_all_screenshots():
     
     win = app._window
     win._apply_theme(True)
-    win.resize(1920, 1080)
+    win.resize(1280, 720)
     
     # Wait for initial render and data load (much longer wait than before)
     qapp = QApplication.instance()

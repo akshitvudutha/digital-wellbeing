@@ -37,8 +37,8 @@ export const metadata: Metadata = {
     images: [
       {
         url: "/images/app/home-dark.png",
-        width: 1920,
-        height: 1080,
+        width: 1280,
+        height: 720,
         alt: "NYW - Your time. Your rules.",
       }
     ]
