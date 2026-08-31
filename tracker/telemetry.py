@@ -1,5 +1,6 @@
 import threading
-import requests
+import urllib.request
+import json
 from core.logger import logger
 from core.constants import APP_VERSION
 from settings.manager import SettingsManager

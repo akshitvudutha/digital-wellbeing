@@ -72,7 +72,7 @@ def capture_all_screenshots():
     
     win = app._window
     win._apply_theme(True)
-    win.resize(1280, 720)
+    win.resize(1440, 900)
     
     # Wait for initial render and data load (much longer wait than before)
     qapp = QApplication.instance()
@@ -133,6 +133,38 @@ def capture_all_screenshots():
                     print(f"  [FAIL] Could not capture a valid screenshot for {desc} after {max_retries} attempts.")
                     all_passed = False
                     
+    # --- Capture Authentication Dialog ---
+    print("\nNavigating to App Locker to capture Authentication Dialog...")
+    win._navigate(3)
+    
+    from ui.widgets.pin_dialog import PinDialog
+    class FakePinManager:
+        def verify_pin(self, pin): return False
+    
+    auth_dialog = PinDialog(FakePinManager(), win)
+    # Center the dialog manually since it might use desktop center normally
+    auth_dialog.show()
+    
+    start = time.time()
+    while time.time() - start < 3.0:
+        qapp.processEvents()
+        time.sleep(0.05)
+        
+    auth_screenshot_path = website_images_dir / "authentication-dark.png"
+    pix = win.grab() # grab() captures child widgets like the dialog
+    auth_bg = QPixmap(win.size())
+    auth_bg.fill(QColor("#111111"))
+    painter = QPainter(auth_bg)
+    painter.drawPixmap(0, 0, pix)
+    painter.end()
+    
+    auth_bg.save(str(auth_screenshot_path), "PNG")
+    if validate_image(auth_screenshot_path):
+        print("  [PASS] Saved authentication-dark.png successfully.")
+    else:
+        print("  [FAIL] Failed to capture valid authentication-dark.png.")
+        all_passed = False
+
     QApplication.instance().quit()
     print("\n--- Final Report ---")
     if all_passed:

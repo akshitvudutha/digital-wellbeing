@@ -49,9 +49,6 @@ export const metadata: Metadata = {
     description: siteConfig.description,
     images: ["/images/app/home-dark.png"],
   },
-  icons: {
-    icon: "/favicon.ico",
-  },
 }
 
 export default function RootLayout({

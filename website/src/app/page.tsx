@@ -173,7 +173,7 @@ export default function Home() {
           <div className="container mx-auto px-4 md:px-8 max-w-[1400px]">
             <div className="flex flex-col lg:flex-row items-center gap-16 lg:gap-24">
               <div className="w-full lg:w-[35%] space-y-6">
-                <div className="inline-flex items-center rounded-md bg-surface px-3 py-1 text-sm font-semibold border border-border/50 text-accent">03 // Protect</div>
+                <div className="inline-flex items-center rounded-md bg-surface px-3 py-1 text-sm font-semibold border border-border/50 text-accent">03 // Security</div>
                 <h2 className="text-4xl md:text-5xl font-bold tracking-tight">Lock sensitive applications.</h2>
                 <p className="text-xl text-foreground/60 leading-relaxed">
                   Use App Locker to restrict access to specific applications on your PC. Unlocking requires your secure Windows Hello biometric or PIN authentication.
@@ -198,12 +198,46 @@ export default function Home() {
           </div>
         </section>
 
-        {/* STORYTELLING: 04 RECOVER */}
+        {/* STORYTELLING: 04 AUTHENTICATE */}
         <section className="py-32 bg-surface/10 border-y border-border/20 overflow-hidden">
           <div className="container mx-auto px-4 md:px-8 max-w-[1400px]">
             <div className="flex flex-col lg:flex-row-reverse items-center gap-16 lg:gap-24">
               <div className="w-full lg:w-[35%] space-y-6">
-                <div className="inline-flex items-center rounded-md bg-surface px-3 py-1 text-sm font-semibold border border-border/50 text-accent">04 // Recover</div>
+                <div className="inline-flex items-center rounded-md bg-surface px-3 py-1 text-sm font-semibold border border-border/50 text-accent">04 // Authentication</div>
+                <h2 className="text-4xl md:text-5xl font-bold tracking-tight">Protection that uses Windows-native authentication.</h2>
+                <p className="text-xl text-foreground/60 leading-relaxed">
+                  Protect selected applications with Windows Hello or PIN authentication.
+                </p>
+                <ul className="space-y-4 pt-4">
+                  <li className="flex items-start gap-3 text-foreground/80">
+                    <Shield className="w-6 h-6 text-accent shrink-0" />
+                    <span><strong>Windows-native authentication:</strong> Leverages built-in OS security.</span>
+                  </li>
+                  <li className="flex items-start gap-3 text-foreground/80">
+                    <Lock className="w-6 h-6 text-accent shrink-0" />
+                    <span><strong>PIN fallback:</strong> Use a secure PIN fallback where biometrics are unavailable.</span>
+                  </li>
+                  <li className="flex items-start gap-3 text-foreground/80">
+                    <CheckCircle2 className="w-6 h-6 text-accent shrink-0" />
+                    <span><strong>Works with App Locker:</strong> Intercepts application launches instantly.</span>
+                  </li>
+                </ul>
+              </div>
+              <div className="w-full lg:w-[65%]">
+                <div className="aspect-[16/9] w-full rounded-xl bg-black border border-border/40 overflow-hidden shadow-2xl">
+                  <ImageLightbox src="/images/app/authentication-dark.png" alt="Authentication screen" className="w-full h-full" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* STORYTELLING: 05 RECOVER */}
+        <section className="py-32 overflow-hidden">
+          <div className="container mx-auto px-4 md:px-8 max-w-[1400px]">
+            <div className="flex flex-col lg:flex-row items-center gap-16 lg:gap-24">
+              <div className="w-full lg:w-[35%] space-y-6">
+                <div className="inline-flex items-center rounded-md bg-surface px-3 py-1 text-sm font-semibold border border-border/50 text-accent">05 // Recover</div>
                 <h2 className="text-4xl md:text-5xl font-bold tracking-tight">Manage downtime gracefully.</h2>
                 <p className="text-xl text-foreground/60 leading-relaxed">
                   SleepGuard monitors your inactivity. If you fall asleep watching a video, it will automatically lock or suspend your PC after a warning countdown.
