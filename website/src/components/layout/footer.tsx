@@ -1,6 +1,6 @@
 import Link from "next/link"
+import Image from "next/image"
 import { siteConfig } from "@/config/site"
-import { Logo } from "../ui/logo"
 
 export function Footer() {
   return (
@@ -8,7 +8,7 @@ export function Footer() {
       <div className="container mx-auto px-4 md:px-8 flex flex-col md:flex-row items-start justify-between gap-8 max-w-[1400px]">
         <div className="flex flex-col gap-2 max-w-sm">
           <Link href="/" className="flex items-center space-x-3">
-            <Logo className="h-5 w-5 text-accent" />
+            <Image src="/nyw-logo.svg" alt="NYW Logo" width={20} height={20} className="h-5 w-5" />
             <span className="font-bold tracking-tight text-lg">{siteConfig.name}</span>
           </Link>
           <span className="text-sm font-semibold tracking-wide text-foreground/80">{siteConfig.fullName}</span>
