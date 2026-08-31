@@ -180,3 +180,12 @@ class SettingsManager:
     def last_update_check(self, value: str) -> None:
         self.set("last_update_check", value)
 
+    @property
+    def install_id(self) -> str:
+        import uuid
+        val = self.get("install_id", "")
+        if not val:
+            val = str(uuid.uuid4())
+            self.set("install_id", val)
+        return val
+

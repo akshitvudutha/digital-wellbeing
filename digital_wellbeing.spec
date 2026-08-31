@@ -17,6 +17,7 @@ a = Analysis(
         (str(project_root / 'file_version_info.txt'), '.'),
     ],
     hiddenimports=[
+        'PySide6.QtNetwork',
         # WinRT Windows Hello / UserConsentVerifier
         # PyInstaller cannot auto-detect these due to dynamic WinRT loading
         'winrt.windows.security.credentials.ui',

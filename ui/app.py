@@ -246,6 +246,10 @@ class DigitalWellbeingApp:
         except Exception as exc:
             logger.warning("Updater initialization failed: %s", exc)
 
+        # 8. Start Telemetry Heartbeat (10s delay to prevent startup blocking)
+        from tracker.telemetry import TelemetryManager
+        QTimer.singleShot(10000, lambda: TelemetryManager.instance().start_heartbeat())
+
         if os.environ.get("DW_SCREENSHOT_MODE") == "1":
             def take_screenshots():
                 import time

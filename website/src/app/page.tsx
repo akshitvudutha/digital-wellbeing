@@ -6,6 +6,7 @@ import { Download, Shield, Clock, Moon, Monitor, ChartPie, Activity, Lock, Check
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import { ImageLightbox } from "@/components/ui/lightbox"
+import { StatsDisplay } from "@/components/ui/stats"
 
 const DEMO_TABS = [
   { id: "overview", label: "Overview", icon: Monitor, fallback: "/images/app/home-dark.png", desc: "Your daily dashboard summarizing active time and focus sessions." },
@@ -63,6 +64,8 @@ export default function Home() {
                   </Button>
                 </Link>
               </div>
+
+              <StatsDisplay />
             </motion.div>
 
             {/* HERO PRODUCT IMAGE - MASSIVE */}
