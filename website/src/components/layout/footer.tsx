@@ -22,10 +22,9 @@ export function Footer() {
         <div className="flex flex-col md:flex-row gap-12 md:gap-24">
           <div className="flex flex-col gap-3">
             <h4 className="font-semibold text-sm">Product</h4>
-            <Link href="#features" className="text-sm text-foreground/60 hover:text-foreground">Features</Link>
-            <Link href="#download" className="text-sm text-foreground/60 hover:text-foreground">Download</Link>
-            <Link href="#changelog" className="text-sm text-foreground/60 hover:text-foreground">Changelog</Link>
-            <Link href="#faq" className="text-sm text-foreground/60 hover:text-foreground">FAQ</Link>
+            <Link href="#how-it-works" className="text-sm text-foreground/60 hover:text-foreground">How it works</Link>
+            <Link href={siteConfig.links.download} className="text-sm text-foreground/60 hover:text-foreground">Download v{siteConfig.version}</Link>
+            <Link href={siteConfig.links.releases} className="text-sm text-foreground/60 hover:text-foreground">Changelog</Link>
           </div>
 
           <div className="flex flex-col gap-3">

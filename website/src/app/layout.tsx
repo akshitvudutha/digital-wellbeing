@@ -16,11 +16,11 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: "NYW - Windows Screen Time Tracker & Focus App",
+    default: "NYW — Digital Wellbeing for Windows",
     template: `%s - NYW`,
   },
   description: siteConfig.description,
-  keywords: ["Windows productivity app", "screen time tracker for Windows", "focus app for Windows", "app blocker for Windows", "digital wellbeing Windows", "Windows app locker", "focus mode Windows"],
+  keywords: ["Windows productivity", "screen time", "Focus", "application blocking", "App Locker", "SleepGuard", "digital wellbeing"],
   authors: [
     {
       name: siteConfig.developer,
@@ -35,18 +35,18 @@ export const metadata: Metadata = {
     siteName: siteConfig.name,
     images: [
       {
-        url: "/images/dashboard.png",
+        url: "/images/app/home-dark.png",
         width: 1200,
-        height: 630,
-        alt: "NYW Windows Application Dashboard",
+        height: 750,
+        alt: "NYW - Your time. Your rules.",
       }
     ]
   },
   twitter: {
     card: "summary_large_image",
-    title: "NYW - Windows Screen Time Tracker",
+    title: "NYW — Digital Wellbeing for Windows",
     description: siteConfig.description,
-    images: ["/images/dashboard.png"],
+    images: ["/images/app/home-dark.png"],
   },
   icons: {
     icon: "/favicon.ico",

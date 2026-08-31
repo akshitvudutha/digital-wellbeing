@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-export const runtime = 'edge';
+export const dynamic = 'force-dynamic';
 
 // Required minimum version for the website to serve
 const MIN_VERSION = '3.0.0';

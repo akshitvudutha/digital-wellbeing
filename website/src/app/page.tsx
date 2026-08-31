@@ -2,30 +2,35 @@
 import { useState } from "react"
 import { siteConfig } from "@/config/site"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Download, Shield, Clock, Bell, Settings, Activity, Lock, RefreshCw, Zap, Server, Code, PlayCircle, Eye, Moon, Monitor, ChartPie } from "lucide-react"
+import { Download, Shield, Clock, Moon, Monitor, ChartPie, Activity, Lock, Settings, ChevronRight, CheckCircle2 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
+import { ImageLightbox } from "@/components/ui/lightbox"
 
 const DEMO_TABS = [
-  { id: "focus", label: "Focus Mode", icon: Zap, video: "/videos/focus-demo.mp4", fallback: "/images/focus-dark.png" },
-  { id: "applocker", label: "App Locker", icon: Lock, video: "/videos/applocker-demo.mp4", fallback: "/images/applocker-dark.png" },
-  { id: "sleepguard", label: "SleepGuard", icon: Moon, video: "/videos/sleepguard-demo.mp4", fallback: "/images/sleepguard-dark.png" },
-  { id: "insights", label: "Insights", icon: ChartPie, video: "/videos/insights-demo.mp4", fallback: "/images/insights-dark.png" },
-  { id: "usage", label: "Usage Analytics", icon: Activity, video: "/videos/usage-demo.mp4", fallback: "/images/usage-dark.png" },
+  { id: "overview", label: "Overview", icon: Monitor, fallback: "/images/app/home-dark.png", desc: "Your daily dashboard summarizing active time and focus sessions." },
+  { id: "usage", label: "Usage", icon: Activity, fallback: "/images/app/usage-dark.png", desc: "Detailed breakdown of application usage and categorized screen time." },
+  { id: "focus", label: "Focus", icon: Clock, fallback: "/images/app/focus-dark.png", desc: "Define an application blocklist and stay in the zone without distractions." },
+  { id: "applocker", label: "App Locker", icon: Lock, fallback: "/images/app/app-locker-dark.png", desc: "Protect sensitive applications with Windows Hello biometrics or PIN." },
+  { id: "insights", label: "Insights", icon: ChartPie, fallback: "/images/app/insights-dark.png", desc: "Analyze historical trends to build better digital habits." },
+  { id: "sleepguard", label: "SleepGuard", icon: Moon, fallback: "/images/app/sleepguard-dark.png", desc: "Automatically lock or sleep your PC when inactivity is detected late at night." },
+  { id: "settings", label: "Settings", icon: Settings, fallback: "/images/app/settings-dark.png", desc: "Customize NYW to perfectly fit your workflow and aesthetic." },
 ]
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState(DEMO_TABS[0].id)
+  const activeTabData = DEMO_TABS.find(t => t.id === activeTab) || DEMO_TABS[0]
 
   return (
     <div className="flex flex-col min-h-screen selection:bg-accent/30 selection:text-foreground">
       <main className="flex-1">
         
         {/* HERO SECTION */}
-        <section className="relative pt-28 pb-32 md:pt-40 md:pb-48 overflow-hidden">
-          <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-accent/10 via-background to-background" />
+        <section className="relative pt-28 pb-20 md:pt-40 md:pb-32 overflow-hidden">
+          {/* Deep elegant background */}
+          <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-background via-background to-background" />
+          
           <div className="container mx-auto px-4 md:px-8 text-center">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -33,21 +38,23 @@ export default function Home() {
               transition={{ duration: 0.5, ease: "easeOut" }}
               className="max-w-4xl mx-auto"
             >
-              <div className="inline-flex items-center rounded-full border border-border/50 bg-surface/50 px-3 py-1 text-xs font-semibold backdrop-blur-md mb-8 tracking-wide uppercase text-foreground/80">
-                <span className="flex h-2 w-2 rounded-full bg-accent mr-2 animate-pulse"></span>
-                v{siteConfig.version} Preview for Windows is in development
+              <div className="inline-flex items-center rounded-full border border-border/50 bg-surface px-4 py-1.5 text-xs font-semibold backdrop-blur-md mb-8 tracking-wide text-foreground/80 shadow-sm">
+                <span className="flex h-2 w-2 rounded-full bg-accent mr-2"></span>
+                Latest stable {siteConfig.version}
               </div>
+              
               <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight mb-8 leading-[1.1]">
-                Your time deserves <br className="hidden md:block" />
-                <span className="text-gradient">your attention.</span>
+                Your time. <br className="hidden md:block" />
+                <span className="text-foreground/90">Your rules.</span>
               </h1>
-              <p className="text-lg md:text-2xl text-foreground/70 mb-12 max-w-2xl mx-auto leading-relaxed font-medium">
-                A premium Windows productivity utility for deep focus, screen-time awareness, app protection, and bedtime management.
+              
+              <p className="text-lg md:text-2xl text-foreground/60 mb-12 max-w-2xl mx-auto leading-relaxed font-medium">
+                A focused Windows utility for understanding where your time goes, staying focused, protecting applications, and keeping your digital routine under control.
               </p>
               
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Link href={siteConfig.links.download}>
-                  <Button size="lg" className="rounded-xl w-full sm:w-auto font-bold gap-2 text-base h-14 px-8 shadow-2xl shadow-accent/20 transition-all hover:scale-105">
+                  <Button size="lg" className="rounded-xl w-full sm:w-auto font-bold gap-2 text-base h-14 px-8 shadow-xl shadow-accent/10 transition-all hover:scale-105 bg-foreground text-background hover:bg-foreground/90">
                     <Download className="h-5 w-5" />
                     Download for Windows
                   </Button>
@@ -60,20 +67,19 @@ export default function Home() {
               </div>
             </motion.div>
 
+            {/* HERO PRODUCT IMAGE */}
             <motion.div 
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-              className="mt-24 relative max-w-5xl mx-auto"
+              className="mt-20 relative max-w-5xl mx-auto"
             >
-              <div className="absolute -inset-2 rounded-[2rem] bg-gradient-to-r from-accent/20 to-purple-500/20 blur-3xl opacity-50" />
-              <div className="relative rounded-2xl border border-border/60 bg-surface/80 p-2 shadow-2xl backdrop-blur-xl">
-                <div className="aspect-[16/10] w-full rounded-xl bg-card border border-border/40 overflow-hidden relative">
-                  <Image 
-                    src="/images/home-dark.png" 
-                    alt="NYW Dashboard displaying total screen time and categories" 
-                    fill 
-                    className="object-cover object-top"
+              <div className="relative rounded-2xl border border-glass-border bg-glass p-2 shadow-2xl backdrop-blur-xl">
+                <div className="aspect-[16/9] w-full rounded-xl bg-card border border-border/40 overflow-hidden relative">
+                  <ImageLightbox 
+                    src="/images/app/home-dark.png" 
+                    alt="NYW v3.1.5 Dashboard in Dark Mode" 
+                    className="w-full h-full"
                     priority
                   />
                 </div>
@@ -82,22 +88,29 @@ export default function Home() {
           </div>
         </section>
 
-        {/* FEATURE HIGHLIGHTS */}
-        <section className="py-24 bg-surface/20 border-y border-border/30">
+        {/* HOW IT WORKS (PRODUCT STORY) */}
+        <section id="how-it-works" className="py-24 bg-surface/10 border-y border-border/20">
           <div className="container mx-auto px-4 md:px-8">
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="text-center max-w-3xl mx-auto mb-16">
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">How it works</h2>
+              <p className="text-foreground/60 text-lg">A simple, effective flow to reclaim your productivity.</p>
+            </div>
+            
+            <div className="grid md:grid-cols-4 gap-8 max-w-5xl mx-auto relative">
+              <div className="hidden md:block absolute top-6 left-1/8 right-1/8 h-px bg-border/50 -z-10" />
+              
               {[
-                { title: "Focus", icon: Zap, desc: "Block distractions and stay in the session with website and app restrictions." },
-                { title: "App Locker", icon: Lock, desc: "Protect selected applications with Windows Hello biometrics or a secure PIN." },
-                { title: "Usage Analytics", icon: Activity, desc: "Understand exactly where your time goes without data leaving your device." },
-                { title: "SleepGuard", icon: Moon, desc: "Protect your evenings and automatically lock your PC during inactivity." }
-              ].map((f, i) => (
-                <div key={i} className="flex flex-col gap-4 p-6 rounded-2xl bg-surface border border-border/50 hover:border-accent/50 transition-colors">
-                  <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
-                    <f.icon className="h-6 w-6 text-accent" />
+                { step: "01", title: "Install NYW", desc: "Download and run the lightweight Windows utility." },
+                { step: "02", title: "See where your time goes", desc: "Let the background tracker analyze your application usage." },
+                { step: "03", title: "Set your Focus rules", desc: "Define blocks of time and applications to restrict." },
+                { step: "04", title: "Protect what matters", desc: "Lock sensitive apps behind Windows Hello biometrics." }
+              ].map((item, idx) => (
+                <div key={idx} className="flex flex-col items-center text-center">
+                  <div className="w-12 h-12 rounded-full bg-surface border border-border/60 flex items-center justify-center font-bold text-lg mb-6 shadow-sm">
+                    {item.step}
                   </div>
-                  <h3 className="text-xl font-bold">{f.title}</h3>
-                  <p className="text-foreground/70 leading-relaxed font-medium">{f.desc}</p>
+                  <h3 className="text-xl font-bold mb-2">{item.title}</h3>
+                  <p className="text-foreground/60 text-sm font-medium leading-relaxed">{item.desc}</p>
                 </div>
               ))}
             </div>
@@ -105,258 +118,193 @@ export default function Home() {
         </section>
 
         {/* INTERACTIVE DEMO GALLERY */}
-        <section id="how-it-works" className="py-32 bg-background relative overflow-hidden">
+        <section className="py-32 bg-background relative overflow-hidden">
           <div className="container mx-auto px-4 md:px-8">
-            <div className="text-center max-w-3xl mx-auto mb-16">
-              <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-6">See it in action.</h2>
-              <p className="text-xl text-foreground/70 font-medium">
-                Premium functionality that respects your system. Here's how NYW actively manages your digital wellbeing.
-              </p>
-            </div>
-
-            <div className="flex flex-col lg:flex-row gap-12 items-center">
+            <div className="flex flex-col lg:flex-row gap-12 lg:items-start">
+              
               {/* Tab Navigation */}
-              <div className="flex flex-col gap-2 w-full lg:w-1/3">
+              <div className="flex flex-col gap-2 w-full lg:w-1/3 pt-4">
+                <h2 className="text-3xl font-bold mb-8 px-2">Explore Features</h2>
                 {DEMO_TABS.map((tab) => {
                   const isActive = activeTab === tab.id
                   return (
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`flex items-center gap-4 p-5 rounded-2xl text-left transition-all duration-200 border ${
+                      className={`flex flex-col gap-2 p-5 rounded-2xl text-left transition-all duration-200 border ${
                         isActive 
-                          ? "bg-surface border-border shadow-lg shadow-black/5" 
-                          : "bg-transparent border-transparent hover:bg-surface/50 hover:border-border/50"
+                          ? "bg-surface border-border shadow-md" 
+                          : "bg-transparent border-transparent hover:bg-surface/40"
                       }`}
                     >
-                      <div className={`p-3 rounded-xl ${isActive ? "bg-accent/10 text-accent" : "bg-surface text-foreground/60"}`}>
-                        <tab.icon className="w-6 h-6" />
-                      </div>
-                      <div>
+                      <div className="flex items-center gap-4">
+                        <div className={`p-2 rounded-lg ${isActive ? "bg-foreground/10 text-foreground" : "bg-transparent text-foreground/50"}`}>
+                          <tab.icon className="w-5 h-5" />
+                        </div>
                         <h4 className={`text-lg font-bold ${isActive ? "text-foreground" : "text-foreground/70"}`}>{tab.label}</h4>
                       </div>
+                      {isActive && (
+                        <motion.p 
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          className="text-foreground/60 text-sm pl-13 pt-1"
+                        >
+                          {tab.desc}
+                        </motion.p>
+                      )}
                     </button>
                   )
                 })}
               </div>
 
-              {/* Video Display */}
+              {/* Dynamic Image Display */}
               <div className="w-full lg:w-2/3">
-                <div className="relative rounded-2xl border border-border/60 bg-surface p-2 shadow-2xl overflow-hidden aspect-[16/10]">
+                <div className="relative rounded-2xl border border-glass-border bg-glass p-2 shadow-xl overflow-hidden aspect-[16/9]">
                   <AnimatePresence mode="wait">
-                    {DEMO_TABS.map((tab) => (
-                      activeTab === tab.id && (
-                        <motion.div
-                          key={tab.id}
-                          initial={{ opacity: 0, scale: 0.98 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.98 }}
-                          transition={{ duration: 0.3 }}
-                          className="absolute inset-2 rounded-xl overflow-hidden bg-card border border-border/50"
-                        >
-                          <Image 
-                            src={tab.fallback}
-                            alt={`NYW ${tab.label} configuration`}
-                            fill
-                            className="object-cover object-top"
-                          />
-                        </motion.div>
-                      )
-                    ))}
+                    <motion.div
+                      key={activeTab}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.25 }}
+                      className="absolute inset-2 rounded-xl overflow-hidden bg-card border border-border/30"
+                    >
+                      <ImageLightbox 
+                        src={activeTabData.fallback}
+                        alt={`NYW ${activeTabData.label} UI`}
+                        className="w-full h-full"
+                      />
+                    </motion.div>
                   </AnimatePresence>
                 </div>
-                <p className="text-center mt-6 text-sm text-foreground/50 font-medium flex items-center justify-center gap-2">
-                  <Monitor className="w-4 h-4" /> Captured directly from the latest Windows application.
-                </p>
+                <div className="flex items-center justify-center gap-2 mt-6 text-sm text-foreground/40 font-medium">
+                  <Monitor className="w-4 h-4" /> <span>Actual v3.1.5 application screenshots.</span>
+                </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* DEEP DIVES */}
+        {/* FEATURE SHOWCASE: FOCUS */}
+        <section className="py-24 bg-surface/10 border-y border-border/20">
+          <div className="container mx-auto px-4 md:px-8">
+            <div className="flex flex-col md:flex-row items-center gap-16">
+              <div className="flex-1 space-y-6">
+                <h2 className="text-3xl md:text-5xl font-bold tracking-tight">Stay in the zone.</h2>
+                <p className="text-xl text-foreground/60 leading-relaxed">
+                  Focus Mode is designed to eliminate desktop distractions by restricting access to specific applications while you work.
+                </p>
+                <ul className="space-y-4 pt-4">
+                  <li className="flex items-start gap-3 text-foreground/80">
+                    <CheckCircle2 className="w-6 h-6 text-foreground/40 shrink-0" />
+                    <span><strong>Application Blocklist:</strong> Define exact applications (e.g., discord.exe, games) to block during your session.</span>
+                  </li>
+                  <li className="flex items-start gap-3 text-foreground/80">
+                    <CheckCircle2 className="w-6 h-6 text-foreground/40 shrink-0" />
+                    <span><strong>Strict Mode:</strong> Prevents cancelling the timer early without entering your secure PIN.</span>
+                  </li>
+                  <li className="flex items-start gap-3 text-foreground/80">
+                    <CheckCircle2 className="w-6 h-6 text-foreground/40 shrink-0" />
+                    <span><strong>No browser extensions:</strong> Works purely at the OS level by managing application processes.</span>
+                  </li>
+                </ul>
+              </div>
+              <div className="flex-1 w-full">
+                <div className="relative rounded-2xl border border-border/40 p-1 shadow-2xl bg-surface">
+                  <div className="relative rounded-xl border border-border/20 w-full aspect-[16/9] overflow-hidden bg-card">
+                    <ImageLightbox src="/images/app/focus-dark.png" alt="Focus Mode" className="w-full h-full" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* FEATURE SHOWCASE: APP LOCKER */}
+        <section className="py-24 bg-background">
+          <div className="container mx-auto px-4 md:px-8">
+            <div className="flex flex-col md:flex-row-reverse items-center gap-16">
+              <div className="flex-1 space-y-6">
+                <h2 className="text-3xl md:text-5xl font-bold tracking-tight">Protect sensitive apps.</h2>
+                <p className="text-xl text-foreground/60 leading-relaxed">
+                  App Locker guards your selected applications from unauthorized access. Native Windows Security integration ensures a seamless experience.
+                </p>
+                <ul className="space-y-4 pt-4">
+                  <li className="flex items-start gap-3 text-foreground/80">
+                    <Shield className="w-6 h-6 text-foreground/40 shrink-0" />
+                    <span><strong>Windows Hello Support:</strong> Unlock protected apps using your face, fingerprint, or Windows PIN.</span>
+                  </li>
+                  <li className="flex items-start gap-3 text-foreground/80">
+                    <Clock className="w-6 h-6 text-foreground/40 shrink-0" />
+                    <span><strong>Temporary Grants:</strong> Grant access for 5 minutes, 15 minutes, or until the application is closed.</span>
+                  </li>
+                </ul>
+              </div>
+              <div className="flex-1 w-full">
+                <div className="relative rounded-2xl border border-border/40 p-1 shadow-2xl bg-surface">
+                  <div className="relative rounded-xl border border-border/20 w-full aspect-[16/9] overflow-hidden bg-card">
+                    <ImageLightbox src="/images/app/app-locker-dark.png" alt="App Locker" className="w-full h-full" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
         
-        {/* Focus Deep Dive */}
-        <section className="py-24 bg-surface/20 border-y border-border/30">
+        {/* FEATURE SHOWCASE: INSIGHTS & SLEEPGUARD */}
+        <section className="py-24 bg-surface/10 border-t border-border/20">
           <div className="container mx-auto px-4 md:px-8">
-            <div className="flex flex-col md:flex-row items-center gap-16">
-              <div className="flex-1 space-y-8">
-                <div className="inline-flex items-center rounded-lg bg-accent/10 px-3 py-1 text-sm font-bold text-accent uppercase tracking-wider">
-                  <Zap className="w-4 h-4 mr-2" /> Focus Engine
-                </div>
-                <h2 className="text-4xl md:text-5xl font-black tracking-tight leading-tight">Block distractions. <br/> Stay in the session.</h2>
-                <p className="text-xl text-foreground/70 leading-relaxed font-medium">
-                  NYW's Focus Mode allows you to define specific websites and desktop applications to block during a session.
+            <div className="grid md:grid-cols-2 gap-12">
+              <div className="space-y-6 p-8 rounded-2xl border border-border/30 bg-surface hover:border-border/60 transition-colors flex flex-col h-full">
+                <ChartPie className="w-8 h-8 text-foreground/70" />
+                <h3 className="text-2xl font-bold">Data-driven Insights</h3>
+                <p className="text-foreground/60 leading-relaxed">
+                  Understand your habits with historical trends. See your highest-usage categories, daily averages, and identify areas where your productivity thrives or falls. All data remains locally on your device.
                 </p>
-                <ul className="space-y-5 text-lg font-medium text-foreground/80">
-                  <li className="flex items-start gap-4">
-                    <div className="bg-surface border border-border/50 p-2 rounded-lg mt-1"><Code className="h-5 w-5 text-accent" /></div>
-                    <span><strong>Browser Title & Hosts Blocking.</strong> Ensures distractions are cut off natively.</span>
-                  </li>
-                  <li className="flex items-start gap-4">
-                    <div className="bg-surface border border-border/50 p-2 rounded-lg mt-1"><Shield className="h-5 w-5 text-accent" /></div>
-                    <span><strong>Strict Mode.</strong> Prevents ending a session early without inputting a secure PIN.</span>
-                  </li>
-                </ul>
-              </div>
-              <div className="flex-1 w-full relative">
-                <div className="rounded-2xl border border-border bg-glass p-2 shadow-2xl backdrop-blur-md rotate-1 hover:rotate-0 transition-transform duration-500">
-                  <Image src="/images/focus-dark.png" alt="Focus Mode configuration" width={800} height={500} className="rounded-xl border border-border/40 w-full" />
+                <div className="pt-4 mt-auto">
+                   <div className="relative rounded-xl border border-border/20 w-full aspect-[16/9] overflow-hidden bg-card">
+                     <ImageLightbox src="/images/app/insights-dark.png" alt="Insights" className="w-full h-full" />
+                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Insights & Usage Deep Dive */}
-        <section className="py-24 bg-background">
-          <div className="container mx-auto px-4 md:px-8">
-            <div className="flex flex-col md:flex-row-reverse items-center gap-16">
-              <div className="flex-1 space-y-8">
-                <div className="inline-flex items-center rounded-lg bg-accent/10 px-3 py-1 text-sm font-bold text-accent uppercase tracking-wider">
-                  <ChartPie className="w-4 h-4 mr-2" /> Smart Insights
-                </div>
-                <h2 className="text-4xl md:text-5xl font-black tracking-tight leading-tight">Turn data into <br/>useful patterns.</h2>
-                <p className="text-xl text-foreground/70 leading-relaxed font-medium">
-                  Stop guessing where your time goes. The Insights dashboard analyzes your raw screen time and provides factual observations about your habits.
-                </p>
-                <p className="text-lg text-foreground/80 font-medium">
-                  View daily category breakdowns, identify your most productive days, and track your goal streaks without any confusing AI jargon.
-                </p>
-              </div>
-              <div className="flex-1 w-full relative">
-                <div className="rounded-2xl border border-border bg-surface p-2 shadow-2xl -rotate-1 hover:rotate-0 transition-transform duration-500">
-                  <Image src="/images/insights-dark.png" alt="Smart Insights Dashboard" width={800} height={500} className="rounded-xl border border-border/40 w-full" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* App Locker Deep Dive */}
-        <section className="py-24 bg-surface/20 border-y border-border/30">
-          <div className="container mx-auto px-4 md:px-8">
-            <div className="flex flex-col md:flex-row items-center gap-16">
-              <div className="flex-1 space-y-8">
-                <div className="inline-flex items-center rounded-lg bg-accent/10 px-3 py-1 text-sm font-bold text-accent uppercase tracking-wider">
-                  <Lock className="w-4 h-4 mr-2" /> App Locker
-                </div>
-                <h2 className="text-4xl md:text-5xl font-black tracking-tight leading-tight">Zero-trust for <br/>specific apps.</h2>
-                <p className="text-xl text-foreground/70 leading-relaxed font-medium">
-                  Require authentication before protected applications can be used. Protect sensitive apps from prying eyes when your PC is unlocked.
-                </p>
-                <ul className="space-y-5 text-lg font-medium text-foreground/80">
-                  <li className="flex items-start gap-4">
-                    <div className="bg-surface border border-border/50 p-2 rounded-lg mt-1"><Shield className="h-5 w-5 text-accent" /></div>
-                    <span><strong>Windows Hello Integration.</strong> Seamlessly authenticate via Face ID, Fingerprint, or OS PIN.</span>
-                  </li>
-                  <li className="flex items-start gap-4">
-                    <div className="bg-surface border border-border/50 p-2 rounded-lg mt-1"><Lock className="h-5 w-5 text-accent" /></div>
-                    <span><strong>Fallback PIN.</strong> Set a custom NYW PIN if you don't use Windows Hello.</span>
-                  </li>
-                </ul>
-              </div>
-              <div className="flex-1 w-full relative">
-                <div className="rounded-2xl border border-border bg-glass p-2 shadow-2xl backdrop-blur-md rotate-1 hover:rotate-0 transition-transform duration-500">
-                  <Image src="/images/applocker-dark.png" alt="App Locker configuration" width={800} height={500} className="rounded-xl border border-border/40 w-full" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* SleepGuard Deep Dive */}
-        <section className="py-24 bg-background">
-          <div className="container mx-auto px-4 md:px-8">
-            <div className="flex flex-col md:flex-row-reverse items-center gap-16">
-              <div className="flex-1 space-y-8">
-                <div className="inline-flex items-center rounded-lg bg-accent/10 px-3 py-1 text-sm font-bold text-accent uppercase tracking-wider">
-                  <Moon className="w-4 h-4 mr-2" /> SleepGuard
-                </div>
-                <h2 className="text-4xl md:text-5xl font-black tracking-tight leading-tight">Protect your evenings.</h2>
-                <p className="text-xl text-foreground/70 leading-relaxed font-medium">
-                  Automatically respond to inactivity. SleepGuard monitors your activity (while respecting media playback) and triggers a configurable power action.
-                </p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-surface border border-border/50 p-4 rounded-xl flex items-center gap-3">
-                    <Lock className="w-5 h-5 text-accent"/> <span className="font-bold">Lock PC</span>
-                  </div>
-                  <div className="bg-surface border border-border/50 p-4 rounded-xl flex items-center gap-3">
-                    <Moon className="w-5 h-5 text-accent"/> <span className="font-bold">Sleep</span>
-                  </div>
-                  <div className="bg-surface border border-border/50 p-4 rounded-xl flex items-center gap-3">
-                    <Activity className="w-5 h-5 text-accent"/> <span className="font-bold">Hibernate</span>
-                  </div>
-                  <div className="bg-surface border border-border/50 p-4 rounded-xl flex items-center gap-3">
-                    <Zap className="w-5 h-5 text-accent"/> <span className="font-bold">Shut Down</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex-1 w-full relative">
-                <div className="rounded-2xl border border-border bg-glass p-2 shadow-2xl backdrop-blur-md -rotate-1 hover:rotate-0 transition-transform duration-500">
-                  <Image src="/images/sleepguard-dark.png" alt="SleepGuard configuration" width={800} height={500} className="rounded-xl border border-border/40 w-full" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* PRIVACY & TRUST */}
-        <section id="privacy" className="py-24 bg-surface/30 border-y border-border/30">
-          <div className="container mx-auto px-4 md:px-8 max-w-4xl text-center">
-            <Server className="h-16 w-16 text-accent mx-auto mb-6" />
-            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-6">100% Local Privacy.</h2>
-            <p className="text-xl text-foreground/70 leading-relaxed font-medium mb-12">
-              We believe your digital habits are intensely private. NYW stores all usage data locally on your machine using an encrypted SQLite database. 
-            </p>
-            <div className="grid md:grid-cols-3 gap-6 text-left">
-              <div className="p-6 rounded-2xl bg-surface border border-border/50">
-                <h4 className="font-bold text-lg mb-2">No Cloud Sync</h4>
-                <p className="text-foreground/70 text-sm">Your data never leaves your device. We do not operate storage servers.</p>
-              </div>
-              <div className="p-6 rounded-2xl bg-surface border border-border/50">
-                <h4 className="font-bold text-lg mb-2">No Telemetry</h4>
-                <p className="text-foreground/70 text-sm">We do not track how you use the app, nor do we collect analytical data.</p>
-              </div>
-              <div className="p-6 rounded-2xl bg-surface border border-border/50">
-                <h4 className="font-bold text-lg mb-2">Open Source</h4>
-                <p className="text-foreground/70 text-sm">Our codebase is publicly verifiable on GitHub to ensure complete transparency.</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* CTA */}
-        <section id="download" className="py-32 relative overflow-hidden bg-background">
-          <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_bottom,_var(--tw-gradient-stops))] from-accent/10 via-background to-background" />
-          <div className="container mx-auto px-4 md:px-8 text-center max-w-2xl">
-            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-6">Ready to regain your focus?</h2>
-            <p className="text-xl text-foreground/70 mb-10 font-medium">
-              Download the latest stable release of NYW and start building healthier digital habits on Windows today.
-            </p>
-            <div className="flex flex-col items-center justify-center gap-4">
-              <Link href={siteConfig.links.download}>
-                <Button size="lg" className="rounded-xl font-bold h-16 px-10 text-xl gap-3 shadow-2xl shadow-accent/20 transition-all hover:scale-105">
-                  <Download className="h-6 w-6" />
-                  Download v{siteConfig.stableVersion} for Windows
-                </Button>
-              </Link>
               
-              <div className="flex gap-4 mt-8">
-                <Link href={siteConfig.links.reportBug} target="_blank" rel="noopener noreferrer">
-                  <Button variant="outline" size="sm" className="rounded-xl gap-2 border-border/60 font-semibold bg-surface/50 hover:bg-surface-hover">
-                    <Shield className="h-4 w-4" /> Report a Bug
-                  </Button>
-                </Link>
-                <Link href={siteConfig.links.requestFeature} target="_blank" rel="noopener noreferrer">
-                  <Button variant="outline" size="sm" className="rounded-xl gap-2 border-border/60 font-semibold bg-surface/50 hover:bg-surface-hover">
-                    <Bell className="h-4 w-4" /> Request Feature
-                  </Button>
-                </Link>
+              <div className="space-y-6 p-8 rounded-2xl border border-border/30 bg-surface hover:border-border/60 transition-colors flex flex-col h-full">
+                <Moon className="w-8 h-8 text-foreground/70" />
+                <h3 className="text-2xl font-bold">SleepGuard</h3>
+                <p className="text-foreground/60 leading-relaxed">
+                  Protect your evenings. SleepGuard detects inactivity late at night and provides a countdown before automatically sleeping or locking your PC, ensuring you disconnect when intended.
+                </p>
+                <div className="pt-4 mt-auto">
+                   <div className="relative rounded-xl border border-border/20 w-full aspect-[16/9] overflow-hidden bg-card">
+                     <ImageLightbox src="/images/app/sleepguard-dark.png" alt="SleepGuard" className="w-full h-full" />
+                   </div>
+                </div>
               </div>
             </div>
-            <p className="mt-10 text-sm text-foreground/50 font-medium">Compatible with Windows 10 & 11.</p>
           </div>
         </section>
+
+        {/* USE CASES */}
+        <section className="py-24 bg-background">
+           <div className="container mx-auto px-4 md:px-8 text-center max-w-4xl">
+              <h2 className="text-3xl font-bold mb-12">Practical Use Cases</h2>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                 {[
+                   "Deep Work Sessions",
+                   "Study & Preparation",
+                   "Reducing Distractions",
+                   "Screen Time Awareness",
+                   "Protecting Privacy",
+                   "Idle PC Protection"
+                 ].map((usecase, i) => (
+                    <div key={i} className="p-4 rounded-xl border border-border/40 bg-surface/50 text-foreground/80 font-medium">
+                       {usecase}
+                    </div>
+                 ))}
+              </div>
+           </div>
+        </section>
+
       </main>
     </div>
   )

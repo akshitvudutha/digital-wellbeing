@@ -15,22 +15,10 @@ export function Navbar() {
         </Link>
         <nav className="flex items-center space-x-6 text-sm font-medium">
           <Link
-            href="#features"
+            href="#how-it-works"
             className="transition-colors hover:text-foreground/80 text-foreground/60 hidden sm:inline-block"
           >
-            Features
-          </Link>
-          <Link
-            href="#privacy"
-            className="transition-colors hover:text-foreground/80 text-foreground/60 hidden sm:inline-block"
-          >
-            Privacy
-          </Link>
-          <Link
-            href="#faq"
-            className="transition-colors hover:text-foreground/80 text-foreground/60 hidden sm:inline-block"
-          >
-            FAQ
+            How it works
           </Link>
         </nav>
         <div className="flex flex-1 items-center justify-end space-x-4">
@@ -39,12 +27,12 @@ export function Navbar() {
               href={siteConfig.links.github}
               target="_blank"
               rel="noreferrer"
-              className="text-foreground/60 hover:text-foreground transition-colors hidden sm:inline-block text-sm mr-4"
+              className="text-foreground/60 hover:text-foreground transition-colors hidden sm:inline-block text-sm mr-4 font-semibold"
             >
               GitHub
             </Link>
-            <Link href="#download">
-              <Button variant="default" size="sm" className="hidden sm:inline-flex rounded-full">
+            <Link href={siteConfig.links.download}>
+              <Button variant="default" size="sm" className="hidden sm:inline-flex rounded-lg font-bold bg-foreground text-background hover:bg-foreground/90">
                 Download v{siteConfig.version}
               </Button>
             </Link>
