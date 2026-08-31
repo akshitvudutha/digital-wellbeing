@@ -5,14 +5,15 @@ import { Activity } from "lucide-react"
 export function Footer() {
   return (
     <footer className="border-t border-border/40 py-10 md:py-14 bg-background/50">
-      <div className="container mx-auto px-4 md:px-8 flex flex-col md:flex-row items-start justify-between gap-8">
+      <div className="container mx-auto px-4 md:px-8 flex flex-col md:flex-row items-start justify-between gap-8 max-w-[1400px]">
         <div className="flex flex-col gap-2 max-w-sm">
           <Link href="/" className="flex items-center space-x-2">
             <Activity className="h-5 w-5 text-accent" />
             <span className="font-bold tracking-tight text-lg">{siteConfig.name}</span>
           </Link>
+          <span className="text-sm font-semibold tracking-wide text-foreground/80">{siteConfig.fullName}</span>
           <p className="text-sm text-foreground/60 mt-2">
-            Your time. Your rules. Build healthier digital habits with powerful, privacy-first tracking.
+            Your time. Your rules. Build healthier digital habits with powerful, privacy-first tracking on Windows.
           </p>
           <p className="text-sm text-foreground/40 mt-4">
             Built by {siteConfig.developer}.
@@ -22,8 +23,8 @@ export function Footer() {
         <div className="flex flex-col md:flex-row gap-12 md:gap-24">
           <div className="flex flex-col gap-3">
             <h4 className="font-semibold text-sm">Product</h4>
-            <Link href="#how-it-works" className="text-sm text-foreground/60 hover:text-foreground">How it works</Link>
-            <Link href={siteConfig.links.download} className="text-sm text-foreground/60 hover:text-foreground">Download v{siteConfig.version}</Link>
+            <Link href="#explore" className="text-sm text-foreground/60 hover:text-foreground">Features</Link>
+            <Link href={siteConfig.links.download} className="text-sm text-foreground/60 hover:text-foreground">Download v{siteConfig.stableVersion}</Link>
             <Link href={siteConfig.links.releases} className="text-sm text-foreground/60 hover:text-foreground">Changelog</Link>
           </div>
 

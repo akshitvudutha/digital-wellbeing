@@ -15,10 +15,10 @@ export function Navbar() {
         </Link>
         <nav className="flex items-center space-x-6 text-sm font-medium">
           <Link
-            href="#how-it-works"
+            href="#explore"
             className="transition-colors hover:text-foreground/80 text-foreground/60 hidden sm:inline-block"
           >
-            How it works
+            Features
           </Link>
         </nav>
         <div className="flex flex-1 items-center justify-end space-x-4">

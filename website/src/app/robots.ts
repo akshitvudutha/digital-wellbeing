@@ -6,6 +6,6 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: '*',
       allow: '/',
     },
-    sitemap: 'https://not-your-wellbeing.vercel.app/sitemap.xml',
+    sitemap: 'https://notyourwellbeing.vercel.app/sitemap.xml',
   }
 }

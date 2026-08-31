@@ -15,8 +15,9 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
+  metadataBase: new URL(siteConfig.url),
   title: {
-    default: "NYW — Digital Wellbeing for Windows",
+    default: "NYW — Digital Wellbeing for Windows | Not Your Wellbeing",
     template: `%s - NYW`,
   },
   description: siteConfig.description,
@@ -29,15 +30,15 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://not-your-wellbeing.vercel.app",
-    title: "NYW - Premium Digital Wellbeing for Windows",
+    url: siteConfig.url,
+    title: "NYW — Digital Wellbeing for Windows",
     description: siteConfig.description,
-    siteName: siteConfig.name,
+    siteName: siteConfig.fullName,
     images: [
       {
         url: "/images/app/home-dark.png",
-        width: 1200,
-        height: 750,
+        width: 1920,
+        height: 1080,
         alt: "NYW - Your time. Your rules.",
       }
     ]
@@ -58,8 +59,27 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "NYW",
+    "alternateName": "Not Your Wellbeing",
+    "operatingSystem": "Windows 10, Windows 11",
+    "applicationCategory": "Productivity",
+    "offers": {
+      "@type": "Offer",
+      "price": "0"
+    }
+  };
+
   return (
     <html lang="en" className="dark scroll-smooth" style={{ colorScheme: "dark" }}>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
       <body className={`${inter.variable} min-h-screen bg-background font-sans antialiased`}>
         <Navbar />
         {children}
