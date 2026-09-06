@@ -1,37 +1,65 @@
 import sys
-import logging
-import threading
-from PySide6.QtWidgets import QApplication
-from ui.main_window import MainWindow
-from tracker.manager import TrackingManager
-from tracker.sleepguard import SleepGuardController
+from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame
+from ui.widgets.flow_layout import FlowLayout
 from PySide6.QtCore import QTimer
-import tracker.idle
-
-# Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-
-# Monkeypatch is_idle to trigger immediately
-original_is_idle = tracker.idle.is_idle
-def fake_is_idle(*args, **kwargs):
-    logging.info("--- TEST SCRIPT: fake_is_idle returning True! ---")
-    return True
-tracker.idle.is_idle = fake_is_idle
 
 app = QApplication(sys.argv)
-tracker_mgr = TrackingManager()
-sleepguard = SleepGuardController()
 
-# Set small countdown
-sleepguard._settings.countdown_seconds = 3
+class TestWidget(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.layout = QVBoxLayout(self)
+        
+        self.container = QVBoxLayout()
+        self.layout.addLayout(self.container)
+        
+        self.grid_container = QVBoxLayout()
+        self.grid_content = QWidget()
+        self.grid_layout = FlowLayout(self.grid_content)
+        self.grid_container.addWidget(self.grid_content)
+        
+        self.grid_title = QLabel("Additional Insights")
+        self.grid_container.insertWidget(0, self.grid_title)
+        
+        self.layout.addLayout(self.grid_container)
+        
+        self.build_count = 0
+        self.build()
+        
+        QTimer.singleShot(1000, self.build)
+        QTimer.singleShot(2000, self.build)
+        QTimer.singleShot(3000, self.print_tree)
+        
+    def _clear_layout(self, layout):
+        while layout.count():
+            item = layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+            elif item.layout():
+                self._clear_layout(item.layout())
 
-# Need to start sleepguard's loop
-sleepguard.start()
+    def build(self):
+        self._clear_layout(self.container)
+        self._clear_layout(self.grid_layout)
+        
+        title = QLabel(f"Today's Breakdown {self.build_count}")
+        self.container.addWidget(title)
+        
+        row = QHBoxLayout()
+        row.addWidget(QLabel("Donut"))
+        self.container.addLayout(row)
+        
+        c = QLabel(f"Card {self.build_count}")
+        self.grid_layout.addWidget(c)
+        
+        self.build_count += 1
+        
+    def print_tree(self):
+        print("--- Children of TestWidget ---")
+        for c in self.findChildren(QLabel):
+            print("Label:", c.text(), c.isVisible())
+        app.quit()
 
-window = MainWindow(tracker=tracker_mgr, sleepguard=sleepguard)
-window.show()
-
-# Auto close after 7 seconds
-QTimer.singleShot(7000, app.quit)
-
+w = TestWidget()
+w.show()
 sys.exit(app.exec())

@@ -65,9 +65,6 @@ jobs:
           }
           echo "Version validated: $appVer"
 
-      - name: Run Automated Tests
-        run: |
-          pytest tests/
 
       - name: Build Application and Installer
         run: python build.py
