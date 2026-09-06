@@ -8,7 +8,7 @@ export async function GET() {
     // 1. Fetch GitHub Downloads
     let downloads = 0;
     try {
-      const response = await fetch('https://api.github.com/repos/akshitvudutha/digital-wellbeing/releases/tags/v3.1.5', {
+      const response = await fetch('https://api.github.com/repos/akshitvudutha/digital-wellbeing/releases/tags/v3.1.6', {
         headers: {
           'Accept': 'application/vnd.github.v3+json',
         },
@@ -39,7 +39,7 @@ export async function GET() {
     return NextResponse.json({
       downloads,
       activeInstalls,
-      version: 'v3.1.5'
+      version: 'v3.1.6'
     });
   } catch (error) {
     console.error('Stats API error:', error);

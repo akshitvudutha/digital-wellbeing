@@ -79,7 +79,7 @@ export default function Home() {
                 <div className="aspect-[16/9] w-full rounded-lg bg-black border border-border/40 overflow-hidden relative">
                   <ImageLightbox 
                     src="/images/app/home-dark.png" 
-                    alt="NYW v3.1.5 Dashboard in Dark Mode" 
+                    alt="NYW v3.1.6 Dashboard in Dark Mode" 
                     className="w-full h-full"
                     priority
                   />

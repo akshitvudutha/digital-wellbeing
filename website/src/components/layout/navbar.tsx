@@ -8,7 +8,7 @@ export function Navbar() {
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/60 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center px-4 md:px-8 max-w-[1400px]">
         <Link href="/" className="flex items-center space-x-3 mr-6">
-          <Image src="/nyw-logo.svg" alt="NYW Logo" width={24} height={24} className="h-6 w-6" />
+          <Image src="/nyw-logo.png" alt="NYW Logo" width={32} height={32} className="w-8 h-8 rounded-md" />
           <span className="font-bold inline-block tracking-tight text-lg">
             {siteConfig.name}
           </span>
