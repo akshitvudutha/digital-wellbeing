@@ -7,7 +7,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtCore import Qt, QThread, Signal, QTimer
 from PySide6.QtGui import QIcon, QKeySequence, QPixmap, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QFrame, QHBoxLayout, QLabel, QPushButton,
@@ -70,6 +70,9 @@ class MainWindow(QMainWindow):
         self._setup_ui()
         self._connect_tracker()
         self._setup_shortcuts()
+        
+        # Trigger initial Home page load without blocking UI layout
+        QTimer.singleShot(0, self._refresh_current_page)
 
     def _setup_ui(self) -> None:
         from core.constants import APP_NAME, APP_VERSION
@@ -99,6 +102,7 @@ class MainWindow(QMainWindow):
 
         self._stack = AnimatedStackedWidget()
         self._stack.setObjectName("content_area")
+        self._stack.currentChanged.connect(self._refresh_current_page)
 
         self._dashboard_page = DashboardPage(on_global_refresh=self.refresh_all_pages, navigate_callback=self._navigate)
         
@@ -289,17 +293,8 @@ class MainWindow(QMainWindow):
     def refresh_all_pages(self) -> None:
         from core.logger import logger
         logger.info("[REFRESH] Executing V2 global refresh for all pages...")
-        pages = [
-            self._dashboard_page,
-            self._activity_page,
-            self._wellbeing_page,
-            self._app_locker_page,
-            self._settings_page,
-            self._debug_page,
-            self._screen_time_details_page,
-            self._app_details_page,
-        ]
-        for page in pages:
+        for i in range(self._stack.count()):
+            page = self._stack.widget(i)
             if hasattr(page, "on_data_changed"):
                 try:
                     page.on_data_changed()
@@ -376,7 +371,7 @@ class MainWindow(QMainWindow):
         logo_layout.setSpacing(14)
 
         icon_lbl = QLabel()
-        icon_path = Path(__file__).parent.parent / "assets" / "icons" / "app_logo.png"
+        icon_path = Path(__file__).parent.parent / "assets" / "icons" / "app_icon.png"
         pix = QPixmap(str(icon_path))
         if not pix.isNull():
             icon_lbl.setPixmap(pix.scaled(64, 64, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
@@ -553,7 +548,6 @@ class MainWindow(QMainWindow):
             self._active_nav_btn = btn
 
         self._stack.setCurrentIndexAnimated(page_idx)
-        self._refresh_current_page()
 
     def _navigate_back(self) -> None:
         if self._navigation_history:
@@ -603,18 +597,12 @@ class MainWindow(QMainWindow):
         # When dialog is closed (for any reason), remove it from active set
         self._active_limit_dialogs.discard(process_name)
 
-    def _refresh_current_page(self) -> None:
-        idx = self._stack.currentIndex()
-        pages = [
-            self._dashboard_page,
-            self._activity_page,
-            self._wellbeing_page,
-            self._settings_page,
-            self._debug_page,
-        ]
-        if 0 <= idx < len(pages):
-            page = pages[idx]
-            if hasattr(page, "on_data_changed"):
+    def _refresh_current_page(self, index: int = -1) -> None:
+        if index == -1:
+            index = self._stack.currentIndex()
+        if index >= 0 and index < self._stack.count():
+            page = self._stack.widget(index)
+            if hasattr(page, "on_data_changed") and callable(page.on_data_changed):
                 page.on_data_changed()
 
     def _connect_tracker(self) -> None:

@@ -396,17 +396,19 @@ class Repository:
         with self._cursor() as cur:
             cur.execute(
                 """
-                SELECT category, SUM(duration_s) AS total_s
+                SELECT LOWER(category) AS raw_category, SUM(duration_s) AS total_s
                 FROM app_sessions
                 WHERE start_time >= ? AND start_time <= ?
                   AND is_idle = 0
                   AND duration_s > 0
-                GROUP BY category
+                GROUP BY LOWER(category)
                 ORDER BY total_s DESC
                 """,
                 (start, end),
             )
-            return [dict(row) for row in cur.fetchall()]
+            
+            # Format back to title case to maintain expected format
+            return [{"category": row["raw_category"].title() if row["raw_category"] else "Other", "total_s": row["total_s"]} for row in cur.fetchall()]
 
     def get_hourly_breakdown_for_date(self, target_date: date) -> List[dict]:
         start = datetime.combine(target_date, datetime.min.time()).isoformat()

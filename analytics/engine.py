@@ -106,15 +106,15 @@ class AnalyticsEngine:
         t_summary = self._build_summary(today, today)
         y_summary = self._build_summary(yesterday, yesterday)
 
-        t_active = t_summary.active_time_s
-        y_active = y_summary.active_time_s
+        t_val = t_summary.total_screen_time_s
+        y_val = y_summary.total_screen_time_s
 
         # Require at least 30 mins (1800s) of activity yesterday for a meaningful comparison
-        eff_y_active = y_active if y_active >= 1800.0 else 0.0
-        yesterday_was_zero = (eff_y_active == 0.0)
+        eff_y_val = y_val if y_val >= 1800.0 else 0.0
+        yesterday_was_zero = (eff_y_val == 0.0)
 
         if not yesterday_was_zero:
-            pct_change = ((t_active - eff_y_active) / eff_y_active) * 100.0
+            pct_change = ((t_val - eff_y_val) / eff_y_val) * 100.0
         else:
             pct_change = None
 
@@ -122,8 +122,10 @@ class AnalyticsEngine:
         y_cats = {c["category"].lower(): c["total_s"] for c in y_summary.category_breakdown}
         
         return {
-            "today_active_s": t_active,
-            "yesterday_active_s": y_active,
+            "today_total_s": t_val,
+            "yesterday_total_s": y_val,
+            "today_active_s": t_summary.active_time_s,
+            "yesterday_active_s": y_summary.active_time_s,
             "pct_change": pct_change,
             "is_increase": pct_change > 0 if pct_change is not None else False,
             "today_cats": t_cats,

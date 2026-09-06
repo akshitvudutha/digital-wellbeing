@@ -302,7 +302,7 @@ class CategoryLegendWidget(QWidget):
                 continue
             cat_raw = item.get("category", "").title()
             try:
-                cat_enum = AppCategory(item.get("category", "").lower())
+                cat_enum = AppCategory(cat_raw)
                 color_hex = CATEGORY_COLORS.get(cat_enum, tm.color('accent'))
             except ValueError:
                 color_hex = tm.color('accent')

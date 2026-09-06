@@ -148,6 +148,11 @@ class InsightsPage(QWidget):
         self._inner_layout.addLayout(self._grid_container)
         self._inner_layout.addStretch()
         
+        # Move grid title out of dynamic build loop to prevent duplication
+        grid_title = QLabel("Additional Insights")
+        grid_title.setObjectName("section_title")
+        self._grid_container.insertWidget(0, grid_title)
+        
         # Dynamic insights
         self._build_insights()
 
@@ -158,6 +163,7 @@ class InsightsPage(QWidget):
                 item.widget().deleteLater()
             elif item.layout():
                 self._clear_layout(item.layout())
+                item.layout().deleteLater()
 
     def _build_insights(self):
         # Clear existing
@@ -183,82 +189,14 @@ class InsightsPage(QWidget):
         self._key_insight_container.addWidget(c_key)
         
         # 2. Today's Breakdown
-        donut_title = QLabel("Today's Breakdown")
-        donut_title.setObjectName("section_title")
-        self._breakdown_container.addWidget(donut_title)
-        
-        breakdown_row = QHBoxLayout()
-        breakdown_row.setSpacing(24)
-        
-        from ui.widgets.donut_chart import DonutChart
-        self._donut = DonutChart()
-        self._donut.setFixedSize(240, 240)
-        
-        # Donut Chart Card
-        donut_card = QFrame()
-        donut_card.setObjectName("insight_card")
-        donut_layout = QVBoxLayout(donut_card)
-        donut_layout.setContentsMargins(16, 16, 16, 16)
-        donut_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        donut_layout.addWidget(self._donut)
-        
-        # Build segments for donut
-        segments = []
-        if not cats:
-            from ui.theme import ThemeManager
-            segments = [("No Data", 1.0, ThemeManager.instance().color('text_muted'))]
-        else:
-            fluent_palette = ["#4F8CFF", "#20C997", "#00C4FF", "#9C27B0", "#FF9800"]
-            for idx, item in enumerate(cats[:5]):
-                dur = float(item.get("total_s", 0.0))
-                if dur > 0:
-                    from ui.theme import ThemeManager
-                    color = fluent_palette[idx] if idx < len(fluent_palette) else ThemeManager.instance().color('text_muted')
-                    segments.append((item['category'], dur, color))
-                    
-        total_s_dur = self._engine.format_duration_short(summary.total_screen_time_s)
-        self._donut.set_data(segments, center_text=total_s_dur, center_subtext="TOTAL SCREEN TIME")
-        
-        breakdown_row.addWidget(donut_card)
-        
-        # Category Summary List
-        cat_summary_card = QFrame()
-        cat_summary_card.setObjectName("insight_card")
-        cat_layout = QVBoxLayout(cat_summary_card)
-        cat_layout.setContentsMargins(24, 20, 24, 20)
-        cat_layout.setSpacing(12)
-        
-        cat_hdr = QLabel("Categories")
-        cat_hdr.setObjectName("insight_title")
-        cat_layout.addWidget(cat_hdr)
-        
-        if cats:
-            from ui.theme import ThemeManager
-            tm = ThemeManager.instance()
-            for item in cats[:4]:
-                dur = float(item.get("total_s", 0.0))
-                if dur > 60:
-                    row = QHBoxLayout()
-                    lbl_name = QLabel(item['category'])
-                    lbl_name.setStyleSheet(f"font-size: 14px; font-weight: 600; color: {tm.color('text_main')};")
-                    lbl_dur = QLabel(self._engine.format_duration_short(dur))
-                    lbl_dur.setStyleSheet(f"font-size: 14px; font-family: monospace; color: {tm.color('text_sub')};")
-                    row.addWidget(lbl_name)
-                    row.addStretch()
-                    row.addWidget(lbl_dur)
-                    cat_layout.addLayout(row)
-        else:
-            cat_layout.addWidget(QLabel("No categories tracked today."))
-            
-        cat_layout.addStretch()
-        breakdown_row.addWidget(cat_summary_card, 1)
-        
-        self._breakdown_container.addLayout(breakdown_row)
+        from ui.widgets.donut_chart import CategoryBreakdownCard
+        card = CategoryBreakdownCard("Today's Breakdown")
+        card.set_data(cats, summary.total_screen_time_s, summary.total_screen_time_s)
+        self._breakdown_container.addWidget(card)
         
         # 3. Grid Section
-        grid_title = QLabel("Additional Insights")
-        grid_title.setObjectName("section_title")
-        self._grid_container.insertWidget(0, grid_title)
+        # Title is now handled in _setup_ui
+
         
         best_day = long_term.get("most_productive_day")
         best_day_str = best_day.strftime("%A") if best_day else "N/A"

@@ -193,7 +193,7 @@ class DashboardPage(QWidget):
         self._date_label.setText(today.strftime("%A, %B %d, %Y"))
 
         summary = self._engine.get_today_summary()
-        formatted_total = self._engine.format_duration(summary.active_time_s)
+        formatted_total = self._engine.format_duration(summary.total_screen_time_s)
 
         comp = self._engine.get_yesterday_comparison()
         pct = abs(comp["pct_change"]) if comp["pct_change"] is not None else None
