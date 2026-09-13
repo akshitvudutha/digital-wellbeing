@@ -31,5 +31,5 @@ jobs:
 
       - name: Verify platform modules
         run: |
-          python -m unittest tests.test_platform_support tests.test_autostart -v
+          python -m unittest tests.test_platform_support tests.test_autostart tests.test_doctor -v
           python -c "from tracker.foreground import get_foreground_app; from tracker.idle import get_idle_seconds; from tracker.manager import TrackingManager; print('tracking imports ok')"

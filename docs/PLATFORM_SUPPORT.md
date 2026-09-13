@@ -50,6 +50,19 @@ session until a suitable desktop portal becomes available.
 Autostart uses the XDG autostart directory. Power actions use `systemctl` and
 screen locking uses `loginctl` with an `xdg-screensaver` fallback.
 
+## Check a setup
+
+Run the diagnostic command before starting the GUI or background tracker:
+
+```bash
+python main.py --doctor
+```
+
+Use `python main.py --doctor --json` for scripts and support tooling. The
+command reports platform capabilities and home-relative local data paths. It
+does not start tracking or print window titles, application names, or activity
+history.
+
 ## Graceful feature fallbacks
 
 Unavailable session-event and media APIs do not prevent the app or headless
