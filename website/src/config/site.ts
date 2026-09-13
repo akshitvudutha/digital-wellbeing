@@ -5,7 +5,7 @@ export const siteConfig = {
   description: "A minimal, intentional digital wellbeing and attention-control system for Windows. Understand your time, enforce deep focus, protect distracting applications, and live intentionally.",
   developer: "Akshit",
   version: "3.1.6",
-  stage: "Controlled Beta",
+  stage: "Public Beta",
   url: "https://notyourwellbeing.vercel.app",
   links: {
     github: "https://github.com/akshitvudutha/digital-wellbeing",

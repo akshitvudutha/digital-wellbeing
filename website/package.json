@@ -10,14 +10,12 @@
     "test": "tsx --test src/**/__tests__/**/*.test.ts"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.116.0",
     "clsx": "^2.1.1",
     "framer-motion": "^13.1.0",
     "lucide-react": "^1.31.0",
     "next": "16.3.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "resend": "^6.28.0",
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {

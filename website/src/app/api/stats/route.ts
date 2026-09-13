@@ -6,7 +6,7 @@ export async function GET() {
   return NextResponse.json({
     project: 'Notch — Digital Wellbeing for Windows',
     version: '3.1.6',
-    stage: 'Controlled Beta',
+    stage: 'Public Beta',
     architecture: 'Local-First, Zero Cloud Sync, No Telemetry',
   });
 }

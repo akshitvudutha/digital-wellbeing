@@ -66,9 +66,9 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="#beta" className="text-nyw-emerald hover:text-nyw-emerald-dark transition-colors font-medium">
-                  Request Beta Access
-                </Link>
+                <a href="/api/download" className="text-nyw-emerald hover:text-nyw-emerald-dark transition-colors font-medium">
+                  Download Notch
+                </a>
               </li>
             </ul>
           </div>
