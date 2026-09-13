@@ -5,11 +5,11 @@ import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
+from core.paths import get_log_path as _get_log_path
+
 
 def get_log_path() -> Path:
-    app_data = Path.home() / "AppData" / "Local" / "DigitalWellbeing"
-    app_data.mkdir(parents=True, exist_ok=True)
-    return app_data / "digital_wellbeing.log"
+    return _get_log_path()
 
 
 def setup_logger(name: str = "digital_wellbeing", level: int = logging.DEBUG) -> logging.Logger:

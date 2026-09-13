@@ -1,6 +1,6 @@
 # NYW — Not Your Wellbeing
 
-Digital wellbeing for Windows.
+Private, local-first digital wellbeing for your desktop.
 
 ## Overview
 Not Your Wellbeing (NYW) helps you understand and manage your screen time. It tracks active windows, idle time, and provides detailed analytics and insights into your daily, weekly, and monthly computer usage habits. It is designed to be lightweight, running as a background service and providing a beautiful, modern Windows 11 Fluent style interface when you want to review your data.
@@ -44,6 +44,22 @@ Run as a headless background tracking service (ultra-low CPU/memory, no GUI inst
 ```powershell
 python main.py --service
 ```
+
+## Local data and privacy
+
+NYW does not require a database server or cloud account. Usage history,
+settings, and logs stay on the device in an embedded SQLite file. SQLite is
+used as a local file format so writes remain crash-safe without operating a
+separate database service.
+
+The default data directory follows each operating system's conventions:
+
+- Windows: `%LOCALAPPDATA%\\DigitalWellbeing`
+- macOS: `~/Library/Application Support/DigitalWellbeing`
+- Linux: `$XDG_DATA_HOME/digital-wellbeing` or `~/.local/share/digital-wellbeing`
+
+Set `NYW_DATA_DIR` before launch to keep all local data in a custom or portable
+directory. Existing Windows installations continue using the same location.
 
 ## Building Executable
 
