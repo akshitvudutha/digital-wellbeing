@@ -2,12 +2,17 @@ from __future__ import annotations
 
 import ctypes
 import ctypes.wintypes
+import sys
 import threading
 from enum import Enum, auto
 from typing import Callable, Optional
 
-import win32con
-import win32gui
+if sys.platform == "win32":
+    import win32con
+    import win32gui
+else:
+    win32con = None
+    win32gui = None
 
 
 class SessionEvent(Enum):
@@ -49,6 +54,10 @@ class SessionMonitor:
 
     def start(self) -> None:
         from core.logger import logger
+        if sys.platform != "win32":
+            logger.info("Native session event monitoring is unavailable on %s; tracker polling remains active.", sys.platform)
+            self._ready.set()
+            return
         logger.info("[LIFECYCLE] SessionMonitor.start() creating thread")
         self._thread = threading.Thread(
             target=self._run,
@@ -61,6 +70,8 @@ class SessionMonitor:
 
     def stop(self) -> None:
         from core.logger import logger
+        if sys.platform != "win32":
+            return
         logger.info("[LIFECYCLE] SessionMonitor.stop() posting WM_QUIT to hwnd %s", self._hwnd)
         if self._hwnd:
             try:

@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+import sys
 import threading
 import time
 from abc import ABC, abstractmethod
@@ -18,8 +19,13 @@ from enum import Enum, auto
 from typing import Callable, Optional
 
 import psutil
-import win32gui
-import win32process
+
+if sys.platform == "win32":
+    import win32gui
+    import win32process
+else:
+    win32gui = None
+    win32process = None
 
 logger = logging.getLogger(__name__)
 
@@ -144,6 +150,8 @@ _browser_title_cache_at: float = 0.0
 
 def _get_browser_window_titles() -> list[str]:
     global _browser_title_cache_at
+    if win32gui is None or win32process is None:
+        return []
     if time.monotonic() - _browser_title_cache_at < 10.0:
         return _browser_title_cache
 
@@ -227,7 +235,7 @@ class MediaDetectionEngine:
     ) -> None:
         self._poll_interval = poll_interval
         self._on_state_change = on_state_change
-        self._detectors: list[BaseMediaDetector] = [GSMTCDetector()]
+        self._detectors: list[BaseMediaDetector] = [GSMTCDetector()] if sys.platform == "win32" else []
         self._current: MediaInfo = MediaInfo()
         self._running = False
         self._loop: Optional[asyncio.AbstractEventLoop] = None

@@ -12,6 +12,7 @@ import ctypes
 from ctypes import wintypes
 import logging
 import subprocess
+import sys
 from datetime import datetime
 from typing import Optional
 
@@ -24,6 +25,8 @@ VALID_ACTIONS = {"shutdown", "sleep", "hibernate", "lock", "cancel"}
 MIN_COUNTDOWN_SECONDS = 10
 
 def _enable_shutdown_privilege() -> bool:
+    if sys.platform != "win32":
+        return False
     advapi32 = ctypes.WinDLL('advapi32', use_last_error=True)
     kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
     
@@ -131,6 +134,9 @@ class ShutdownManager:
 
     def cancel_shutdown(self) -> None:
         """Cancel any pending scheduled shutdown command."""
+        if sys.platform != "win32":
+            logger.info("No scheduled NYW shutdown command exists on this platform.")
+            return
         logger.info("Cancelling any pending scheduled shutdown...")
         try:
             subprocess.run(
@@ -147,10 +153,15 @@ class ShutdownManager:
         ts = datetime.now().isoformat()
         logger.warning("[SLEEPGUARD_ACTION] Executing SHUTDOWN at %s", ts)
         
-        shutdown_exe = r"C:\Windows\System32\shutdown.exe"
+        if sys.platform == "darwin":
+            command = ["osascript", "-e", 'tell application "System Events" to shut down']
+        elif sys.platform.startswith("linux"):
+            command = ["systemctl", "poweroff"]
+        else:
+            command = [r"C:\Windows\System32\shutdown.exe", "/s", "/f", "/t", "0"]
         try:
             subprocess.run(
-                [shutdown_exe, "/s", "/f", "/t", "0"],
+                command,
                 check=True,
                 capture_output=True,
                 text=True,
@@ -162,7 +173,7 @@ class ShutdownManager:
             logger.error("Failed to invoke shutdown command: %s", exc)
             return False
 
-        logger.info("[SLEEPGUARD_ACTION] Shutdown command accepted by Windows.")
+        logger.info("[SLEEPGUARD_ACTION] Shutdown command accepted by the operating system.")
         return True
 
     @staticmethod
@@ -170,6 +181,11 @@ class ShutdownManager:
         ts = datetime.now().isoformat()
         logger.info("[SLEEPGUARD_ACTION] Executing SLEEP (suspend) at %s", ts)
         
+        if sys.platform == "darwin":
+            return ShutdownManager._run_power_command(["pmset", "sleepnow"], "sleep")
+        if sys.platform.startswith("linux"):
+            return ShutdownManager._run_power_command(["systemctl", "suspend"], "sleep")
+
         # Required for both Sleep and Hibernate via SetSuspendState
         _enable_shutdown_privilege()
         
@@ -195,6 +211,12 @@ class ShutdownManager:
     def _execute_hibernate() -> bool:
         ts = datetime.now().isoformat()
         logger.info("[SLEEPGUARD_ACTION] Executing HIBERNATE at %s", ts)
+        if sys.platform == "darwin":
+            logger.error("Hibernate is not exposed as a supported macOS user action.")
+            return False
+        if sys.platform.startswith("linux"):
+            return ShutdownManager._run_power_command(["systemctl", "hibernate"], "hibernate")
+
         _enable_shutdown_privilege()
         try:
             powrprof = ctypes.WinDLL('powrprof', use_last_error=True)
@@ -218,6 +240,16 @@ class ShutdownManager:
     def _execute_lock() -> bool:
         ts = datetime.now().isoformat()
         logger.info("[SLEEPGUARD_ACTION] Executing LOCK at %s", ts)
+        if sys.platform == "darwin":
+            return ShutdownManager._run_power_command(
+                ["/System/Library/CoreServices/Menu Extras/User.menu/Contents/Resources/CGSession", "-suspend"],
+                "lock",
+            )
+        if sys.platform.startswith("linux"):
+            if ShutdownManager._run_power_command(["loginctl", "lock-session"], "lock"):
+                return True
+            return ShutdownManager._run_power_command(["xdg-screensaver", "lock"], "lock")
+
         try:
             result = ctypes.windll.user32.LockWorkStation()
             if result:
@@ -228,4 +260,17 @@ class ShutdownManager:
                 return False
         except Exception as exc:
             logger.error("[SLEEPGUARD_ACTION] Failed to execute lock: %s", exc)
+            return False
+
+    @staticmethod
+    def _run_power_command(command: list[str], action: str) -> bool:
+        try:
+            subprocess.run(command, check=True, capture_output=True, text=True)
+            logger.info("[SLEEPGUARD_ACTION] %s command accepted.", action.capitalize())
+            return True
+        except subprocess.CalledProcessError as exc:
+            logger.error("%s command failed (exit %d): %s", action, exc.returncode, exc.stderr)
+            return False
+        except OSError as exc:
+            logger.error("Failed to invoke %s command: %s", action, exc)
             return False

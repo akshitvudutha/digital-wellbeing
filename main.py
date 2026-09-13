@@ -46,7 +46,7 @@ def main() -> None:
             from core.logger import logger
             logger.warning(f"Could not set AppUserModelID: {e}")
 
-    parser = argparse.ArgumentParser(description="NYW Windows Tracker")
+    parser = argparse.ArgumentParser(description="NYW desktop activity tracker")
     parser.add_argument(
         "--service",
         action="store_true",
@@ -73,7 +73,22 @@ def main() -> None:
         default="",
         help="Comma separated domains for elevated helper.",
     )
+    parser.add_argument(
+        "--doctor",
+        action="store_true",
+        help="Check local paths and tracking capabilities without starting the app.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit --doctor results as JSON.",
+    )
     args = parser.parse_args()
+
+    if args.doctor:
+        from core.doctor import run_doctor
+
+        sys.exit(run_doctor(as_json=args.json))
 
     from core.logger import logger
     
@@ -98,8 +113,6 @@ def main() -> None:
         app = DigitalWellbeingApp(start_minimized=args.background)
         
         import datetime
-        import sys
-        import os
         import os
         
         logger.info(f"[DEBUG BUILD] Build timestamp: {datetime.datetime.now().isoformat()}")
