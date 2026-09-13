@@ -21,5 +21,20 @@ We are always looking for ways to improve! Please open an issue to suggest a fea
 4. Make sure your code lints.
 5. Issue that pull request!
 
+### Running automated tests
+
+Install the application dependencies and pytest, then run the suite from the
+repository root:
+
+```bash
+python -m pip install -r requirements.txt pytest
+python -m pytest
+```
+
+On a machine without a display, set `QT_QPA_PLATFORM=offscreen` for the test
+process. The repository also contains manual launch and screenshot scripts at
+the root; these are intentionally excluded from pytest collection and can be
+run directly when performing visual QA.
+
 ## Code Style
 Please adhere to standard PEP 8 guidelines for Python code.

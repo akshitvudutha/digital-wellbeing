@@ -18,6 +18,7 @@ import ctypes
 import ctypes.wintypes
 import threading
 from typing import Dict, List, Optional
+from urllib.parse import urlsplit
 
 import win32gui
 import win32process
@@ -111,6 +112,16 @@ class FocusManager(QObject):
         self._app_block_response = response
         self._repo.set_setting("focus_app_block_response", response)
 
+    @staticmethod
+    def _normalize_domain(value: str) -> str:
+        """Normalize a URL or host retained by older Focus Mode callers."""
+        candidate = value.strip().lower()
+        if not candidate:
+            return ""
+        parsed = urlsplit(candidate if "://" in candidate else f"//{candidate}")
+        host = (parsed.hostname or "").rstrip(".")
+        return host[4:] if host.startswith("www.") else host
+
     # ------------------------------------------------------------------
     # Session control
     # ------------------------------------------------------------------
@@ -129,7 +140,7 @@ class FocusManager(QObject):
 
         logger.info(
             f"[FOCUS] Session started. minutes={minutes}, strict={strict_mode}, "
-            f"allowlist={self._allowlist or '(empty → all blocked)'}"
+            f"blocked_apps={self._blocked_apps or '(none)'}"
         )
 
         # Run an immediate enforcement scan before the first timer tick
