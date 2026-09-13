@@ -15,6 +15,7 @@ import {
   Terminal,
   Zap,
   Palette,
+  Download,
 } from "lucide-react"
 
 export default function Home() {
@@ -93,8 +94,17 @@ export default function Home() {
               </p>
 
               {/* Integrated Email Request Pill (with generous scroll margin so navbar never overlaps) */}
-              <div className="pt-4 pb-2 scroll-mt-36" id="beta">
+              <div className="pt-4 pb-2 scroll-mt-36 space-y-3" id="beta">
                 <BetaRequest variant="hero" />
+                <div>
+                  <a
+                    href="/api/download"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-semibold text-slate-800 dark:text-foreground/90 bg-slate-200/70 dark:bg-white/[0.08] hover:bg-slate-300 dark:hover:bg-white/[0.12] border border-slate-300 dark:border-white/[0.1] transition-all duration-200 shadow-sm"
+                  >
+                    <Download className="w-3.5 h-3.5 text-nyw-emerald" />
+                    <span>Download Notch v3.1.6 for Windows (.exe)</span>
+                  </a>
+                </div>
               </div>
 
               {/* Live Interactive Focus Pill Demo */}
@@ -434,11 +444,18 @@ export default function Home() {
                 Experience intentional computing.
               </h2>
               <p className="text-sm md:text-base text-slate-700 dark:text-foreground/75 max-w-lg mx-auto leading-relaxed">
-                Public downloads are paused while we conduct controlled testing. Request access below to join our next cohort.
+                Download the Windows installer directly or register below for beta updates and development news.
               </p>
             </div>
 
-            <div className="pt-2">
+            <div className="pt-2 flex flex-col items-center gap-4">
+              <a
+                href="/api/download"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold transition-all duration-200 bg-nyw-emerald text-slate-950 hover:bg-nyw-emerald/90 shadow-md font-sans"
+              >
+                <Download className="w-4 h-4" />
+                <span>Download Notch v3.1.6 for Windows</span>
+              </a>
               <BetaRequest variant="card" id="beta-cta-input" />
             </div>
 

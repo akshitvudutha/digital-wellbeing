@@ -113,6 +113,8 @@ export async function processBetaRequest(
         os_version: payload.osVersion || null,
         primary_focus: (payload.primaryFocus || '').slice(0, 500) || null,
         ip_hash: ipHash,
+        status: 'pending',
+        requested_at: new Date().toISOString(),
       });
 
 
