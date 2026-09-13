@@ -48,6 +48,22 @@ export function validateEmail(email: string): boolean {
   return emailRegex.test(trimmed);
 }
 
+/**
+ * Simple one-way hash of an IP address for privacy-preserving storage.
+ * We never need to reverse it; it is only used for deduplication/analytics.
+ */
+async function hashIp(ip: string): Promise<string> {
+  try {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(ip);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
+  } catch {
+    return 'unknown';
+  }
+}
+
 export async function processBetaRequest(
   payload: BetaAccessPayload,
   clientIp = 'unknown'
@@ -80,33 +96,46 @@ export async function processBetaRequest(
     };
   }
 
-  const record = {
-    id: `beta_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-    email,
-    osVersion: payload.osVersion || 'Windows 11',
-    primaryFocus: (payload.primaryFocus || '').slice(0, 500),
-    requestedAt: new Date().toISOString(),
-  };
+  // 4. Persist to Supabase (server-side only, service-role key)
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  // 4. External backend integration hook (Supabase / Resend / Webhook)
-  const webhookUrl = process.env.BETA_ACCESS_WEBHOOK_URL;
-  if (webhookUrl) {
+  if (supabaseUrl && supabaseKey) {
     try {
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(record),
+      const { getSupabaseServiceClient } = await import('@/lib/supabase/client');
+      const supabase = getSupabaseServiceClient();
+
+      const ipHash = await hashIp(clientIp);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase.from('beta_requests') as any).insert({
+        email,
+        os_version: payload.osVersion || null,
+        primary_focus: (payload.primaryFocus || '').slice(0, 500) || null,
+        ip_hash: ipHash,
       });
-      if (!response.ok) {
-        console.warn('Upstream beta webhook returned non-200:', response.status);
+
+
+
+      if (error) {
+        // Postgres unique-violation code = 23505
+        if (error.code === '23505') {
+          return {
+            success: true,
+            message: "You're already on the list — we'll be in touch soon.",
+            code: 'ALREADY_REGISTERED',
+          };
+        }
+        // Log other DB errors but do not surface internal details to the client
+        console.error('[Notch Beta] Supabase insert error:', error.message);
       }
-    } catch (error) {
-      console.error('Error forwarding beta registration to upstream webhook:', error);
-      // We still treat as recorded locally to avoid frustrating the prospective tester
+    } catch (err) {
+      console.error('[Notch Beta] Unexpected Supabase error:', err);
+      // Fail open: we still acknowledge the request to avoid frustrating the user
     }
   } else {
-    // In local development or until production credentials are provided:
-    console.log('[Notch Beta Registration Recorded]:', record.email, record.osVersion);
+    // Local development / env vars not yet configured
+    console.log('[Notch Beta Registration - local only]:', email, payload.osVersion);
   }
 
   return {
