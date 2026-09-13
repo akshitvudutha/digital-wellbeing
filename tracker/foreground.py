@@ -4,41 +4,51 @@ import ctypes
 import ctypes.wintypes
 import os
 import re
+import sys
 import time
 from dataclasses import dataclass
 from typing import Optional
 
 import psutil
-import win32gui
-import win32process
+
+if sys.platform == "win32":
+    import win32gui
+    import win32process
+else:
+    win32gui = None
+    win32process = None
 
 from core.constants import AppCategory
 
-_user32 = ctypes.WinDLL("user32", use_last_error=True)
-_kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
-
+_user32 = None
+_kernel32 = None
 _dwmapi = None
-try:
-    _dwmapi = ctypes.WinDLL("dwmapi")
-except Exception:
-    pass
+if sys.platform == "win32":
+    _user32 = ctypes.WinDLL("user32", use_last_error=True)
+    _kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    try:
+        _dwmapi = ctypes.WinDLL("dwmapi")
+    except Exception:
+        pass
 
-# Win32 API signatures
-_kernel32.OpenProcess.argtypes = [ctypes.wintypes.DWORD, ctypes.wintypes.BOOL, ctypes.wintypes.DWORD]
-_kernel32.OpenProcess.restype = ctypes.wintypes.HANDLE
-_kernel32.CloseHandle.argtypes = [ctypes.wintypes.HANDLE]
-_kernel32.CloseHandle.restype = ctypes.wintypes.BOOL
+    # Win32 API signatures
+    _kernel32.OpenProcess.argtypes = [ctypes.wintypes.DWORD, ctypes.wintypes.BOOL, ctypes.wintypes.DWORD]
+    _kernel32.OpenProcess.restype = ctypes.wintypes.HANDLE
+    _kernel32.CloseHandle.argtypes = [ctypes.wintypes.HANDLE]
+    _kernel32.CloseHandle.restype = ctypes.wintypes.BOOL
 
-_kernel32.QueryFullProcessImageNameW.argtypes = [
-    ctypes.wintypes.HANDLE,
-    ctypes.wintypes.DWORD,
-    ctypes.wintypes.LPWSTR,
-    ctypes.POINTER(ctypes.wintypes.DWORD)
-]
-_kernel32.QueryFullProcessImageNameW.restype = ctypes.wintypes.BOOL
+    _kernel32.QueryFullProcessImageNameW.argtypes = [
+        ctypes.wintypes.HANDLE,
+        ctypes.wintypes.DWORD,
+        ctypes.wintypes.LPWSTR,
+        ctypes.POINTER(ctypes.wintypes.DWORD)
+    ]
+    _kernel32.QueryFullProcessImageNameW.restype = ctypes.wintypes.BOOL
 
 GA_ROOTOWNER = 3
 try:
+    if _user32 is None:
+        raise RuntimeError("Win32 API unavailable")
     _user32.GetAncestor.argtypes = [ctypes.wintypes.HWND, ctypes.wintypes.UINT]
     _user32.GetAncestor.restype = ctypes.wintypes.HWND
 except Exception:
@@ -317,6 +327,16 @@ BROWSER_PROCESSES = {
     "sidekick.exe",
     "epic.exe",
     "duckduckgo.exe",
+    "chrome",
+    "chromium",
+    "brave",
+    "firefox",
+    "opera",
+    "vivaldi",
+    "arc",
+    "tor",
+    "waterfox",
+    "librewolf",
 }
 
 _PRIVATE_TITLE_REGEX = re.compile(
@@ -332,7 +352,7 @@ def is_private_browsing(process_name: str, window_title: str) -> bool:
 
     proc_lower = process_name.lower()
 
-    if proc_lower == "tor.exe":
+    if proc_lower in {"tor.exe", "tor"}:
         return True
 
     if proc_lower not in BROWSER_PROCESSES and "browser" not in proc_lower:
@@ -354,6 +374,8 @@ def _try_recover_fullscreen_game(fallback: Optional[ForegroundApp]) -> Optional[
 
 
 def is_window_fullscreen(hwnd: int) -> bool:
+    if sys.platform != "win32":
+        return False
     if not hwnd or hwnd <= 0:
         return False
     try:
@@ -372,6 +394,27 @@ def is_window_fullscreen(hwnd: int) -> bool:
 
 def get_foreground_app(last_known_app: Optional[ForegroundApp] = None) -> Optional[ForegroundApp]:
     global _last_valid_app
+    if sys.platform != "win32":
+        from tracker.unix_foreground import get_foreground_info
+
+        info = get_foreground_info()
+        if info is None:
+            return None
+        title = str(info["window_title"])
+        process_name = str(info["process_name"])
+        if is_private_browsing(process_name, title):
+            title = "Private Browsing"
+        app = ForegroundApp(
+            process_name=process_name,
+            exe_path=str(info["exe_path"]),
+            pid=int(info["pid"]),
+            window_title=title[:512],
+            hwnd=int(info["hwnd"]),
+            is_fullscreen=bool(info["is_fullscreen"]),
+        )
+        _last_valid_app = app
+        return app
+
     try:
         hwnd = win32gui.GetForegroundWindow()
         fallback = last_known_app or _last_valid_app

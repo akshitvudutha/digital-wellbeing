@@ -1,0 +1,35 @@
+name: Cross-platform tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  platform-imports:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Verify platform modules
+        run: |
+          python -m unittest tests.test_platform_support tests.test_autostart -v
+          python -c "from tracker.foreground import get_foreground_app; from tracker.idle import get_idle_seconds; from tracker.manager import TrackingManager; print('tracking imports ok')"
