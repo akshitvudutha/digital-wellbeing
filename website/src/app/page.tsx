@@ -1,415 +1,459 @@
 "use client"
 import { useState } from "react"
-import { siteConfig } from "@/config/site"
-import { Button } from "@/components/ui/button"
-import { Download, Shield, Clock, Moon, Monitor, ChartPie, Activity, Lock, CheckCircle2, ChevronDown, Code2 } from "lucide-react"
-import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
-import { ImageLightbox } from "@/components/ui/lightbox"
-import { StatsDisplay } from "@/components/ui/stats"
-
-const DEMO_TABS = [
-  { id: "overview", label: "Overview", icon: Monitor, fallback: "/images/app/home-dark.png", desc: "Your daily dashboard summarizing active time and focus sessions." },
-  { id: "usage", label: "Usage", icon: Activity, fallback: "/images/app/usage-dark.png", desc: "Detailed breakdown of application usage and categorized screen time." },
-  { id: "focus", label: "Focus", icon: Clock, fallback: "/images/app/focus-dark.png", desc: "Define an application blocklist and stay in the zone without distractions." },
-  { id: "applocker", label: "App Locker", icon: Lock, fallback: "/images/app/app-locker-dark.png", desc: "Protect sensitive applications with Windows Hello biometrics or PIN." },
-  { id: "insights", label: "Insights", icon: ChartPie, fallback: "/images/app/insights-dark.png", desc: "Analyze historical trends to build better digital habits." },
-  { id: "sleepguard", label: "SleepGuard", icon: Moon, fallback: "/images/app/sleepguard-dark.png", desc: "Automatically lock or sleep your PC when inactivity is detected late at night." },
-]
+import Image from "next/image"
+import Link from "next/link"
+import { siteConfig } from "@/config/site"
+import { FocusPreview } from "@/components/interactive/focus-preview"
+import { CapabilitiesCanvas } from "@/components/interactive/capabilities-canvas"
+import { BetaRequest } from "@/components/beta/beta-request"
+import {
+  ShieldCheck,
+  Cpu,
+  Lock,
+  Moon,
+  Sun,
+  Hourglass,
+  Focus,
+  CheckCircle2,
+  HardDrive,
+  EyeOff,
+  Sparkles,
+  ArrowRight,
+  Terminal,
+  Zap,
+  Layers,
+  Palette,
+} from "lucide-react"
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState(DEMO_TABS[0].id)
-  const activeTabData = DEMO_TABS.find(t => t.id === activeTab) || DEMO_TABS[0]
-  const [faqOpen, setFaqOpen] = useState<number | null>(0)
+  const [heroTheme, setHeroTheme] = useState<"dark" | "light">("dark")
+  const [themeSectionMode, setThemeSectionMode] = useState<"dark" | "light">("dark")
+  const [themeSectionScreen, setThemeSectionScreen] = useState<"home" | "usage" | "focus" | "insights" | "settings">("home")
+
+  const themeScreens = {
+    home: {
+      title: "Dashboard & Realtime Activity",
+      desc: "Personalized greeting, instant glance at daily screen time, active app breakdown, and quick focus controls.",
+      dark: "/images/app/home-dark.png",
+      light: "/images/app/home-light.png",
+    },
+    usage: {
+      title: "Usage & Hourly Intensity",
+      desc: "Precise hourly active distribution, 1-day, 7-day, and 30-day activity trends, and modern category breakdowns.",
+      dark: "/images/app/usage-dark.png",
+      light: "/images/app/usage-light.png",
+    },
+    focus: {
+      title: "Focus Mode & Preflight Enforcement",
+      desc: "Process-level application allowlisting and hosts-based website distraction blocking.",
+      dark: "/images/app/focus-dark.png",
+      light: "/images/app/focus-light.png",
+    },
+    insights: {
+      title: "Foreground Intelligence & Trends",
+      desc: "Category distributions, weekly screen time patterns, and high-contrast analytical charts.",
+      dark: "/images/app/insights-dark.png",
+      light: "/images/app/insights-light.png",
+    },
+    settings: {
+      title: "Categorized Preferences & Privacy",
+      desc: "Display name customization, clean segmented theme controls, SleepGuard timing, and local database management.",
+      dark: "/images/app/settings-dark.png",
+      light: "/images/app/settings-light.png",
+    },
+  }
 
   return (
-    <div className="flex flex-col min-h-screen selection:bg-accent/30 selection:text-foreground">
+    <div className="flex flex-col min-h-screen bg-background text-foreground transition-colors duration-300">
       <main className="flex-1">
         
-        {/* HERO SECTION */}
-        <section className="relative pt-32 pb-24 md:pt-48 md:pb-32 overflow-hidden">
-          <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-background via-background to-background" />
-          
-          <div className="container mx-auto px-4 md:px-8 text-center max-w-[1400px]">
+        {/* ===================================================
+            HERO SECTION
+        =================================================== */}
+        <section className="relative pt-36 pb-20 md:pt-48 md:pb-28 overflow-hidden text-center">
+          {/* Ambient Glow / Radial Gradients */}
+          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[650px] h-[350px] bg-gradient-to-tr from-nyw-emerald/10 via-nyw-amber/5 to-transparent blur-[140px] pointer-events-none -z-10" />
+
+          <div className="container mx-auto px-6 max-w-5xl">
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-              className="max-w-4xl mx-auto"
+              transition={{ duration: 0.6, ease: "easeOut" }}
+              className="space-y-6"
             >
-              <div className="inline-flex items-center rounded-full border border-border/50 bg-surface px-4 py-1.5 text-xs font-semibold backdrop-blur-md mb-8 tracking-wide text-foreground/80 shadow-sm">
-                <span className="flex h-2 w-2 rounded-full bg-accent mr-2"></span>
-                NYW · Latest stable v{siteConfig.stableVersion}
+              {/* Category Pill Tag */}
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-surface border border-border text-[11px] font-mono uppercase tracking-[0.2em] text-foreground/70 backdrop-blur-md">
+                <span className="w-1.5 h-1.5 rounded-full bg-nyw-emerald animate-pulse" />
+                <span>Controlled Beta · Windows 10 & 11 (v3.1.6)</span>
               </div>
-              
-              <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight mb-8 leading-[1.1]">
-                Your time. <br className="hidden md:block" />
-                <span className="text-foreground/90">Your rules.</span>
+
+              {/* Bold, Calm Headline */}
+              <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold tracking-tight text-foreground leading-[1.1] max-w-4xl mx-auto">
+                Control your machine. <br />
+                <span className="text-foreground/70 font-semibold">
+                  Not the other way around.
+                </span>
               </h1>
-              
-              <p className="text-lg md:text-2xl text-foreground/60 mb-12 max-w-2xl mx-auto leading-relaxed font-medium">
-                Understand your screen time, focus on what matters, protect distracting applications, and build better digital habits on Windows.
+
+              {/* Subtext */}
+              <p className="text-base sm:text-xl text-foreground/60 max-w-2xl mx-auto leading-relaxed font-normal">
+                Notch is a digital wellbeing and attention-control app for Windows. Engineered to remove digital clutter at the process level, leaving you with only the work that matters.
               </p>
-              
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <Link href={siteConfig.links.download}>
-                  <Button size="lg" className="rounded-xl w-full sm:w-auto font-bold gap-2 text-base h-14 px-8 shadow-xl shadow-accent/20 transition-all hover:scale-105 bg-accent text-background hover:bg-accent/90">
-                    <Download className="h-5 w-5" />
-                    Download for Windows
-                  </Button>
-                </Link>
-                <Link href="#explore">
-                  <Button variant="outline" size="lg" className="rounded-xl w-full sm:w-auto font-semibold h-14 px-8 border-border/60 bg-surface/30 backdrop-blur hover:bg-surface-hover">
-                    Explore NYW
-                  </Button>
-                </Link>
+
+              {/* Integrated Email Request Pill */}
+              <div className="pt-4 pb-2" id="beta">
+                <BetaRequest variant="hero" />
               </div>
 
-              <StatsDisplay />
-            </motion.div>
-
-            {/* HERO PRODUCT IMAGE - MASSIVE */}
-            <motion.div 
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-              className="mt-24 relative w-full mx-auto"
-            >
-              <div className="relative rounded-xl border border-glass-border bg-glass p-1 md:p-2 shadow-2xl backdrop-blur-xl">
-                <div className="aspect-[16/9] w-full rounded-lg bg-black border border-border/40 overflow-hidden relative">
-                  <ImageLightbox 
-                    src="/images/app/home-dark.png" 
-                    alt="NYW v3.1.6 Dashboard in Dark Mode" 
-                    className="w-full h-full"
-                    priority
-                  />
-                </div>
+              {/* Live Interactive Focus Pill Demo */}
+              <div className="pt-10">
+                <FocusPreview />
               </div>
             </motion.div>
           </div>
         </section>
 
-        {/* PRODUCT VALUE STRIP */}
-        <section className="py-12 border-y border-border/20 bg-surface/30 backdrop-blur-sm">
-          <div className="container mx-auto px-4 md:px-8 max-w-[1400px]">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-              {[
-                { title: "Understand your time", desc: "Detailed, local-first analytics." },
-                { title: "Protect what matters", desc: "Biometric app locker security." },
-                { title: "Build focused sessions", desc: "Application-level blocklists." },
-                { title: "Stay in control", desc: "Native Windows experience." },
-              ].map((val, idx) => (
-                <div key={idx} className="flex flex-col gap-1 border-l-2 border-accent/40 pl-4">
-                  <h4 className="font-bold text-foreground text-lg">{val.title}</h4>
-                  <p className="text-foreground/50 text-sm font-medium">{val.desc}</p>
-                </div>
-              ))}
+        {/* ===================================================
+            SECTION 02: PRODUCT EXPERIENCE & NATIVE DESKTOP CANVAS
+        =================================================== */}
+        <section id="product" className="scroll-mt-28 py-24 md:py-32 border-t border-border relative">
+          <div className="container mx-auto px-6 max-w-5xl">
+            <div className="text-center max-w-2xl mx-auto mb-10 space-y-3">
+              <span className="text-[11px] font-mono tracking-[0.2em] text-nyw-emerald uppercase font-semibold">
+                NATIVE OS INTEGRATION · v3.1.6
+              </span>
+              <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-foreground">
+                A calm, silent presence on Windows.
+              </h2>
+              <p className="text-sm md:text-base text-foreground/60 leading-relaxed">
+                Built natively with PySide6 and the Win32 API. No Electron bloat, no resource hogging, and zero intrusive popups.
+              </p>
             </div>
-          </div>
-        </section>
 
-        {/* STORYTELLING: 01 UNDERSTAND */}
-        <section id="explore" className="py-32 overflow-hidden">
-          <div className="container mx-auto px-4 md:px-8 max-w-[1400px]">
-            <div className="flex flex-col lg:flex-row items-center gap-16 lg:gap-24">
-              <div className="w-full lg:w-[35%] space-y-6">
-                <div className="inline-flex items-center rounded-md bg-surface px-3 py-1 text-sm font-semibold border border-border/50 text-accent">01 // Understand</div>
-                <h2 className="text-4xl md:text-5xl font-bold tracking-tight">See where your time goes.</h2>
-                <p className="text-xl text-foreground/60 leading-relaxed">
-                  The Usage dashboard provides a clear, categorized breakdown of your screen time. See your active time, idle time, and identify your most distracting applications natively.
-                </p>
-                <ul className="space-y-4 pt-4">
-                  <li className="flex items-start gap-3 text-foreground/80">
-                    <CheckCircle2 className="w-6 h-6 text-accent shrink-0" />
-                    <span><strong>Categorized analytics:</strong> Automatically group related applications.</span>
-                  </li>
-                  <li className="flex items-start gap-3 text-foreground/80">
-                    <CheckCircle2 className="w-6 h-6 text-accent shrink-0" />
-                    <span><strong>Idle detection:</strong> Smart tracking separates real usage from away time.</span>
-                  </li>
-                </ul>
-              </div>
-              <div className="w-full lg:w-[65%]">
-                <div className="aspect-[16/9] w-full rounded-xl bg-black border border-border/40 overflow-hidden shadow-2xl">
-                  <ImageLightbox src="/images/app/usage-dark.png" alt="Usage screen" className="w-full h-full" />
-                </div>
-              </div>
+            {/* Interactive Theme Switcher for Hero App Screenshot */}
+            <div className="flex items-center justify-center gap-2 mb-6">
+              <button
+                onClick={() => setHeroTheme("dark")}
+                className={`px-4 py-2 rounded-full text-xs font-semibold cursor-pointer transition-all duration-200 flex items-center gap-2 ${
+                  heroTheme === "dark"
+                    ? "bg-white/[0.12] text-foreground border border-white/20 shadow-sm"
+                    : "text-foreground/50 hover:text-foreground/80 hover:bg-white/[0.04]"
+                }`}
+              >
+                <Moon className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Dark Obsidian</span>
+              </button>
+              <button
+                onClick={() => setHeroTheme("light")}
+                className={`px-4 py-2 rounded-full text-xs font-semibold cursor-pointer transition-all duration-200 flex items-center gap-2 ${
+                  heroTheme === "light"
+                    ? "bg-nyw-emerald/15 text-nyw-emerald border border-nyw-emerald/30 shadow-sm"
+                    : "text-foreground/50 hover:text-foreground/80 hover:bg-white/[0.04]"
+                }`}
+              >
+                <Sun className="w-3.5 h-3.5 text-nyw-amber" />
+                <span>Light Theme</span>
+              </button>
             </div>
-          </div>
-        </section>
 
-        {/* STORYTELLING: 02 FOCUS */}
-        <section className="py-32 bg-surface/10 border-y border-border/20 overflow-hidden">
-          <div className="container mx-auto px-4 md:px-8 max-w-[1400px]">
-            <div className="flex flex-col lg:flex-row-reverse items-center gap-16 lg:gap-24">
-              <div className="w-full lg:w-[35%] space-y-6">
-                <div className="inline-flex items-center rounded-md bg-surface px-3 py-1 text-sm font-semibold border border-border/50 text-accent">02 // Focus</div>
-                <h2 className="text-4xl md:text-5xl font-bold tracking-tight">Create distraction-free sessions.</h2>
-                <p className="text-xl text-foreground/60 leading-relaxed">
-                  Block distracting Windows applications entirely during a Focus session. NYW operates at the OS level to manage application processes—no browser extensions required.
-                </p>
-                <ul className="space-y-4 pt-4">
-                  <li className="flex items-start gap-3 text-foreground/80">
-                    <CheckCircle2 className="w-6 h-6 text-accent shrink-0" />
-                    <span><strong>Application-level blocking:</strong> Instantly restrict any .exe from running.</span>
-                  </li>
-                  <li className="flex items-start gap-3 text-foreground/80">
-                    <CheckCircle2 className="w-6 h-6 text-accent shrink-0" />
-                    <span><strong>Strict Mode:</strong> Prevent yourself from stopping the timer early.</span>
-                  </li>
-                </ul>
-              </div>
-              <div className="w-full lg:w-[65%]">
-                <div className="aspect-[16/9] w-full rounded-xl bg-black border border-border/40 overflow-hidden shadow-2xl">
-                  <ImageLightbox src="/images/app/focus-dark.png" alt="Focus mode screen" className="w-full h-full" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* STORYTELLING: 03 PROTECT */}
-        <section className="py-32 overflow-hidden">
-          <div className="container mx-auto px-4 md:px-8 max-w-[1400px]">
-            <div className="flex flex-col lg:flex-row items-center gap-16 lg:gap-24">
-              <div className="w-full lg:w-[35%] space-y-6">
-                <div className="inline-flex items-center rounded-md bg-surface px-3 py-1 text-sm font-semibold border border-border/50 text-accent">03 // Security</div>
-                <h2 className="text-4xl md:text-5xl font-bold tracking-tight">Lock sensitive applications.</h2>
-                <p className="text-xl text-foreground/60 leading-relaxed">
-                  Use App Locker to restrict access to specific applications on your PC. Unlocking requires your secure Windows Hello biometric or PIN authentication.
-                </p>
-                <ul className="space-y-4 pt-4">
-                  <li className="flex items-start gap-3 text-foreground/80">
-                    <CheckCircle2 className="w-6 h-6 text-accent shrink-0" />
-                    <span><strong>Windows Hello Integration:</strong> Native biometric security.</span>
-                  </li>
-                  <li className="flex items-start gap-3 text-foreground/80">
-                    <CheckCircle2 className="w-6 h-6 text-accent shrink-0" />
-                    <span><strong>Timeout controls:</strong> Automatically re-lock apps after you finish.</span>
-                  </li>
-                </ul>
-              </div>
-              <div className="w-full lg:w-[65%]">
-                <div className="aspect-[16/9] w-full rounded-xl bg-black border border-border/40 overflow-hidden shadow-2xl">
-                  <ImageLightbox src="/images/app/app-locker-dark.png" alt="App Locker screen" className="w-full h-full" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* STORYTELLING: 04 AUTHENTICATE */}
-        <section className="py-32 bg-surface/10 border-y border-border/20 overflow-hidden">
-          <div className="container mx-auto px-4 md:px-8 max-w-[1400px]">
-            <div className="flex flex-col lg:flex-row-reverse items-center gap-16 lg:gap-24">
-              <div className="w-full lg:w-[35%] space-y-6">
-                <div className="inline-flex items-center rounded-md bg-surface px-3 py-1 text-sm font-semibold border border-border/50 text-accent">04 // Authentication</div>
-                <h2 className="text-4xl md:text-5xl font-bold tracking-tight">Protection that uses Windows-native authentication.</h2>
-                <p className="text-xl text-foreground/60 leading-relaxed">
-                  Protect selected applications with Windows Hello or PIN authentication.
-                </p>
-                <ul className="space-y-4 pt-4">
-                  <li className="flex items-start gap-3 text-foreground/80">
-                    <Shield className="w-6 h-6 text-accent shrink-0" />
-                    <span><strong>Windows-native authentication:</strong> Leverages built-in OS security.</span>
-                  </li>
-                  <li className="flex items-start gap-3 text-foreground/80">
-                    <Lock className="w-6 h-6 text-accent shrink-0" />
-                    <span><strong>PIN fallback:</strong> Use a secure PIN fallback where biometrics are unavailable.</span>
-                  </li>
-                  <li className="flex items-start gap-3 text-foreground/80">
-                    <CheckCircle2 className="w-6 h-6 text-accent shrink-0" />
-                    <span><strong>Works with App Locker:</strong> Intercepts application launches instantly.</span>
-                  </li>
-                </ul>
-              </div>
-              <div className="w-full lg:w-[65%]">
-                <div className="aspect-[16/9] w-full rounded-xl bg-black border border-border/40 overflow-hidden shadow-2xl">
-                  <ImageLightbox src="/images/app/authentication-dark.png" alt="Authentication screen" className="w-full h-full" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* STORYTELLING: 05 RECOVER */}
-        <section className="py-32 overflow-hidden">
-          <div className="container mx-auto px-4 md:px-8 max-w-[1400px]">
-            <div className="flex flex-col lg:flex-row items-center gap-16 lg:gap-24">
-              <div className="w-full lg:w-[35%] space-y-6">
-                <div className="inline-flex items-center rounded-md bg-surface px-3 py-1 text-sm font-semibold border border-border/50 text-accent">05 // Recover</div>
-                <h2 className="text-4xl md:text-5xl font-bold tracking-tight">Manage downtime gracefully.</h2>
-                <p className="text-xl text-foreground/60 leading-relaxed">
-                  SleepGuard monitors your inactivity. If you fall asleep watching a video, it will automatically lock or suspend your PC after a warning countdown.
-                </p>
-                <ul className="space-y-4 pt-4">
-                  <li className="flex items-start gap-3 text-foreground/80">
-                    <CheckCircle2 className="w-6 h-6 text-accent shrink-0" />
-                    <span><strong>Smart inactivity detection:</strong> Only triggers when you are truly away.</span>
-                  </li>
-                  <li className="flex items-start gap-3 text-foreground/80">
-                    <CheckCircle2 className="w-6 h-6 text-accent shrink-0" />
-                    <span><strong>Custom actions:</strong> Choose between Lock, Sleep, or Hibernate.</span>
-                  </li>
-                </ul>
-              </div>
-              <div className="w-full lg:w-[65%]">
-                <div className="aspect-[16/9] w-full rounded-xl bg-black border border-border/40 overflow-hidden shadow-2xl">
-                  <ImageLightbox src="/images/app/sleepguard-dark.png" alt="SleepGuard screen" className="w-full h-full" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* INTERACTIVE DEMO GALLERY */}
-        <section className="py-32 bg-background relative overflow-hidden">
-          <div className="container mx-auto px-4 md:px-8 max-w-[1400px]">
-            <div className="text-center max-w-3xl mx-auto mb-16">
-              <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">Explore the complete UI</h2>
-              <p className="text-foreground/60 text-lg">Every setting and dashboard designed with precision.</p>
-            </div>
-            
-            <div className="flex flex-col lg:flex-row gap-12 lg:gap-16">
-              
-              {/* Tab Navigation */}
-              <div className="flex flex-col gap-2 w-full lg:w-[25%]">
-                {DEMO_TABS.map((tab) => {
-                  const isActive = activeTab === tab.id
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`flex flex-col gap-2 p-5 rounded-2xl text-left transition-all duration-200 border ${
-                        isActive 
-                          ? "bg-surface border-border shadow-md" 
-                          : "bg-transparent border-transparent hover:bg-surface/40"
-                      }`}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className={`p-2 rounded-lg ${isActive ? "bg-accent/10 text-accent" : "bg-transparent text-foreground/50"}`}>
-                          <tab.icon className="w-5 h-5" />
-                        </div>
-                        <h4 className={`text-lg font-bold ${isActive ? "text-foreground" : "text-foreground/70"}`}>{tab.label}</h4>
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-
-              {/* Dynamic Image Display */}
-              <div className="w-full lg:w-[75%]">
-                <div className="relative rounded-2xl border border-glass-border bg-glass p-2 shadow-2xl overflow-hidden aspect-[16/9]">
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={activeTab}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.25 }}
-                      className="absolute inset-2 rounded-xl overflow-hidden bg-black border border-border/30"
-                    >
-                      <ImageLightbox 
-                        src={activeTabData.fallback}
-                        alt={`NYW ${activeTabData.label} UI`}
-                        className="w-full h-full"
-                      />
-                    </motion.div>
-                  </AnimatePresence>
-                </div>
-                <div className="flex items-center justify-center gap-2 mt-6 text-sm text-foreground/40 font-medium">
-                  <Monitor className="w-4 h-4" /> <span>Click any screenshot to expand actual size.</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* WHY NYW / TRUST */}
-        <section className="py-24 bg-surface/10 border-y border-border/20">
-          <div className="container mx-auto px-4 md:px-8 max-w-[1400px]">
-            <div className="grid md:grid-cols-3 gap-12">
-              <div className="flex flex-col gap-4">
-                <Shield className="w-10 h-10 text-accent" />
-                <h3 className="text-2xl font-bold">Privacy first. Local only.</h3>
-                <p className="text-foreground/60 leading-relaxed">
-                  Your screen time data is strictly stored locally on your device in an SQLite database. No telemetry, no accounts, no cloud sync.
-                </p>
-              </div>
-              <div className="flex flex-col gap-4">
-                <Monitor className="w-10 h-10 text-accent" />
-                <h3 className="text-2xl font-bold">Windows Native</h3>
-                <p className="text-foreground/60 leading-relaxed">
-                  Designed specifically for Windows 10 and 11, utilizing OS-level process management and native Windows Hello biometrics.
-                </p>
-              </div>
-              <div className="flex flex-col gap-4">
-                <Code2 className="w-10 h-10 text-accent" />
-                <h3 className="text-2xl font-bold">Open Source</h3>
-                <p className="text-foreground/60 leading-relaxed">
-                  Distributed transparently on GitHub. You can inspect the source code, compile it yourself, or download the verified public releases.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* FAQ */}
-        <section className="py-32">
-          <div className="container mx-auto px-4 md:px-8 max-w-4xl">
-            <div className="text-center mb-16">
-              <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">Frequently Asked Questions</h2>
-            </div>
-            
-            <div className="space-y-4">
-              {[
-                { q: "What does NYW stand for?", a: "NYW stands for 'Not Your Wellbeing', a premium digital wellbeing and screen time tracker for Windows." },
-                { q: "Does Focus Mode block websites?", a: "No. Currently, NYW's Focus Mode is strictly application-level (e.g., blocking discord.exe). It does not interact with your browser to block specific URLs or websites." },
-                { q: "How does App Locker work?", a: "App Locker uses OS process suspension combined with Windows Hello to securely lock specified applications behind your biometric or PIN prompt." },
-                { q: "Does NYW collect my data?", a: "No. NYW operates entirely offline. All analytics and settings are stored locally on your machine." }
-              ].map((faq, idx) => (
-                <div key={idx} className="border border-border/40 rounded-xl overflow-hidden bg-surface/30">
-                  <button 
-                    className="w-full text-left px-6 py-5 flex items-center justify-between font-bold text-lg hover:bg-surface/50 transition-colors"
-                    onClick={() => setFaqOpen(faqOpen === idx ? null : idx)}
+            {/* Desktop Experience Mockup Container */}
+            <div className="glass-card rounded-3xl p-3 md:p-5 border border-border shadow-2xl relative">
+              <div className="relative rounded-2xl overflow-hidden bg-black/40 border border-border aspect-[16/10] md:aspect-[16/9]">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={heroTheme}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="relative w-full h-full"
                   >
-                    {faq.q}
-                    <ChevronDown className={`w-5 h-5 transition-transform ${faqOpen === idx ? "rotate-180" : ""}`} />
-                  </button>
-                  <AnimatePresence>
-                    {faqOpen === idx && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="px-6 pb-5 text-foreground/60 leading-relaxed"
-                      >
-                        {faq.a}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                    <Image
+                      src={heroTheme === "dark" ? "/images/app/home-dark.png" : "/images/app/home-light.png"}
+                      alt={`Notch Desktop Interface (${heroTheme} theme)`}
+                      fill
+                      sizes="(max-width: 1200px) 100vw, 1200px"
+                      className="object-cover object-top"
+                      priority
+                    />
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+
+              {/* Caption */}
+              <div className="pt-4 px-3 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-foreground/50 font-mono">
+                <div className="flex items-center gap-2">
+                  <Cpu className="w-3.5 h-3.5 text-nyw-emerald" />
+                  <span>Sub-25MB RAM Footprint · 0% Idle CPU Usage</span>
                 </div>
-              ))}
+                <span>Native Windows Mica Acrylic Foundation · {heroTheme === "dark" ? "Dark Obsidian" : "Light Theme"}</span>
+              </div>
             </div>
           </div>
         </section>
 
-        {/* FINAL CTA */}
-        <section className="py-32 bg-[radial-gradient(ellipse_at_bottom,_var(--tw-gradient-stops))] from-accent/10 via-background to-background relative border-t border-border/20">
-          <div className="container mx-auto px-4 md:px-8 text-center max-w-3xl">
-            <h2 className="text-4xl md:text-6xl font-black tracking-tight mb-8">Take back your time.</h2>
-            <p className="text-xl text-foreground/60 mb-12">
-              Start building healthier digital habits today with NYW for Windows.
-            </p>
-            <div className="flex justify-center">
-              <Link href={siteConfig.links.download}>
-                <Button size="lg" className="rounded-xl font-bold gap-2 text-base h-16 px-10 shadow-2xl shadow-accent/20 transition-all hover:scale-105 bg-accent text-background hover:bg-accent/90">
-                  <Download className="h-6 w-6" />
-                  Download v{siteConfig.stableVersion}
-                </Button>
-              </Link>
+        {/* ===================================================
+            SECTION 03: CORE CAPABILITIES (INTERACTIVE)
+        =================================================== */}
+        <section id="capabilities" className="scroll-mt-28 py-24 md:py-32 border-t border-border bg-[#07090c] relative">
+          <div className="container mx-auto px-6 max-w-6xl text-center">
+            <div className="max-w-2xl mx-auto mb-14 space-y-3">
+              <span className="text-[11px] font-mono tracking-[0.2em] text-nyw-emerald uppercase font-semibold">
+                SYSTEM ARCHITECTURE
+              </span>
+              <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-foreground">
+                Engineered for focus. Tested for safety.
+              </h2>
+              <p className="text-sm md:text-base text-foreground/60 leading-relaxed">
+                Explore the foundational capabilities engineered to give you control over your operating system.
+              </p>
             </div>
-            <p className="mt-8 text-sm text-foreground/40 font-medium">Free and Open Source • Windows 10 & 11</p>
+
+            {/* Interactive Tabbed Capabilities Canvas */}
+            <CapabilitiesCanvas />
+          </div>
+        </section>
+
+        {/* ===================================================
+            SECTION 04: THEME THAT FITS YOUR WORKSPACE
+        =================================================== */}
+        <section id="themes" className="scroll-mt-28 py-24 md:py-32 border-t border-border relative">
+          <div className="container mx-auto px-6 max-w-5xl">
+            <div className="text-center max-w-2xl mx-auto mb-12 space-y-3">
+              <span className="text-[11px] font-mono tracking-[0.2em] text-nyw-amber uppercase font-semibold flex items-center justify-center gap-1.5">
+                <Palette className="w-3.5 h-3.5" />
+                <span>THEME THAT FITS YOUR WORKSPACE</span>
+              </span>
+              <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-foreground">
+                Crafted for day and night.
+              </h2>
+              <p className="text-sm md:text-base text-foreground/60 leading-relaxed">
+                Notch supports both Dark and Light themes. Engineered natively with clean typography, high-contrast analytics, and Mica acrylic aesthetics tailored for any ambient lighting.
+              </p>
+            </div>
+
+            {/* Screen Selector & Theme Selector Bar */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6 p-2 rounded-2xl glass-card border border-border">
+              {/* Screen Tabs */}
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar w-full sm:w-auto">
+                {(["home", "usage", "focus", "insights", "settings"] as const).map((scr) => (
+                  <button
+                    key={scr}
+                    onClick={() => setThemeSectionScreen(scr)}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold capitalize cursor-pointer transition-all ${
+                      themeSectionScreen === scr
+                        ? "bg-foreground/10 text-foreground border border-border shadow-sm"
+                        : "text-foreground/50 hover:text-foreground/80"
+                    }`}
+                  >
+                    {scr}
+                  </button>
+                ))}
+              </div>
+
+              {/* Mode Toggle */}
+              <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-surface border border-border">
+                <button
+                  onClick={() => setThemeSectionMode("dark")}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center gap-1.5 ${
+                    themeSectionMode === "dark"
+                      ? "bg-white/[0.12] text-foreground border border-white/20 shadow-sm"
+                      : "text-foreground/50 hover:text-foreground"
+                  }`}
+                >
+                  <Moon className="w-3 h-3 text-indigo-400" />
+                  <span>Dark</span>
+                </button>
+                <button
+                  onClick={() => setThemeSectionMode("light")}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center gap-1.5 ${
+                    themeSectionMode === "light"
+                      ? "bg-nyw-emerald/15 text-nyw-emerald border border-nyw-emerald/30 shadow-sm"
+                      : "text-foreground/50 hover:text-foreground"
+                  }`}
+                >
+                  <Sun className="w-3 h-3 text-nyw-amber" />
+                  <span>Light</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Showcase Display Card */}
+            <div className="glass-card rounded-3xl p-3 md:p-5 border border-border shadow-2xl space-y-4">
+              <div className="relative rounded-2xl overflow-hidden bg-black/40 border border-border aspect-[16/10] md:aspect-[16/9]">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={`${themeSectionScreen}-${themeSectionMode}`}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="relative w-full h-full"
+                  >
+                    <Image
+                      src={themeScreens[themeSectionScreen][themeSectionMode]}
+                      alt={`${themeScreens[themeSectionScreen].title} in ${themeSectionMode} mode`}
+                      fill
+                      sizes="(max-width: 1200px) 100vw, 1200px"
+                      className="object-cover object-top"
+                    />
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+
+              <div className="pt-2 px-3 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
+                <div>
+                  <span className="font-bold text-foreground">{themeScreens[themeSectionScreen].title}</span>
+                  <span className="text-foreground/50 ml-2 font-normal hidden md:inline">{themeScreens[themeSectionScreen].desc}</span>
+                </div>
+                <span className="font-mono text-foreground/40 text-[11px]">
+                  Windows Desktop Application · {themeSectionMode === "dark" ? "Dark Obsidian" : "Light Theme"}
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ===================================================
+            SECTION 05: PHILOSOPHY & DIGITAL WELLBEING STORY
+        =================================================== */}
+        <section id="philosophy" className="scroll-mt-28 py-24 md:py-32 border-t border-border bg-[#07090c] relative">
+          <div className="container mx-auto px-6 max-w-5xl">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+              <div className="lg:col-span-6 space-y-6 text-left">
+                <span className="text-[11px] font-mono tracking-[0.2em] text-nyw-amber uppercase font-semibold">
+                  HONEST WELLBEING
+                </span>
+                <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-foreground leading-tight">
+                  Why conventional blockers fail.
+                </h2>
+                <div className="space-y-4 text-sm md:text-base text-foreground/65 leading-relaxed">
+                  <p>
+                    Conventional website blockers ask you to negotiate with yourself every ten minutes. They rely on browser extensions you can disable in two clicks, and barrage you with patronizing &quot;productivity scores&quot;.
+                  </p>
+                  <p>
+                    Willpower is a finite resource. When you are mentally exhausted at 4:00 PM, you will click past an extension block every single time.
+                  </p>
+                  <p>
+                    Notch operates on a mechanical principle: <strong>if the distracting application is locked or suspended at the process level, there is nothing left to negotiate.</strong> You return to your work because there is nothing else on the table.
+                  </p>
+                </div>
+              </div>
+
+              <div className="lg:col-span-6">
+                <div className="space-y-4">
+                  <div className="p-6 rounded-2xl glass-card border border-border text-left">
+                    <h4 className="text-sm font-bold text-foreground uppercase tracking-wide flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-nyw-amber" />
+                      <span>Zero Friction Negotiation</span>
+                    </h4>
+                    <p className="text-xs text-foreground/55 mt-2 leading-relaxed">
+                      Lock your game clients and social platforms into Deep Focus sessions. The barrier is physical and intentional, not psychological.
+                    </p>
+                  </div>
+
+                  <div className="p-6 rounded-2xl glass-card border border-border text-left">
+                    <h4 className="text-sm font-bold text-foreground uppercase tracking-wide flex items-center gap-2">
+                      <Terminal className="w-4 h-4 text-nyw-emerald" />
+                      <span>Protected Process Architecture</span>
+                    </h4>
+                    <p className="text-xs text-foreground/55 mt-2 leading-relaxed">
+                      Windows system processes (`explorer.exe`, `dwm.exe`, background services) are strictly immune to termination, keeping your PC stable.
+                    </p>
+                  </div>
+
+                  <div className="p-6 rounded-2xl glass-card border border-border text-left">
+                    <h4 className="text-sm font-bold text-foreground uppercase tracking-wide flex items-center gap-2">
+                      <Moon className="w-4 h-4 text-indigo-400" />
+                      <span>Circadian Sleep Guard</span>
+                    </h4>
+                    <p className="text-xs text-foreground/55 mt-2 leading-relaxed">
+                      Prevents late-night passive video bingeing by safely sleeping the computer when user inactivity is verified.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ===================================================
+            SECTION 06: PRIVACY GUARANTEE
+        =================================================== */}
+        <section id="privacy" className="scroll-mt-28 py-24 md:py-32 border-t border-border relative">
+          <div className="container mx-auto px-6 max-w-5xl">
+            <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
+              <span className="text-[11px] font-mono tracking-[0.2em] text-nyw-emerald uppercase font-semibold">
+                PRIVACY FIRST · LOCAL ONLY
+              </span>
+              <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-foreground">
+                Your data never leaves your hard drive.
+              </h2>
+              <p className="text-sm md:text-base text-foreground/60 leading-relaxed">
+                Privacy is not a feature we toggle on. It is the fundamental architecture of Notch.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+              <div className="p-6 rounded-2xl glass-card border border-border space-y-3">
+                <HardDrive className="w-6 h-6 text-nyw-emerald" />
+                <h4 className="text-base font-bold text-foreground">100% Local SQLite</h4>
+                <p className="text-xs text-foreground/60 leading-relaxed">
+                  Every application timestamp and session event is committed directly to a local SQLite database in your user folder.
+                </p>
+              </div>
+
+              <div className="p-6 rounded-2xl glass-card border border-border space-y-3">
+                <EyeOff className="w-6 h-6 text-nyw-amber" />
+                <h4 className="text-base font-bold text-foreground">No Telemetry or Tracking</h4>
+                <p className="text-xs text-foreground/60 leading-relaxed">
+                  No telemetry pings, no usage beacons, no analytics servers, and no third-party data broker partnerships.
+                </p>
+              </div>
+
+              <div className="p-6 rounded-2xl glass-card border border-border space-y-3">
+                <ShieldCheck className="w-6 h-6 text-indigo-400" />
+                <h4 className="text-base font-bold text-foreground">No Account Required</h4>
+                <p className="text-xs text-foreground/60 leading-relaxed">
+                  The desktop app functions completely offline without sign-in, cloud sync, or remote dependencies.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ===================================================
+            SECTION 07: CONTROLLED BETA ACCESS CTA
+        =================================================== */}
+        <section className="py-24 md:py-36 border-t border-border bg-[#07090c] relative overflow-hidden text-center">
+          <div className="container mx-auto px-6 max-w-3xl space-y-8">
+            <div className="w-16 h-16 rounded-full mx-auto relative flex-shrink-0 mb-4">
+              <Image
+                src="/notch-logo.png"
+                alt="Notch Logo"
+                width={64}
+                height={64}
+                className="object-contain"
+              />
+            </div>
+
+            <div className="space-y-3">
+              <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-foreground">
+                Experience intentional computing.
+              </h2>
+              <p className="text-sm md:text-base text-foreground/60 max-w-lg mx-auto leading-relaxed">
+                Public downloads are paused while we conduct controlled testing. Request access below to join our next cohort.
+              </p>
+            </div>
+
+            <div className="pt-2">
+              <BetaRequest variant="card" id="beta-cta-input" />
+            </div>
+
+            <p className="text-[11px] font-mono text-foreground/35">
+              Windows 10 / Windows 11 (64-bit) · Independent Software · v3.1.6
+            </p>
           </div>
         </section>
 

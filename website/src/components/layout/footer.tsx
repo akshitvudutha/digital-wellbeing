@@ -1,55 +1,138 @@
+"use client"
 import Link from "next/link"
 import Image from "next/image"
 import { siteConfig } from "@/config/site"
+import { ShieldCheck, GitBranch, Code2, Bug, Sparkles } from "lucide-react"
 
 export function Footer() {
   return (
-    <footer className="border-t border-border/40 py-10 md:py-14 bg-background/50">
-      <div className="container mx-auto px-4 md:px-8 flex flex-col md:flex-row items-start justify-between gap-8 max-w-[1400px]">
-        <div className="flex flex-col gap-2 max-w-sm">
-          <Link href="/" className="flex items-center space-x-3">
-            <Image src="/nyw-logo.png" alt="NYW Logo" width={20} height={20} className="h-5 w-5" />
-            <span className="font-bold tracking-tight text-lg">{siteConfig.name}</span>
-          </Link>
-          <span className="text-sm font-semibold tracking-wide text-foreground/80">{siteConfig.fullName}</span>
-          <p className="text-sm text-foreground/60 mt-2">
-            Your time. Your rules. Build healthier digital habits with powerful, privacy-first tracking on Windows.
-          </p>
-          <p className="text-sm text-foreground/40 mt-4">
-            Built by {siteConfig.developer}.
-          </p>
+    <footer className="border-t border-white/[0.06] py-16 md:py-24 bg-[#06080a] relative overflow-hidden">
+      <div className="container mx-auto px-6 md:px-12 max-w-6xl">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-12 items-start justify-between">
+          {/* Brand Info */}
+          <div className="md:col-span-6 space-y-4 text-left">
+            <Link href="/" className="inline-flex items-center gap-3">
+              <div className="relative w-8 h-8 flex-shrink-0">
+                <Image
+                  src="/notch-logo.png"
+                  alt="Notch"
+                  width={32}
+                  height={32}
+                  className="object-contain"
+                />
+              </div>
+              <span className="font-bold text-base tracking-wider text-white">
+                NOTCH
+              </span>
+              <span className="text-[10px] uppercase font-mono tracking-widest px-2 py-0.5 rounded-full bg-white/[0.05] text-foreground/50 border border-white/[0.08]">
+                v{siteConfig.version} · {siteConfig.stage}
+              </span>
+            </Link>
+
+            <p className="text-sm text-foreground/55 max-w-sm leading-relaxed">
+              {siteConfig.fullName}. An intentional, minimalist digital wellbeing and attention-control system engineered for Windows 10 & 11.
+            </p>
+
+            <div className="inline-flex items-center gap-2 pt-2 text-xs font-mono text-foreground/40">
+              <ShieldCheck className="w-4 h-4 text-nyw-emerald" />
+              <span>100% Local-First · Zero Cloud Sync · No Telemetry</span>
+            </div>
+          </div>
+
+          {/* Navigation Links */}
+          <div className="md:col-span-3 space-y-3 text-left">
+            <p className="text-xs uppercase font-mono tracking-widest text-foreground/40 font-semibold">
+              Product
+            </p>
+            <ul className="space-y-2 text-xs text-foreground/60">
+              <li>
+                <Link href="#product" className="hover:text-white transition-colors">
+                  Experience
+                </Link>
+              </li>
+              <li>
+                <Link href="#capabilities" className="hover:text-white transition-colors">
+                  Capabilities
+                </Link>
+              </li>
+              <li>
+                <Link href="#philosophy" className="hover:text-white transition-colors">
+                  Philosophy
+                </Link>
+              </li>
+              <li>
+                <Link href="#privacy" className="hover:text-white transition-colors">
+                  Privacy Declaration
+                </Link>
+              </li>
+              <li>
+                <Link href="#beta" className="hover:text-nyw-emerald transition-colors font-medium">
+                  Request Beta Access
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Open Development */}
+          <div className="md:col-span-3 space-y-3 text-left">
+            <p className="text-xs uppercase font-mono tracking-widest text-foreground/40 font-semibold">
+              Engineering
+            </p>
+            <ul className="space-y-2 text-xs text-foreground/60">
+              <li>
+                <Link
+                  href={siteConfig.links.github}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hover:text-white transition-colors flex items-center gap-1.5"
+                >
+                  <Code2 className="w-3.5 h-3.5" />
+                  <span>GitHub Repository</span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href={siteConfig.links.releases}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hover:text-white transition-colors flex items-center gap-1.5"
+                >
+                  <GitBranch className="w-3.5 h-3.5" />
+                  <span>Release History</span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href={siteConfig.links.reportBug}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hover:text-white transition-colors flex items-center gap-1.5"
+                >
+                  <Bug className="w-3.5 h-3.5" />
+                  <span>Report an Issue</span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href={siteConfig.links.requestFeature}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hover:text-white transition-colors flex items-center gap-1.5"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Feature Requests</span>
+                </Link>
+              </li>
+            </ul>
+          </div>
         </div>
 
-        <div className="flex flex-col md:flex-row gap-12 md:gap-24">
-          <div className="flex flex-col gap-3">
-            <h4 className="font-semibold text-sm">Product</h4>
-            <Link href="#explore" className="text-sm text-foreground/60 hover:text-foreground">Features</Link>
-            <Link href={siteConfig.links.download} className="text-sm text-foreground/60 hover:text-foreground">Download v{siteConfig.stableVersion}</Link>
-            <Link href={siteConfig.links.releases} className="text-sm text-foreground/60 hover:text-foreground">Changelog</Link>
-          </div>
-
-          <div className="flex flex-col gap-3">
-            <h4 className="font-semibold text-sm">Community & Support</h4>
-            <Link href={siteConfig.links.github} target="_blank" rel="noreferrer" className="text-sm text-foreground/60 hover:text-foreground">
-              GitHub Repository
-            </Link>
-            <Link href={siteConfig.links.reportBug} target="_blank" rel="noreferrer" className="text-sm text-foreground/60 hover:text-foreground">
-              Report a Bug
-            </Link>
-            <Link href={siteConfig.links.requestFeature} target="_blank" rel="noreferrer" className="text-sm text-foreground/60 hover:text-foreground">
-              Request a Feature
-            </Link>
-          </div>
-          
-          <div className="flex flex-col gap-3">
-            <h4 className="font-semibold text-sm">Legal</h4>
-            <Link href="#privacy" className="text-sm text-foreground/60 hover:text-foreground">
-              Privacy Policy
-            </Link>
-            <span className="text-sm text-foreground/40 mt-4">
-              © {new Date().getFullYear()} {siteConfig.developer}
-            </span>
-          </div>
+        {/* Bottom Bar */}
+        <div className="mt-16 pt-8 border-t border-white/[0.04] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-foreground/35">
+          <p>© {new Date().getFullYear()} {siteConfig.developer}. All rights reserved.</p>
+          <p className="font-mono text-[11px]">
+            Engineered with PySide6 & Next.js · Native Windows Integration
+          </p>
         </div>
       </div>
     </footer>

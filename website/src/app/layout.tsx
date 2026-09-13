@@ -8,46 +8,56 @@ import { Footer } from "@/components/layout/footer"
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "white" },
-    { media: "(prefers-color-scheme: dark)", color: "black" },
-  ],
+  themeColor: "#080a0d",
+  colorScheme: "dark",
 }
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
   title: {
-    default: "NYW — Digital Wellbeing for Windows | Not Your Wellbeing",
-    template: `%s - NYW`,
+    default: "Notch — Digital Wellbeing for Windows",
+    template: `%s · Notch`,
   },
   description: siteConfig.description,
-  keywords: ["Windows productivity", "screen time", "Focus", "application blocking", "App Locker", "SleepGuard", "digital wellbeing"],
-  authors: [
-    {
-      name: siteConfig.developer,
-    },
+  keywords: [
+    "Notch",
+    "Notch Windows",
+    "Digital Wellbeing for Windows",
+    "Windows digital wellbeing",
+    "intentional computing",
+    "deep focus",
+    "app timer",
+    "app locker",
+    "SleepGuard",
+    "local-first",
+    "privacy-first screen time",
   ],
+  authors: [{ name: siteConfig.developer }],
+  icons: {
+    icon: "/notch-logo.png",
+    apple: "/notch-logo.png",
+  },
   openGraph: {
     type: "website",
     locale: "en_US",
     url: siteConfig.url,
-    title: "NYW — Digital Wellbeing for Windows",
+    title: "Notch — Digital Wellbeing for Windows",
     description: siteConfig.description,
     siteName: siteConfig.fullName,
     images: [
       {
-        url: "/images/app/home-dark.png",
-        width: 1280,
-        height: 720,
-        alt: "NYW - Your time. Your rules.",
-      }
-    ]
+        url: "/notch-logo.png",
+        width: 1254,
+        height: 1254,
+        alt: "Notch — Digital Wellbeing for Windows",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "NYW — Digital Wellbeing for Windows",
+    title: "Notch — Digital Wellbeing for Windows",
     description: siteConfig.description,
-    images: ["/images/app/home-dark.png"],
+    images: ["/notch-logo.png"],
   },
 }
 
@@ -59,15 +69,16 @@ export default function RootLayout({
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    "name": "NYW",
-    "alternateName": "Not Your Wellbeing",
-    "operatingSystem": "Windows 10, Windows 11",
-    "applicationCategory": "Productivity",
-    "offers": {
+    name: "Notch",
+    alternateName: "Notch — Digital Wellbeing for Windows",
+    operatingSystem: "Windows 10, Windows 11",
+    applicationCategory: "ProductivityApplication",
+    offers: {
       "@type": "Offer",
-      "price": "0"
-    }
-  };
+      price: "0",
+      availability: "https://schema.org/PreOrder",
+    },
+  }
 
   return (
     <html lang="en" className="dark scroll-smooth" style={{ colorScheme: "dark" }}>
@@ -77,7 +88,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <body className={`${inter.variable} min-h-screen bg-background font-sans antialiased`}>
+      <body className={`${inter.variable} min-h-screen bg-background font-sans antialiased text-foreground selection:bg-nyw-emerald/20 selection:text-white`}>
         <Navbar />
         {children}
         <Footer />
