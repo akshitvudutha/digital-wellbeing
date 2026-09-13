@@ -16,12 +16,18 @@ from __future__ import annotations
 
 import ctypes
 import ctypes.wintypes
+import sys
 import threading
 from typing import Dict, List, Optional
 
-import win32gui
-import win32process
 import psutil
+
+if sys.platform == "win32":
+    import win32gui
+    import win32process
+else:
+    win32gui = None
+    win32process = None
 
 from PySide6.QtCore import QObject, Signal, QTimer
 from core.logger import logger
@@ -209,6 +215,8 @@ class FocusManager(QObject):
 
     def _check_app_blocks(self) -> None:
         """Block foreground apps that are in the blocked_apps list (strict mode)."""
+        if win32gui is None:
+            return
         SYSTEM_SAFE = {
             "explorer.exe", "taskmgr.exe", "systemsettings.exe",
             "digitalwellbeing.exe", "searchapp.exe",

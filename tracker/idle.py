@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import ctypes
 import ctypes.wintypes
+import os
+import sys
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
@@ -52,36 +54,41 @@ class _JOYINFOEX(ctypes.Structure):
     ]
 
 
-_user32 = ctypes.WinDLL("user32", use_last_error=True)
-_kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+_user32 = None
+_kernel32 = None
+if sys.platform == "win32":
+    _user32 = ctypes.WinDLL("user32", use_last_error=True)
+    _kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
 
-_user32.GetLastInputInfo.argtypes = [ctypes.c_void_p]
-_user32.GetLastInputInfo.restype = ctypes.wintypes.BOOL
-_kernel32.GetTickCount.argtypes = []
-_kernel32.GetTickCount.restype = ctypes.wintypes.DWORD
+    _user32.GetLastInputInfo.argtypes = [ctypes.c_void_p]
+    _user32.GetLastInputInfo.restype = ctypes.wintypes.BOOL
+    _kernel32.GetTickCount.argtypes = []
+    _kernel32.GetTickCount.restype = ctypes.wintypes.DWORD
 
 _LASTINPUTINFO_SIZE = ctypes.sizeof(_LASTINPUTINFO)
 _TICK_MAX = 0xFFFFFFFF
 
 # Load XInput DLL (try 1.4 -> 9.1.0 -> 1.3)
 _xinput = None
-for _dll_name in ("xinput1_4.dll", "xinput9_1_0.dll", "xinput1_3.dll"):
-    try:
-        _xinput = ctypes.WinDLL(_dll_name)
-        _xinput.XInputGetState.argtypes = [ctypes.wintypes.DWORD, ctypes.POINTER(_XINPUT_STATE)]
-        _xinput.XInputGetState.restype = ctypes.wintypes.DWORD
-        break
-    except Exception:
-        pass
+if sys.platform == "win32":
+    for _dll_name in ("xinput1_4.dll", "xinput9_1_0.dll", "xinput1_3.dll"):
+        try:
+            _xinput = ctypes.WinDLL(_dll_name)
+            _xinput.XInputGetState.argtypes = [ctypes.wintypes.DWORD, ctypes.POINTER(_XINPUT_STATE)]
+            _xinput.XInputGetState.restype = ctypes.wintypes.DWORD
+            break
+        except Exception:
+            pass
 
 # Load WinMM DLL for joystick fallback
 _winmm = None
-try:
-    _winmm = ctypes.WinDLL("winmm.dll")
-    _winmm.joyGetPosEx.argtypes = [ctypes.c_uint, ctypes.POINTER(_JOYINFOEX)]
-    _winmm.joyGetPosEx.restype = ctypes.c_uint
-except Exception:
-    pass
+if sys.platform == "win32":
+    try:
+        _winmm = ctypes.WinDLL("winmm.dll")
+        _winmm.joyGetPosEx.argtypes = [ctypes.c_uint, ctypes.POINTER(_JOYINFOEX)]
+        _winmm.joyGetPosEx.restype = ctypes.c_uint
+    except Exception:
+        pass
 
 JOY_RETURNALL = 0x000000FF
 
@@ -136,7 +143,89 @@ def _elapsed_ms(tick_now: int, last_input: int) -> int:
     return (_TICK_MAX - last_input) + tick_now + 1
 
 
+def _get_macos_idle_seconds() -> float:
+    try:
+        import Quartz
+
+        return max(
+            0.0,
+            float(
+                Quartz.CGEventSourceSecondsSinceLastEventType(
+                    Quartz.kCGEventSourceStateCombinedSessionState,
+                    Quartz.kCGAnyInputEventType,
+                )
+            ),
+        )
+    except Exception:
+        return 0.0
+
+
+class _XScreenSaverInfo(ctypes.Structure):
+    _fields_ = [
+        ("window", ctypes.c_ulong),
+        ("state", ctypes.c_int),
+        ("kind", ctypes.c_int),
+        ("since", ctypes.c_ulong),
+        ("idle", ctypes.c_ulong),
+        ("event_mask", ctypes.c_ulong),
+    ]
+
+
+def _get_linux_idle_seconds() -> float:
+    if not os.environ.get("DISPLAY"):
+        return 0.0
+
+    x11 = None
+    display = None
+    info = None
+    try:
+        x11 = ctypes.CDLL("libX11.so.6")
+        xss = ctypes.CDLL("libXss.so.1")
+        x11.XOpenDisplay.argtypes = [ctypes.c_char_p]
+        x11.XOpenDisplay.restype = ctypes.c_void_p
+        x11.XDefaultRootWindow.argtypes = [ctypes.c_void_p]
+        x11.XDefaultRootWindow.restype = ctypes.c_ulong
+        x11.XCloseDisplay.argtypes = [ctypes.c_void_p]
+        xss.XScreenSaverAllocInfo.restype = ctypes.POINTER(_XScreenSaverInfo)
+        xss.XScreenSaverQueryInfo.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_ulong,
+            ctypes.POINTER(_XScreenSaverInfo),
+        ]
+
+        display = x11.XOpenDisplay(None)
+        if not display:
+            return 0.0
+        info = xss.XScreenSaverAllocInfo()
+        if not info:
+            return 0.0
+        root = x11.XDefaultRootWindow(display)
+        if not xss.XScreenSaverQueryInfo(display, root, info):
+            return 0.0
+        return max(0.0, float(info.contents.idle) / 1000.0)
+    except Exception:
+        return 0.0
+    finally:
+        if info and x11 is not None:
+            try:
+                x11.XFree(info)
+            except Exception:
+                pass
+        if display and x11 is not None:
+            try:
+                x11.XCloseDisplay(display)
+            except Exception:
+                pass
+
+
 def get_idle_seconds() -> float:
+    if sys.platform == "darwin":
+        return _get_macos_idle_seconds()
+    if sys.platform.startswith("linux"):
+        return _get_linux_idle_seconds()
+    if sys.platform != "win32" or _user32 is None or _kernel32 is None:
+        return 0.0
+
     lii = _LASTINPUTINFO()
     lii.cbSize = _LASTINPUTINFO_SIZE
     has_lii = _user32.GetLastInputInfo(ctypes.byref(lii))

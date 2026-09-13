@@ -118,7 +118,7 @@ class SettingsPage(QWidget):
         app_layout.addSpacing(16)
         app_layout.addWidget(self._create_section_title("Startup"))
         
-        self._autostart_check, row1 = self._create_toggle_row("Start with Windows Login", "Automatically launch NYW when Windows starts")
+        self._autostart_check, row1 = self._create_toggle_row("Start at login", "Automatically launch NYW when you sign in")
         app_layout.addWidget(row1)
         
         self._minimize_tray_check, row2 = self._create_toggle_row("Minimize to Tray", "Keep tracking in system tray when closed")
@@ -295,7 +295,7 @@ class SettingsPage(QWidget):
         upd_layout.addSpacing(16)
         upd_layout.addWidget(self._create_section_title("About"))
         
-        about_lbl = QLabel(f"{APP_NAME} v{APP_VERSION}\nPremium Screen Time Tracker for Windows")
+        about_lbl = QLabel(f"{APP_NAME} v{APP_VERSION}\nPrivate, local-first screen time tracker")
         about_lbl.setObjectName("setting_desc")
         about_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         upd_layout.addWidget(about_lbl)

@@ -29,7 +29,8 @@ class DigitalWellbeingApp:
         # trigger a second quit() call before our cleanup has finished.
         self._app.setQuitOnLastWindowClosed(False)
 
-        icon_path = Path(__file__).parent.parent / "assets" / "icons" / "app_icon.ico"
+        icon_name = "app_icon.ico" if sys.platform == "win32" else "app_icon.png"
+        icon_path = Path(__file__).parent.parent / "assets" / "icons" / icon_name
         if icon_path.exists():
             self._app.setWindowIcon(QIcon(str(icon_path)))
 
