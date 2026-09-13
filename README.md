@@ -15,6 +15,7 @@ Not Your Wellbeing (NYW) helps you understand and manage your screen time. It tr
 - Autostart with Windows (registry)
 - CSV reports export
 - Rotating log file
+- No analytics telemetry or external database; activity data stays on the device
 
 ## Screenshots
 *(Add screenshots of the application here once captured)*
