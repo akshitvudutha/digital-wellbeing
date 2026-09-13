@@ -66,7 +66,7 @@ export function Navbar() {
         </Link>
 
         {/* Center: Navigation Links */}
-        <div className="hidden md:flex items-center gap-6 text-xs font-medium text-slate-600 dark:text-foreground/60">
+        <div className="hidden md:flex items-center gap-6 text-xs font-medium text-slate-700 dark:text-foreground/70">
           <Link
             href="#product"
             className="hover:text-slate-950 dark:hover:text-foreground transition-colors duration-200"
@@ -99,7 +99,7 @@ export function Navbar() {
           <button
             onClick={toggleTheme}
             aria-label="Toggle theme"
-            className="p-2 rounded-full text-slate-600 dark:text-foreground/60 hover:text-slate-950 dark:hover:text-foreground hover:bg-black/[0.05] dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
+            className="p-2 rounded-full text-slate-700 dark:text-foreground/70 hover:text-slate-950 dark:hover:text-foreground hover:bg-black/[0.05] dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
             title={theme === "dark" ? "Switch to Light Theme" : "Switch to Dark Theme"}
           >
             {theme === "dark" ? (
@@ -113,7 +113,7 @@ export function Navbar() {
             href={siteConfig.links.github}
             target="_blank"
             rel="noreferrer"
-            className="hidden sm:inline-flex text-xs font-medium text-slate-600 dark:text-foreground/60 hover:text-slate-950 dark:hover:text-foreground transition-colors px-2.5 py-1.5"
+            className="hidden sm:inline-flex text-xs font-medium text-slate-700 dark:text-foreground/70 hover:text-slate-950 dark:hover:text-foreground transition-colors px-2.5 py-1.5"
           >
             GitHub
           </Link>

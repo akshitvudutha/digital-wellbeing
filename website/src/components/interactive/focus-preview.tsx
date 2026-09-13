@@ -62,7 +62,7 @@ export function FocusPreview() {
                 }`}
               />
             </div>
-            <span className="text-[11px] text-slate-500 dark:text-foreground/50 font-mono">
+            <span className="text-[11px] text-slate-600 dark:text-foreground/65 font-mono">
               {isFocusing ? "Allowlist Enforced · Windows Safe" : "Ready for next block"}
             </span>
           </div>
@@ -111,7 +111,7 @@ export function FocusPreview() {
             transition={{ duration: 0.25 }}
             className="mt-3 flex flex-wrap items-center justify-center gap-2 text-xs"
           >
-            <span className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-foreground/50 font-mono">
+            <span className="text-[11px] uppercase tracking-wider text-slate-600 dark:text-foreground/65 font-mono">
               Active Allowlist:
             </span>
             {["Code.exe", "WindowsTerminal.exe", "Figma.exe"].map((app) => (
@@ -123,7 +123,7 @@ export function FocusPreview() {
                 {app}
               </span>
             ))}
-            <span className="text-[11px] text-slate-500 dark:text-foreground/50 font-mono">
+            <span className="text-[11px] text-slate-600 dark:text-foreground/65 font-mono">
               (All others restricted)
             </span>
           </motion.div>

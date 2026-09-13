@@ -137,7 +137,7 @@ export function CapabilitiesCanvas() {
                 className={`relative px-4 py-2 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer flex items-center gap-2 whitespace-nowrap ${
                   isActive
                     ? "text-slate-900 dark:text-white font-semibold"
-                    : "text-slate-600 dark:text-foreground/50 hover:text-slate-950 dark:hover:text-foreground/80 hover:bg-black/[0.03] dark:hover:bg-white/[0.02]"
+                    : "text-slate-700 dark:text-foreground/70 hover:text-slate-950 dark:hover:text-white hover:bg-black/[0.03] dark:hover:bg-white/[0.02]"
                 }`}
               >
                 {isActive && (
@@ -170,7 +170,7 @@ export function CapabilitiesCanvas() {
               className={`px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center gap-1.5 ${
                 viewMode === "interactive"
                   ? "bg-white dark:bg-white/[0.12] text-slate-900 dark:text-white border border-slate-200 dark:border-white/20 shadow-sm"
-                  : "text-slate-500 dark:text-foreground/50 hover:text-slate-900 dark:hover:text-foreground/80"
+                  : "text-slate-600 dark:text-foreground/60 hover:text-slate-950 dark:hover:text-white"
               }`}
             >
               <Sliders className="w-3.5 h-3.5 text-nyw-emerald" />
@@ -181,7 +181,7 @@ export function CapabilitiesCanvas() {
               className={`px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center gap-1.5 ${
                 viewMode === "screenshot"
                   ? "bg-nyw-emerald/15 text-nyw-emerald border border-nyw-emerald/30 shadow-sm"
-                  : "text-slate-500 dark:text-foreground/50 hover:text-slate-900 dark:hover:text-foreground/80"
+                  : "text-slate-600 dark:text-foreground/60 hover:text-slate-950 dark:hover:text-white"
               }`}
             >
               <Eye className="w-3.5 h-3.5 text-nyw-amber" />
@@ -204,7 +204,7 @@ export function CapabilitiesCanvas() {
               <h3 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-white leading-snug">
                 {activeTab.headline}
               </h3>
-              <p className="text-sm md:text-base text-slate-600 dark:text-foreground/65 leading-relaxed font-normal">
+              <p className="text-sm md:text-base text-slate-700 dark:text-foreground/75 leading-relaxed font-normal">
                 {activeTab.summary}
               </p>
             </div>
@@ -221,8 +221,8 @@ export function CapabilitiesCanvas() {
                     className="object-cover object-top transition-transform duration-500 group-hover:scale-[1.01]"
                   />
                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent p-3 pt-6 text-left">
-                    <p className="text-xs text-white/90 font-medium">{activeTab.screenshotCaption}</p>
-                    <p className="text-[10px] text-foreground/40 font-mono">Notch v3.1.6 · Windows 10 & 11</p>
+                    <p className="text-xs text-white font-medium">{activeTab.screenshotCaption}</p>
+                    <p className="text-[10px] text-white/70 font-mono">Notch v3.1.6 · Windows 10 & 11</p>
                   </div>
                 </div>
               ) : (
@@ -239,7 +239,7 @@ export function CapabilitiesCanvas() {
                             <p className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                               Deep Focus Mode
                             </p>
-                            <p className="text-[11px] text-slate-500 dark:text-foreground/40 font-mono">
+                            <p className="text-[11px] text-slate-600 dark:text-foreground/65 font-mono">
                               Kernel-Level Process Interception & Website Blocking
                             </p>
                           </div>
@@ -250,7 +250,7 @@ export function CapabilitiesCanvas() {
                       </div>
 
                       <div className="space-y-2 text-left">
-                        <div className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-foreground/40 font-mono">
+                        <div className="text-[11px] uppercase tracking-wider text-slate-600 dark:text-foreground/65 font-mono">
                           Permitted Applications
                         </div>
                         <div className="flex flex-wrap gap-2">
@@ -270,7 +270,7 @@ export function CapabilitiesCanvas() {
                         <ShieldAlert className="w-4 h-4 text-red-500 dark:text-red-400 shrink-0 mt-0.5" />
                         <div className="text-xs">
                           <span className="text-red-700 dark:text-red-300 font-semibold">Strict Rule Active:</span>{" "}
-                          <span className="text-slate-600 dark:text-foreground/50">
+                          <span className="text-slate-700 dark:text-foreground/70">
                             Non-allowlisted processes and blocked websites (social/games) are instantly intercepted.
                           </span>
                         </div>
@@ -286,7 +286,7 @@ export function CapabilitiesCanvas() {
                           <p className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                             Daily Quota Simulator
                           </p>
-                          <p className="text-[11px] text-slate-500 dark:text-foreground/40 font-mono">
+                          <p className="text-[11px] text-slate-600 dark:text-foreground/65 font-mono">
                             Target: social & entertainment applications
                           </p>
                         </div>
@@ -296,7 +296,7 @@ export function CapabilitiesCanvas() {
                       </div>
 
                       <div className="space-y-2">
-                        <div className="flex justify-between text-xs text-slate-600 dark:text-foreground/60 font-mono">
+                        <div className="flex justify-between text-xs text-slate-700 dark:text-foreground/70 font-mono">
                           <span>Allowance adjustment:</span>
                           <span>{timerMinutes} minutes</span>
                         </div>
@@ -317,7 +317,7 @@ export function CapabilitiesCanvas() {
                               className={`px-2 py-1 rounded text-[10px] font-mono transition-colors ${
                                 timerMinutes === preset
                                   ? "bg-nyw-amber/20 text-nyw-amber border border-nyw-amber/30"
-                                  : "bg-white dark:bg-white/[0.04] text-slate-600 dark:text-foreground/50 border border-slate-200 dark:border-transparent hover:text-slate-900 dark:hover:text-white shadow-xs"
+                                  : "bg-white dark:bg-white/[0.04] text-slate-700 dark:text-foreground/70 border border-slate-200 dark:border-transparent hover:text-slate-900 dark:hover:text-white shadow-xs"
                               }`}
                             >
                               {preset >= 60 ? `${preset / 60}h` : `${preset}m`}
@@ -328,7 +328,7 @@ export function CapabilitiesCanvas() {
 
                       <div className="p-4 rounded-xl bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.06] space-y-2 shadow-xs">
                         <div className="flex justify-between text-xs">
-                          <span className="text-slate-700 dark:text-foreground/70">Discord.exe today:</span>
+                          <span className="text-slate-800 dark:text-foreground/80">Discord.exe today:</span>
                           <span className="font-mono text-nyw-amber font-semibold">
                             {Math.min(timerMinutes, 38)}m / {timerMinutes}m
                           </span>
@@ -341,7 +341,7 @@ export function CapabilitiesCanvas() {
                             }}
                           />
                         </div>
-                        <p className="text-[11px] text-slate-500 dark:text-foreground/40">
+                        <p className="text-[11px] text-slate-600 dark:text-foreground/65">
                           {38 >= timerMinutes
                             ? "Limit reached: Application gracefully paused."
                             : `${timerMinutes - 38} minutes remaining before pause.`}
@@ -364,7 +364,7 @@ export function CapabilitiesCanvas() {
                           className={`text-xs px-2.5 py-0.5 rounded-full font-mono ${
                             pinUnlocked
                               ? "bg-nyw-emerald/20 text-nyw-emerald"
-                              : "bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-foreground/50"
+                              : "bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-foreground/70"
                           }`}
                         >
                           {pinUnlocked ? "AUTHENTICATED" : "LOCKED"}
@@ -381,7 +381,7 @@ export function CapabilitiesCanvas() {
                         </div>
                         <div>
                           <p className="text-sm font-semibold text-slate-900 dark:text-white">Telegram.exe Intercepted</p>
-                          <p className="text-xs text-slate-500 dark:text-foreground/40 mt-1">
+                          <p className="text-xs text-slate-600 dark:text-foreground/65 mt-1">
                             {pinUnlocked
                               ? "Access granted via Windows Hello."
                               : "Enter sample PIN (1234) or click authenticate."}
@@ -398,7 +398,7 @@ export function CapabilitiesCanvas() {
                               onChange={(e) => {
                                 setPinInput(e.target.value)
                                 if (e.target.value === "1234") {
-                                  setPinUnlocked(true)
+                                   setPinUnlocked(true)
                                   setPinInput("")
                                 }
                               }}
@@ -414,7 +414,7 @@ export function CapabilitiesCanvas() {
                         ) : (
                           <button
                             onClick={() => setPinUnlocked(false)}
-                            className="px-4 py-1.5 rounded-lg bg-slate-100 dark:bg-white/10 text-xs text-slate-700 dark:text-foreground/70 hover:bg-slate-200 dark:hover:bg-white/15 transition-colors cursor-pointer"
+                            className="px-4 py-1.5 rounded-lg bg-slate-100 dark:bg-white/10 text-xs text-slate-800 dark:text-foreground/80 hover:bg-slate-200 dark:hover:bg-white/15 transition-colors cursor-pointer"
                           >
                             Reset Lock
                           </button>
@@ -435,7 +435,7 @@ export function CapabilitiesCanvas() {
                             <p className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                               SleepGuard Inactivity Monitor
                             </p>
-                            <p className="text-[11px] text-slate-500 dark:text-foreground/40 font-mono">
+                            <p className="text-[11px] text-slate-600 dark:text-foreground/65 font-mono">
                               Circadian window: 11:00 PM – 6:00 AM
                             </p>
                           </div>
@@ -447,10 +447,10 @@ export function CapabilitiesCanvas() {
 
                       <div className="p-4 rounded-xl bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.06] space-y-3 shadow-xs">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-700 dark:text-foreground/70">Idle Threshold Countdown:</span>
+                          <span className="text-slate-800 dark:text-foreground/80">Idle Threshold Countdown:</span>
                           <span className="font-mono text-indigo-600 dark:text-indigo-300 font-bold">15m idle detected</span>
                         </div>
-                        <div className="p-3 rounded-lg bg-indigo-500/[0.06] border border-indigo-500/15 text-xs text-slate-700 dark:text-foreground/70 flex items-center gap-3">
+                        <div className="p-3 rounded-lg bg-indigo-500/[0.08] border border-indigo-500/20 text-xs text-slate-800 dark:text-foreground/80 flex items-center gap-3">
                           <Bell className="w-4 h-4 text-indigo-500 dark:text-indigo-400 shrink-0" />
                           <span>
                             Single Notch warning dialog: PC safely sleeps in 60s unless cancel is clicked or motion is detected.
@@ -468,7 +468,7 @@ export function CapabilitiesCanvas() {
                           <p className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                             Hourly Activity Intensity (Today)
                           </p>
-                          <p className="text-[11px] text-slate-500 dark:text-foreground/40 font-mono">
+                          <p className="text-[11px] text-slate-600 dark:text-foreground/65 font-mono">
                             3h 0m Screen Time · 2h 40m Active
                           </p>
                         </div>
@@ -502,7 +502,7 @@ export function CapabilitiesCanvas() {
                             </div>
                           ))}
                         </div>
-                        <div className="flex justify-between text-[10px] text-slate-500 dark:text-foreground/40 font-mono px-2">
+                        <div className="flex justify-between text-[10px] text-slate-600 dark:text-foreground/65 font-mono px-2">
                           <span>12 AM</span>
                           <span>6 AM</span>
                           <span>12 PM</span>
@@ -512,7 +512,7 @@ export function CapabilitiesCanvas() {
                       </div>
 
                       <div className="flex items-center justify-between text-xs p-3 rounded-xl bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.06] shadow-xs">
-                        <span className="text-slate-600 dark:text-foreground/60 font-mono">Selected Hour: {activeHour ?? 14}:00</span>
+                        <span className="text-slate-700 dark:text-foreground/70 font-mono">Selected Hour: {activeHour ?? 14}:00</span>
                         <span className="text-nyw-emerald font-semibold font-mono">
                           {activeHour === 14 ? "52m active" : activeHour ? "Recorded activity" : "No activity"}
                         </span>
@@ -528,7 +528,7 @@ export function CapabilitiesCanvas() {
                           <p className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                             Foreground Session Analytics
                           </p>
-                          <p className="text-[11px] text-slate-500 dark:text-foreground/40 font-mono">
+                          <p className="text-[11px] text-slate-600 dark:text-foreground/65 font-mono">
                             Native Win32 event hooks · Sub-second accuracy
                           </p>
                         </div>
@@ -539,20 +539,20 @@ export function CapabilitiesCanvas() {
 
                       <div className="grid grid-cols-3 gap-3">
                         <div className="p-3 rounded-xl bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.06] text-center shadow-xs">
-                          <div className="text-xs text-slate-500 dark:text-foreground/40 font-mono">Focus Ratio</div>
+                          <div className="text-xs text-slate-600 dark:text-foreground/65 font-mono">Focus Ratio</div>
                           <div className="text-xl font-bold text-slate-900 dark:text-white mt-1">78%</div>
                         </div>
                         <div className="p-3 rounded-xl bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.06] text-center shadow-xs">
-                          <div className="text-xs text-slate-500 dark:text-foreground/40 font-mono">Deep Blocks</div>
+                          <div className="text-xs text-slate-600 dark:text-foreground/65 font-mono">Deep Blocks</div>
                           <div className="text-xl font-bold text-nyw-emerald mt-1">4 sessions</div>
                         </div>
                         <div className="p-3 rounded-xl bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.06] text-center shadow-xs">
-                          <div className="text-xs text-slate-500 dark:text-foreground/40 font-mono">Friction Saved</div>
+                          <div className="text-xs text-slate-600 dark:text-foreground/65 font-mono">Friction Saved</div>
                           <div className="text-xl font-bold text-nyw-amber mt-1">1h 14m</div>
                         </div>
                       </div>
 
-                      <div className="text-[11px] text-slate-500 dark:text-foreground/40 italic text-center">
+                      <div className="text-[11px] text-slate-600 dark:text-foreground/65 italic text-center">
                         No deceptive wellness scores. Just raw, honest visibility into where your hours went.
                       </div>
                     </div>
@@ -570,7 +570,7 @@ export function CapabilitiesCanvas() {
                             <p className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                               Local SQLite Architecture
                             </p>
-                            <p className="text-[11px] text-slate-500 dark:text-foreground/40 font-mono">
+                            <p className="text-[11px] text-slate-600 dark:text-foreground/65 font-mono">
                               ~/.digital_wellbeing/digital_wellbeing.db
                             </p>
                           </div>
@@ -580,7 +580,7 @@ export function CapabilitiesCanvas() {
                         </span>
                       </div>
 
-                      <div className="p-4 rounded-xl bg-slate-900 text-slate-200 dark:bg-white/[0.02] dark:text-foreground/70 border border-slate-800 dark:border-white/[0.06] font-mono text-xs space-y-1.5 shadow-sm">
+                      <div className="p-4 rounded-xl bg-slate-900 text-slate-100 dark:bg-black/60 dark:text-slate-200 border border-slate-800 dark:border-white/10 font-mono text-xs space-y-1.5 shadow-sm">
                         <div className="text-nyw-emerald font-semibold">// Zero Cloud Sync Protocol</div>
                         <div>• Network socket listening: DISABLED</div>
                         <div>• Outbound usage telemetries: 0 packets</div>

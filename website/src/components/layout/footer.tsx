@@ -29,11 +29,11 @@ export function Footer() {
               </span>
             </Link>
 
-            <p className="text-sm text-slate-600 dark:text-foreground/65 max-w-sm leading-relaxed">
+            <p className="text-sm text-slate-700 dark:text-foreground/75 max-w-sm leading-relaxed">
               {siteConfig.fullName}. An intentional, minimalist digital wellbeing and attention-control system engineered for Windows 10 & 11.
             </p>
 
-            <div className="inline-flex items-center gap-2 pt-2 text-xs font-mono text-slate-500 dark:text-foreground/50">
+            <div className="inline-flex items-center gap-2 pt-2 text-xs font-mono text-slate-600 dark:text-foreground/65">
               <ShieldCheck className="w-4 h-4 text-nyw-emerald" />
               <span>100% Local-First · Zero Cloud Sync · No Telemetry</span>
             </div>
@@ -41,10 +41,10 @@ export function Footer() {
 
           {/* Navigation Links */}
           <div className="md:col-span-3 space-y-3 text-left">
-            <p className="text-xs uppercase font-mono tracking-widest text-slate-500 dark:text-foreground/50 font-semibold">
+            <p className="text-xs uppercase font-mono tracking-widest text-slate-700 dark:text-foreground/70 font-semibold">
               Product
             </p>
-            <ul className="space-y-2 text-xs text-slate-600 dark:text-foreground/70">
+            <ul className="space-y-2 text-xs text-slate-700 dark:text-foreground/75">
               <li>
                 <Link href="#product" className="hover:text-slate-950 dark:hover:text-white transition-colors">
                   Experience
@@ -75,10 +75,10 @@ export function Footer() {
 
           {/* Open Development */}
           <div className="md:col-span-3 space-y-3 text-left">
-            <p className="text-xs uppercase font-mono tracking-widest text-slate-500 dark:text-foreground/50 font-semibold">
+            <p className="text-xs uppercase font-mono tracking-widest text-slate-700 dark:text-foreground/70 font-semibold">
               Engineering
             </p>
-            <ul className="space-y-2 text-xs text-slate-600 dark:text-foreground/70">
+            <ul className="space-y-2 text-xs text-slate-700 dark:text-foreground/75">
               <li>
                 <Link
                   href={siteConfig.links.github}
@@ -128,7 +128,7 @@ export function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="mt-16 pt-8 border-t border-slate-200 dark:border-white/[0.04] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 dark:text-foreground/50">
+        <div className="mt-16 pt-8 border-t border-slate-200 dark:border-white/[0.04] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-600 dark:text-foreground/65 font-medium">
           <p>© {new Date().getFullYear()} {siteConfig.developer}. All rights reserved.</p>
           <p className="font-mono text-[11px]">
             Engineered with PySide6 & Next.js · Native Windows Integration

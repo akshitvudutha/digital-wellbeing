@@ -63,7 +63,7 @@ export function BetaRequest({ variant = "hero", id = "beta-input" }: BetaRequest
               <CheckCircle2 className="w-5 h-5" />
             </div>
             <h4 className="font-semibold text-slate-900 dark:text-white text-base">Request Received</h4>
-            <p className="text-sm text-slate-600 dark:text-foreground/75 leading-relaxed max-w-md mx-auto">
+            <p className="text-sm text-slate-700 dark:text-foreground/75 leading-relaxed max-w-md mx-auto">
               {result.message}
             </p>
             <button
@@ -98,7 +98,7 @@ export function BetaRequest({ variant = "hero", id = "beta-input" }: BetaRequest
                   if (result) setResult(null)
                 }}
                 placeholder="Enter your email for beta access..."
-                className="w-full bg-transparent text-sm md:text-base text-slate-900 dark:text-foreground placeholder:text-slate-400 dark:placeholder:text-foreground/40 focus:outline-none font-normal"
+                className="w-full bg-transparent text-sm md:text-base text-slate-900 dark:text-foreground placeholder:text-slate-500 dark:placeholder:text-foreground/40 focus:outline-none font-normal"
               />
 
               <button
@@ -133,7 +133,7 @@ export function BetaRequest({ variant = "hero", id = "beta-input" }: BetaRequest
             )}
 
             {/* Modern understated platform & safety metadata */}
-            <div className="flex items-center justify-center gap-3 text-xs text-slate-500 dark:text-foreground/50 pt-1.5 font-mono text-[11px]">
+            <div className="flex items-center justify-center gap-3 text-xs text-slate-700 dark:text-foreground/70 pt-1.5 font-mono text-[11px]">
               <span>Built for Windows 10 & 11 (64-bit)</span>
               <span>•</span>
               <div className="flex items-center gap-1">
