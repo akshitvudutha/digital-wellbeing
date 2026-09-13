@@ -126,7 +126,7 @@ export function CapabilitiesCanvas() {
     <div className="w-full max-w-5xl mx-auto">
       {/* Top Floating Pill Navigation */}
       <div className="flex items-center justify-center mb-8 overflow-x-auto py-2 px-4 no-scrollbar">
-        <div className="inline-flex items-center gap-1.5 p-1.5 rounded-full bg-surface border border-white/[0.08] backdrop-blur-xl">
+        <div className="inline-flex items-center gap-1.5 p-1.5 rounded-full bg-slate-100/90 dark:bg-surface border border-slate-200 dark:border-white/[0.08] backdrop-blur-xl">
           {TABS.map((tab) => {
             const isActive = activeId === tab.id
             const Icon = tab.icon
@@ -136,14 +136,14 @@ export function CapabilitiesCanvas() {
                 onClick={() => setActiveId(tab.id)}
                 className={`relative px-4 py-2 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer flex items-center gap-2 whitespace-nowrap ${
                   isActive
-                    ? "text-white font-semibold"
-                    : "text-foreground/50 hover:text-foreground/80 hover:bg-white/[0.02]"
+                    ? "text-slate-900 dark:text-white font-semibold"
+                    : "text-slate-600 dark:text-foreground/50 hover:text-slate-950 dark:hover:text-foreground/80 hover:bg-black/[0.03] dark:hover:bg-white/[0.02]"
                 }`}
               >
                 {isActive && (
                   <motion.div
                     layoutId="activeTabBadge"
-                    className="absolute inset-0 rounded-full bg-white/[0.12] border border-white/20 shadow-sm"
+                    className="absolute inset-0 rounded-full bg-white dark:bg-white/[0.12] border border-slate-200 dark:border-white/20 shadow-sm"
                     transition={{ type: "spring", stiffness: 380, damping: 30 }}
                   />
                 )}
@@ -156,21 +156,21 @@ export function CapabilitiesCanvas() {
       </div>
 
       {/* Main Canvas Card */}
-      <div className="glass-card rounded-3xl p-6 md:p-10 border border-white/[0.08] relative overflow-hidden">
+      <div className="glass-card rounded-3xl p-6 md:p-10 border border-slate-200 dark:border-white/[0.08] relative overflow-hidden">
         {/* View Mode Toggle */}
-        <div className="flex items-center justify-between border-b border-white/[0.06] pb-4 mb-6">
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/[0.06] pb-4 mb-6">
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-mono tracking-[0.2em] text-nyw-emerald uppercase font-semibold">
               {activeTab.tag}
             </span>
           </div>
-          <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-surface border border-white/[0.08]">
+          <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-surface border border-slate-200 dark:border-white/[0.08]">
             <button
               onClick={() => setViewMode("interactive")}
               className={`px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center gap-1.5 ${
                 viewMode === "interactive"
-                  ? "bg-white/[0.12] text-white border border-white/20 shadow-sm"
-                  : "text-foreground/50 hover:text-foreground/80"
+                  ? "bg-white dark:bg-white/[0.12] text-slate-900 dark:text-white border border-slate-200 dark:border-white/20 shadow-sm"
+                  : "text-slate-500 dark:text-foreground/50 hover:text-slate-900 dark:hover:text-foreground/80"
               }`}
             >
               <Sliders className="w-3.5 h-3.5 text-nyw-emerald" />
@@ -181,7 +181,7 @@ export function CapabilitiesCanvas() {
               className={`px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center gap-1.5 ${
                 viewMode === "screenshot"
                   ? "bg-nyw-emerald/15 text-nyw-emerald border border-nyw-emerald/30 shadow-sm"
-                  : "text-foreground/50 hover:text-foreground/80"
+                  : "text-slate-500 dark:text-foreground/50 hover:text-slate-900 dark:hover:text-foreground/80"
               }`}
             >
               <Eye className="w-3.5 h-3.5 text-nyw-amber" />
@@ -201,10 +201,10 @@ export function CapabilitiesCanvas() {
           >
             {/* Left Column: Conceptual Overview */}
             <div className="lg:col-span-5 space-y-4 text-left">
-              <h3 className="text-2xl md:text-3xl font-bold tracking-tight text-white leading-snug">
+              <h3 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-white leading-snug">
                 {activeTab.headline}
               </h3>
-              <p className="text-sm md:text-base text-foreground/60 leading-relaxed font-normal">
+              <p className="text-sm md:text-base text-slate-600 dark:text-foreground/65 leading-relaxed font-normal">
                 {activeTab.summary}
               </p>
             </div>
@@ -212,7 +212,7 @@ export function CapabilitiesCanvas() {
             {/* Right Column: Interactive Prototype OR Real App Screenshot */}
             <div className="lg:col-span-7">
               {viewMode === "screenshot" ? (
-                <div className="relative rounded-2xl overflow-hidden bg-black/60 border border-white/[0.12] aspect-[16/10] shadow-2xl group">
+                <div className="relative rounded-2xl overflow-hidden bg-slate-100 dark:bg-black/60 border border-slate-200 dark:border-white/[0.12] aspect-[16/10] shadow-2xl group">
                   <Image
                     src={activeTab.screenshot}
                     alt={activeTab.headline}
@@ -226,20 +226,20 @@ export function CapabilitiesCanvas() {
                   </div>
                 </div>
               ) : (
-                <div className="rounded-2xl bg-black/40 border border-white/[0.08] p-6 md:p-8 min-h-[320px] flex flex-col justify-center relative overflow-hidden shadow-inner">
+                <div className="rounded-2xl bg-slate-50/90 dark:bg-black/40 border border-slate-200 dark:border-white/[0.08] p-6 md:p-8 min-h-[320px] flex flex-col justify-center relative overflow-hidden shadow-inner">
                   {/* 1. FOCUS TAB */}
                   {activeTab.id === "focus" && (
                     <div className="space-y-6">
-                      <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
+                      <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/[0.06] pb-4">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-nyw-emerald/10 border border-nyw-emerald/20 flex items-center justify-center text-nyw-emerald">
                             <Focus className="w-4 h-4" />
                           </div>
                           <div>
-                            <p className="text-xs font-bold text-white uppercase tracking-wider">
+                            <p className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                               Deep Focus Mode
                             </p>
-                            <p className="text-[11px] text-foreground/40 font-mono">
+                            <p className="text-[11px] text-slate-500 dark:text-foreground/40 font-mono">
                               Kernel-Level Process Interception & Website Blocking
                             </p>
                           </div>
@@ -250,14 +250,14 @@ export function CapabilitiesCanvas() {
                       </div>
 
                       <div className="space-y-2 text-left">
-                        <div className="text-[11px] uppercase tracking-wider text-foreground/40 font-mono">
+                        <div className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-foreground/40 font-mono">
                           Permitted Applications
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {["VS Code", "Windows Terminal", "Obsidian", "Figma"].map((app) => (
                             <span
                               key={app}
-                              className="px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs font-medium text-foreground/80 flex items-center gap-1.5"
+                              className="px-3 py-1.5 rounded-xl bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] text-xs font-medium text-slate-800 dark:text-foreground/80 flex items-center gap-1.5 shadow-sm"
                             >
                               <CheckCircle2 className="w-3 h-3 text-nyw-emerald" />
                               {app}
@@ -266,11 +266,11 @@ export function CapabilitiesCanvas() {
                         </div>
                       </div>
 
-                      <div className="p-3 rounded-xl bg-red-500/[0.05] border border-red-500/20 text-left flex items-start gap-3">
-                        <ShieldAlert className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                      <div className="p-3 rounded-xl bg-red-500/[0.06] border border-red-500/20 text-left flex items-start gap-3">
+                        <ShieldAlert className="w-4 h-4 text-red-500 dark:text-red-400 shrink-0 mt-0.5" />
                         <div className="text-xs">
-                          <span className="text-red-300 font-semibold">Strict Rule Active:</span>{" "}
-                          <span className="text-foreground/50">
+                          <span className="text-red-700 dark:text-red-300 font-semibold">Strict Rule Active:</span>{" "}
+                          <span className="text-slate-600 dark:text-foreground/50">
                             Non-allowlisted processes and blocked websites (social/games) are instantly intercepted.
                           </span>
                         </div>
@@ -281,12 +281,12 @@ export function CapabilitiesCanvas() {
                   {/* 2. APP TIMER TAB */}
                   {activeTab.id === "timer" && (
                     <div className="space-y-6 text-left">
-                      <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
+                      <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/[0.06] pb-4">
                         <div>
-                          <p className="text-xs font-bold text-white uppercase tracking-wider">
+                          <p className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                             Daily Quota Simulator
                           </p>
-                          <p className="text-[11px] text-foreground/40 font-mono">
+                          <p className="text-[11px] text-slate-500 dark:text-foreground/40 font-mono">
                             Target: social & entertainment applications
                           </p>
                         </div>
@@ -296,7 +296,7 @@ export function CapabilitiesCanvas() {
                       </div>
 
                       <div className="space-y-2">
-                        <div className="flex justify-between text-xs text-foreground/60 font-mono">
+                        <div className="flex justify-between text-xs text-slate-600 dark:text-foreground/60 font-mono">
                           <span>Allowance adjustment:</span>
                           <span>{timerMinutes} minutes</span>
                         </div>
@@ -307,7 +307,7 @@ export function CapabilitiesCanvas() {
                           step="5"
                           value={timerMinutes}
                           onChange={(e) => setTimerMinutes(Number(e.target.value))}
-                          className="w-full accent-nyw-amber cursor-pointer bg-white/10 rounded-lg h-2"
+                          className="w-full accent-nyw-amber cursor-pointer bg-slate-200 dark:bg-white/10 rounded-lg h-2"
                         />
                         <div className="flex justify-between gap-2 pt-1">
                           {[15, 30, 60, 120].map((preset) => (
@@ -317,7 +317,7 @@ export function CapabilitiesCanvas() {
                               className={`px-2 py-1 rounded text-[10px] font-mono transition-colors ${
                                 timerMinutes === preset
                                   ? "bg-nyw-amber/20 text-nyw-amber border border-nyw-amber/30"
-                                  : "bg-white/[0.04] text-foreground/50 hover:text-white"
+                                  : "bg-white dark:bg-white/[0.04] text-slate-600 dark:text-foreground/50 border border-slate-200 dark:border-transparent hover:text-slate-900 dark:hover:text-white shadow-xs"
                               }`}
                             >
                               {preset >= 60 ? `${preset / 60}h` : `${preset}m`}
@@ -326,14 +326,14 @@ export function CapabilitiesCanvas() {
                         </div>
                       </div>
 
-                      <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-2">
+                      <div className="p-4 rounded-xl bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.06] space-y-2 shadow-xs">
                         <div className="flex justify-between text-xs">
-                          <span className="text-foreground/70">Discord.exe today:</span>
+                          <span className="text-slate-700 dark:text-foreground/70">Discord.exe today:</span>
                           <span className="font-mono text-nyw-amber font-semibold">
                             {Math.min(timerMinutes, 38)}m / {timerMinutes}m
                           </span>
                         </div>
-                        <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
+                        <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden">
                           <div
                             className="h-full bg-nyw-amber rounded-full transition-all duration-300"
                             style={{
@@ -341,7 +341,7 @@ export function CapabilitiesCanvas() {
                             }}
                           />
                         </div>
-                        <p className="text-[11px] text-foreground/40">
+                        <p className="text-[11px] text-slate-500 dark:text-foreground/40">
                           {38 >= timerMinutes
                             ? "Limit reached: Application gracefully paused."
                             : `${timerMinutes - 38} minutes remaining before pause.`}
@@ -356,7 +356,7 @@ export function CapabilitiesCanvas() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Fingerprint className="w-5 h-5 text-nyw-emerald" />
-                          <span className="text-xs font-bold uppercase tracking-wider text-white">
+                          <span className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
                             Security Gate Preview
                           </span>
                         </div>
@@ -364,15 +364,15 @@ export function CapabilitiesCanvas() {
                           className={`text-xs px-2.5 py-0.5 rounded-full font-mono ${
                             pinUnlocked
                               ? "bg-nyw-emerald/20 text-nyw-emerald"
-                              : "bg-white/10 text-foreground/50"
+                              : "bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-foreground/50"
                           }`}
                         >
                           {pinUnlocked ? "AUTHENTICATED" : "LOCKED"}
                         </span>
                       </div>
 
-                      <div className="p-5 rounded-2xl bg-black/60 border border-white/10 text-center space-y-4">
-                        <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center bg-white/[0.04] border border-white/[0.08]">
+                      <div className="p-5 rounded-2xl bg-white dark:bg-black/60 border border-slate-200 dark:border-white/10 text-center space-y-4 shadow-sm">
+                        <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08]">
                           {pinUnlocked ? (
                             <Unlock className="w-6 h-6 text-nyw-emerald" />
                           ) : (
@@ -380,8 +380,8 @@ export function CapabilitiesCanvas() {
                           )}
                         </div>
                         <div>
-                          <p className="text-sm font-semibold text-white">Telegram.exe Intercepted</p>
-                          <p className="text-xs text-foreground/40 mt-1">
+                          <p className="text-sm font-semibold text-slate-900 dark:text-white">Telegram.exe Intercepted</p>
+                          <p className="text-xs text-slate-500 dark:text-foreground/40 mt-1">
                             {pinUnlocked
                               ? "Access granted via Windows Hello."
                               : "Enter sample PIN (1234) or click authenticate."}
@@ -402,11 +402,11 @@ export function CapabilitiesCanvas() {
                                   setPinInput("")
                                 }
                               }}
-                              className="w-24 text-center px-3 py-1.5 rounded-lg bg-white/5 border border-white/15 text-sm text-white font-mono focus:outline-none focus:border-nyw-emerald"
+                              className="w-24 text-center px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/15 text-sm text-slate-900 dark:text-white font-mono focus:outline-none focus:border-nyw-emerald"
                             />
                             <button
                               onClick={() => setPinUnlocked(true)}
-                              className="px-3 py-1.5 rounded-lg bg-nyw-emerald text-black text-xs font-semibold hover:bg-nyw-emerald/90 transition-colors"
+                              className="px-3 py-1.5 rounded-lg bg-nyw-emerald text-black text-xs font-semibold hover:bg-nyw-emerald/90 transition-colors cursor-pointer"
                             >
                               Verify
                             </button>
@@ -414,7 +414,7 @@ export function CapabilitiesCanvas() {
                         ) : (
                           <button
                             onClick={() => setPinUnlocked(false)}
-                            className="px-4 py-1.5 rounded-lg bg-white/10 text-xs text-foreground/70 hover:bg-white/15 transition-colors"
+                            className="px-4 py-1.5 rounded-lg bg-slate-100 dark:bg-white/10 text-xs text-slate-700 dark:text-foreground/70 hover:bg-slate-200 dark:hover:bg-white/15 transition-colors cursor-pointer"
                           >
                             Reset Lock
                           </button>
@@ -426,32 +426,32 @@ export function CapabilitiesCanvas() {
                   {/* 4. SLEEPGUARD TAB */}
                   {activeTab.id === "sleepguard" && (
                     <div className="space-y-6 text-left">
-                      <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
+                      <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/[0.06] pb-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                          <div className="w-8 h-8 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-500">
                             <Moon className="w-4 h-4" />
                           </div>
                           <div>
-                            <p className="text-xs font-bold text-white uppercase tracking-wider">
+                            <p className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                               SleepGuard Inactivity Monitor
                             </p>
-                            <p className="text-[11px] text-foreground/40 font-mono">
+                            <p className="text-[11px] text-slate-500 dark:text-foreground/40 font-mono">
                               Circadian window: 11:00 PM – 6:00 AM
                             </p>
                           </div>
                         </div>
-                        <span className="text-xs font-mono px-2.5 py-1 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
+                        <span className="text-xs font-mono px-2.5 py-1 rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30">
                           STANDBY
                         </span>
                       </div>
 
-                      <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3">
+                      <div className="p-4 rounded-xl bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.06] space-y-3 shadow-xs">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="text-foreground/70">Idle Threshold Countdown:</span>
-                          <span className="font-mono text-indigo-300 font-bold">15m idle detected</span>
+                          <span className="text-slate-700 dark:text-foreground/70">Idle Threshold Countdown:</span>
+                          <span className="font-mono text-indigo-600 dark:text-indigo-300 font-bold">15m idle detected</span>
                         </div>
-                        <div className="p-3 rounded-lg bg-indigo-500/[0.06] border border-indigo-500/15 text-xs text-foreground/70 flex items-center gap-3">
-                          <Bell className="w-4 h-4 text-indigo-400 shrink-0" />
+                        <div className="p-3 rounded-lg bg-indigo-500/[0.06] border border-indigo-500/15 text-xs text-slate-700 dark:text-foreground/70 flex items-center gap-3">
+                          <Bell className="w-4 h-4 text-indigo-500 dark:text-indigo-400 shrink-0" />
                           <span>
                             Single Notch warning dialog: PC safely sleeps in 60s unless cancel is clicked or motion is detected.
                           </span>
@@ -463,12 +463,12 @@ export function CapabilitiesCanvas() {
                   {/* 5. USAGE TAB */}
                   {activeTab.id === "usage" && (
                     <div className="space-y-6 text-left">
-                      <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
+                      <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/[0.06] pb-4">
                         <div>
-                          <p className="text-xs font-bold text-white uppercase tracking-wider">
+                          <p className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                             Hourly Activity Intensity (Today)
                           </p>
-                          <p className="text-[11px] text-foreground/40 font-mono">
+                          <p className="text-[11px] text-slate-500 dark:text-foreground/40 font-mono">
                             3h 0m Screen Time · 2h 40m Active
                           </p>
                         </div>
@@ -479,7 +479,7 @@ export function CapabilitiesCanvas() {
 
                       {/* 24-Hour Mini Activity Chart */}
                       <div className="space-y-2">
-                        <div className="flex items-end justify-between gap-1 h-20 px-2 pt-2 bg-white/[0.02] border border-white/[0.06] rounded-xl">
+                        <div className="flex items-end justify-between gap-1 h-20 px-2 pt-2 bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.06] rounded-xl shadow-xs">
                           {[
                             0, 0, 0, 0, 0, 0, 0, 0, 15, 38, 45, 50, 20, 10, 52, 40,
                             25, 0, 0, 0, 0, 0, 0, 0,
@@ -494,15 +494,15 @@ export function CapabilitiesCanvas() {
                                   activeHour === idx
                                     ? "bg-nyw-emerald"
                                     : val > 0
-                                    ? "bg-white/20 hover:bg-white/40"
-                                    : "bg-white/5"
+                                    ? "bg-slate-300 hover:bg-slate-400 dark:bg-white/20 dark:hover:bg-white/40"
+                                    : "bg-slate-100 dark:bg-white/5"
                                 }`}
                                 style={{ height: `${Math.max(8, (val / 60) * 100)}%` }}
                               />
                             </div>
                           ))}
                         </div>
-                        <div className="flex justify-between text-[10px] text-foreground/40 font-mono px-2">
+                        <div className="flex justify-between text-[10px] text-slate-500 dark:text-foreground/40 font-mono px-2">
                           <span>12 AM</span>
                           <span>6 AM</span>
                           <span>12 PM</span>
@@ -511,8 +511,8 @@ export function CapabilitiesCanvas() {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between text-xs p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
-                        <span className="text-foreground/60 font-mono">Selected Hour: {activeHour ?? 14}:00</span>
+                      <div className="flex items-center justify-between text-xs p-3 rounded-xl bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.06] shadow-xs">
+                        <span className="text-slate-600 dark:text-foreground/60 font-mono">Selected Hour: {activeHour ?? 14}:00</span>
                         <span className="text-nyw-emerald font-semibold font-mono">
                           {activeHour === 14 ? "52m active" : activeHour ? "Recorded activity" : "No activity"}
                         </span>
@@ -523,12 +523,12 @@ export function CapabilitiesCanvas() {
                   {/* 6. INSIGHTS TAB */}
                   {activeTab.id === "insights" && (
                     <div className="space-y-6 text-left">
-                      <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
+                      <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/[0.06] pb-4">
                         <div>
-                          <p className="text-xs font-bold text-white uppercase tracking-wider">
+                          <p className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                             Foreground Session Analytics
                           </p>
-                          <p className="text-[11px] text-foreground/40 font-mono">
+                          <p className="text-[11px] text-slate-500 dark:text-foreground/40 font-mono">
                             Native Win32 event hooks · Sub-second accuracy
                           </p>
                         </div>
@@ -538,21 +538,21 @@ export function CapabilitiesCanvas() {
                       </div>
 
                       <div className="grid grid-cols-3 gap-3">
-                        <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] text-center">
-                          <div className="text-xs text-foreground/40 font-mono">Focus Ratio</div>
-                          <div className="text-xl font-bold text-white mt-1">78%</div>
+                        <div className="p-3 rounded-xl bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.06] text-center shadow-xs">
+                          <div className="text-xs text-slate-500 dark:text-foreground/40 font-mono">Focus Ratio</div>
+                          <div className="text-xl font-bold text-slate-900 dark:text-white mt-1">78%</div>
                         </div>
-                        <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] text-center">
-                          <div className="text-xs text-foreground/40 font-mono">Deep Blocks</div>
+                        <div className="p-3 rounded-xl bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.06] text-center shadow-xs">
+                          <div className="text-xs text-slate-500 dark:text-foreground/40 font-mono">Deep Blocks</div>
                           <div className="text-xl font-bold text-nyw-emerald mt-1">4 sessions</div>
                         </div>
-                        <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] text-center">
-                          <div className="text-xs text-foreground/40 font-mono">Friction Saved</div>
+                        <div className="p-3 rounded-xl bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.06] text-center shadow-xs">
+                          <div className="text-xs text-slate-500 dark:text-foreground/40 font-mono">Friction Saved</div>
                           <div className="text-xl font-bold text-nyw-amber mt-1">1h 14m</div>
                         </div>
                       </div>
 
-                      <div className="text-[11px] text-foreground/40 italic text-center">
+                      <div className="text-[11px] text-slate-500 dark:text-foreground/40 italic text-center">
                         No deceptive wellness scores. Just raw, honest visibility into where your hours went.
                       </div>
                     </div>
@@ -561,16 +561,16 @@ export function CapabilitiesCanvas() {
                   {/* 7. LOCAL-FIRST PRIVACY TAB */}
                   {activeTab.id === "privacy" && (
                     <div className="space-y-6 text-left">
-                      <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
+                      <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/[0.06] pb-4">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-nyw-emerald/10 border border-nyw-emerald/20 flex items-center justify-center text-nyw-emerald">
                             <Database className="w-4 h-4" />
                           </div>
                           <div>
-                            <p className="text-xs font-bold text-white uppercase tracking-wider">
+                            <p className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                               Local SQLite Architecture
                             </p>
-                            <p className="text-[11px] text-foreground/40 font-mono">
+                            <p className="text-[11px] text-slate-500 dark:text-foreground/40 font-mono">
                               ~/.digital_wellbeing/digital_wellbeing.db
                             </p>
                           </div>
@@ -580,7 +580,7 @@ export function CapabilitiesCanvas() {
                         </span>
                       </div>
 
-                      <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] font-mono text-xs text-foreground/70 space-y-1.5">
+                      <div className="p-4 rounded-xl bg-slate-900 text-slate-200 dark:bg-white/[0.02] dark:text-foreground/70 border border-slate-800 dark:border-white/[0.06] font-mono text-xs space-y-1.5 shadow-sm">
                         <div className="text-nyw-emerald font-semibold">// Zero Cloud Sync Protocol</div>
                         <div>• Network socket listening: DISABLED</div>
                         <div>• Outbound usage telemetries: 0 packets</div>

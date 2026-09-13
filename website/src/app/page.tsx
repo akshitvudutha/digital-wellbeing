@@ -2,27 +2,18 @@
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
-import Link from "next/link"
-import { siteConfig } from "@/config/site"
 import { FocusPreview } from "@/components/interactive/focus-preview"
 import { CapabilitiesCanvas } from "@/components/interactive/capabilities-canvas"
 import { BetaRequest } from "@/components/beta/beta-request"
 import {
   ShieldCheck,
   Cpu,
-  Lock,
   Moon,
   Sun,
-  Hourglass,
-  Focus,
-  CheckCircle2,
   HardDrive,
   EyeOff,
-  Sparkles,
-  ArrowRight,
   Terminal,
   Zap,
-  Layers,
   Palette,
 } from "lucide-react"
 
@@ -71,7 +62,7 @@ export default function Home() {
         {/* ===================================================
             HERO SECTION
         =================================================== */}
-        <section className="relative pt-36 pb-20 md:pt-48 md:pb-28 overflow-hidden text-center">
+        <section className="relative pt-36 pb-20 md:pt-44 md:pb-28 overflow-hidden text-center">
           {/* Ambient Glow / Radial Gradients */}
           <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[650px] h-[350px] bg-gradient-to-tr from-nyw-emerald/10 via-nyw-amber/5 to-transparent blur-[140px] pointer-events-none -z-10" />
 
@@ -83,31 +74,31 @@ export default function Home() {
               className="space-y-6"
             >
               {/* Category Pill Tag */}
-              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-surface border border-border text-[11px] font-mono uppercase tracking-[0.2em] text-foreground/70 backdrop-blur-md">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-slate-100/80 dark:bg-surface border border-slate-200 dark:border-border text-[11px] font-mono uppercase tracking-[0.2em] text-slate-700 dark:text-foreground/70 backdrop-blur-md">
                 <span className="w-1.5 h-1.5 rounded-full bg-nyw-emerald animate-pulse" />
                 <span>Controlled Beta · Windows 10 & 11 (v3.1.6)</span>
               </div>
 
               {/* Bold, Calm Headline */}
-              <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold tracking-tight text-foreground leading-[1.1] max-w-4xl mx-auto">
+              <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold tracking-tight text-slate-900 dark:text-foreground leading-[1.1] max-w-4xl mx-auto">
                 Control your machine. <br />
-                <span className="text-foreground/70 font-semibold">
+                <span className="text-slate-700 dark:text-foreground/70 font-semibold">
                   Not the other way around.
                 </span>
               </h1>
 
               {/* Subtext */}
-              <p className="text-base sm:text-xl text-foreground/60 max-w-2xl mx-auto leading-relaxed font-normal">
+              <p className="text-base sm:text-xl text-slate-600 dark:text-foreground/70 max-w-2xl mx-auto leading-relaxed font-normal">
                 Notch is a digital wellbeing and attention-control app for Windows. Engineered to remove digital clutter at the process level, leaving you with only the work that matters.
               </p>
 
-              {/* Integrated Email Request Pill */}
-              <div className="pt-4 pb-2" id="beta">
+              {/* Integrated Email Request Pill (with generous scroll margin so navbar never overlaps) */}
+              <div className="pt-4 pb-2 scroll-mt-36" id="beta">
                 <BetaRequest variant="hero" />
               </div>
 
               {/* Live Interactive Focus Pill Demo */}
-              <div className="pt-10">
+              <div className="pt-8">
                 <FocusPreview />
               </div>
             </motion.div>
@@ -117,16 +108,16 @@ export default function Home() {
         {/* ===================================================
             SECTION 02: PRODUCT EXPERIENCE & NATIVE DESKTOP CANVAS
         =================================================== */}
-        <section id="product" className="scroll-mt-28 py-24 md:py-32 border-t border-border relative">
+        <section id="product" className="scroll-mt-28 py-24 md:py-32 border-t border-slate-200 dark:border-border relative">
           <div className="container mx-auto px-6 max-w-5xl">
             <div className="text-center max-w-2xl mx-auto mb-10 space-y-3">
               <span className="text-[11px] font-mono tracking-[0.2em] text-nyw-emerald uppercase font-semibold">
                 NATIVE OS INTEGRATION · v3.1.6
               </span>
-              <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-foreground">
+              <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-slate-900 dark:text-foreground">
                 A calm, silent presence on Windows.
               </h2>
-              <p className="text-sm md:text-base text-foreground/60 leading-relaxed">
+              <p className="text-sm md:text-base text-slate-600 dark:text-foreground/65 leading-relaxed">
                 Built natively with PySide6 and the Win32 API. No Electron bloat, no resource hogging, and zero intrusive popups.
               </p>
             </div>
@@ -137,8 +128,8 @@ export default function Home() {
                 onClick={() => setHeroTheme("dark")}
                 className={`px-4 py-2 rounded-full text-xs font-semibold cursor-pointer transition-all duration-200 flex items-center gap-2 ${
                   heroTheme === "dark"
-                    ? "bg-white/[0.12] text-foreground border border-white/20 shadow-sm"
-                    : "text-foreground/50 hover:text-foreground/80 hover:bg-white/[0.04]"
+                    ? "bg-slate-900 text-white dark:bg-white/[0.12] dark:text-foreground border border-slate-800 dark:border-white/20 shadow-sm"
+                    : "text-slate-600 dark:text-foreground/50 hover:text-slate-950 dark:hover:text-foreground/80 hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
                 }`}
               >
                 <Moon className="w-3.5 h-3.5 text-indigo-400" />
@@ -148,8 +139,8 @@ export default function Home() {
                 onClick={() => setHeroTheme("light")}
                 className={`px-4 py-2 rounded-full text-xs font-semibold cursor-pointer transition-all duration-200 flex items-center gap-2 ${
                   heroTheme === "light"
-                    ? "bg-nyw-emerald/15 text-nyw-emerald border border-nyw-emerald/30 shadow-sm"
-                    : "text-foreground/50 hover:text-foreground/80 hover:bg-white/[0.04]"
+                    ? "bg-nyw-emerald/15 text-nyw-emerald-dark dark:text-nyw-emerald border border-nyw-emerald/30 shadow-sm font-bold"
+                    : "text-slate-600 dark:text-foreground/50 hover:text-slate-950 dark:hover:text-foreground/80 hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
                 }`}
               >
                 <Sun className="w-3.5 h-3.5 text-nyw-amber" />
@@ -158,8 +149,8 @@ export default function Home() {
             </div>
 
             {/* Desktop Experience Mockup Container */}
-            <div className="glass-card rounded-3xl p-3 md:p-5 border border-border shadow-2xl relative">
-              <div className="relative rounded-2xl overflow-hidden bg-black/40 border border-border aspect-[16/10] md:aspect-[16/9]">
+            <div className="glass-card rounded-3xl p-3 md:p-5 border border-slate-200 dark:border-border shadow-xl relative">
+              <div className="relative rounded-2xl overflow-hidden bg-slate-950 border border-slate-200 dark:border-border aspect-[16/10] md:aspect-[16/9]">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={heroTheme}
@@ -182,7 +173,7 @@ export default function Home() {
               </div>
 
               {/* Caption */}
-              <div className="pt-4 px-3 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-foreground/50 font-mono">
+              <div className="pt-4 px-3 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500 dark:text-foreground/50 font-mono">
                 <div className="flex items-center gap-2">
                   <Cpu className="w-3.5 h-3.5 text-nyw-emerald" />
                   <span>Sub-25MB RAM Footprint · 0% Idle CPU Usage</span>
@@ -196,16 +187,16 @@ export default function Home() {
         {/* ===================================================
             SECTION 03: CORE CAPABILITIES (INTERACTIVE)
         =================================================== */}
-        <section id="capabilities" className="scroll-mt-28 py-24 md:py-32 border-t border-border bg-[#07090c] relative">
+        <section id="capabilities" className="scroll-mt-28 py-24 md:py-32 border-t border-slate-200 dark:border-border bg-slate-50/60 dark:bg-[#07090c] relative">
           <div className="container mx-auto px-6 max-w-6xl text-center">
             <div className="max-w-2xl mx-auto mb-14 space-y-3">
               <span className="text-[11px] font-mono tracking-[0.2em] text-nyw-emerald uppercase font-semibold">
                 SYSTEM ARCHITECTURE
               </span>
-              <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-foreground">
+              <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-slate-900 dark:text-foreground">
                 Engineered for focus. Tested for safety.
               </h2>
-              <p className="text-sm md:text-base text-foreground/60 leading-relaxed">
+              <p className="text-sm md:text-base text-slate-600 dark:text-foreground/65 leading-relaxed">
                 Explore the foundational capabilities engineered to give you control over your operating system.
               </p>
             </div>
@@ -218,23 +209,23 @@ export default function Home() {
         {/* ===================================================
             SECTION 04: THEME THAT FITS YOUR WORKSPACE
         =================================================== */}
-        <section id="themes" className="scroll-mt-28 py-24 md:py-32 border-t border-border relative">
+        <section id="themes" className="scroll-mt-28 py-24 md:py-32 border-t border-slate-200 dark:border-border relative">
           <div className="container mx-auto px-6 max-w-5xl">
             <div className="text-center max-w-2xl mx-auto mb-12 space-y-3">
               <span className="text-[11px] font-mono tracking-[0.2em] text-nyw-amber uppercase font-semibold flex items-center justify-center gap-1.5">
                 <Palette className="w-3.5 h-3.5" />
                 <span>THEME THAT FITS YOUR WORKSPACE</span>
               </span>
-              <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-foreground">
+              <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-slate-900 dark:text-foreground">
                 Crafted for day and night.
               </h2>
-              <p className="text-sm md:text-base text-foreground/60 leading-relaxed">
+              <p className="text-sm md:text-base text-slate-600 dark:text-foreground/65 leading-relaxed">
                 Notch supports both Dark and Light themes. Engineered natively with clean typography, high-contrast analytics, and Mica acrylic aesthetics tailored for any ambient lighting.
               </p>
             </div>
 
             {/* Screen Selector & Theme Selector Bar */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6 p-2 rounded-2xl glass-card border border-border">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6 p-2 rounded-2xl glass-card border border-slate-200 dark:border-border shadow-sm">
               {/* Screen Tabs */}
               <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar w-full sm:w-auto">
                 {(["home", "usage", "focus", "insights", "settings"] as const).map((scr) => (
@@ -243,8 +234,8 @@ export default function Home() {
                     onClick={() => setThemeSectionScreen(scr)}
                     className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold capitalize cursor-pointer transition-all ${
                       themeSectionScreen === scr
-                        ? "bg-foreground/10 text-foreground border border-border shadow-sm"
-                        : "text-foreground/50 hover:text-foreground/80"
+                        ? "bg-slate-900 text-white dark:bg-foreground/10 dark:text-foreground border border-slate-800 dark:border-border shadow-xs"
+                        : "text-slate-600 dark:text-foreground/50 hover:text-slate-950 dark:hover:text-foreground/80"
                     }`}
                   >
                     {scr}
@@ -253,13 +244,13 @@ export default function Home() {
               </div>
 
               {/* Mode Toggle */}
-              <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-surface border border-border">
+              <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-surface border border-slate-200 dark:border-border">
                 <button
                   onClick={() => setThemeSectionMode("dark")}
                   className={`px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center gap-1.5 ${
                     themeSectionMode === "dark"
-                      ? "bg-white/[0.12] text-foreground border border-white/20 shadow-sm"
-                      : "text-foreground/50 hover:text-foreground"
+                      ? "bg-slate-900 text-white dark:bg-white/[0.12] dark:text-foreground border border-slate-800 dark:border-white/20 shadow-xs"
+                      : "text-slate-600 dark:text-foreground/50 hover:text-slate-950 dark:hover:text-foreground"
                   }`}
                 >
                   <Moon className="w-3 h-3 text-indigo-400" />
@@ -269,8 +260,8 @@ export default function Home() {
                   onClick={() => setThemeSectionMode("light")}
                   className={`px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center gap-1.5 ${
                     themeSectionMode === "light"
-                      ? "bg-nyw-emerald/15 text-nyw-emerald border border-nyw-emerald/30 shadow-sm"
-                      : "text-foreground/50 hover:text-foreground"
+                      ? "bg-nyw-emerald/15 text-nyw-emerald-dark dark:text-nyw-emerald border border-nyw-emerald/30 shadow-xs font-bold"
+                      : "text-slate-600 dark:text-foreground/50 hover:text-slate-950 dark:hover:text-foreground"
                   }`}
                 >
                   <Sun className="w-3 h-3 text-nyw-amber" />
@@ -280,8 +271,8 @@ export default function Home() {
             </div>
 
             {/* Showcase Display Card */}
-            <div className="glass-card rounded-3xl p-3 md:p-5 border border-border shadow-2xl space-y-4">
-              <div className="relative rounded-2xl overflow-hidden bg-black/40 border border-border aspect-[16/10] md:aspect-[16/9]">
+            <div className="glass-card rounded-3xl p-3 md:p-5 border border-slate-200 dark:border-border shadow-xl space-y-4">
+              <div className="relative rounded-2xl overflow-hidden bg-slate-950 border border-slate-200 dark:border-border aspect-[16/10] md:aspect-[16/9]">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={`${themeSectionScreen}-${themeSectionMode}`}
@@ -304,10 +295,10 @@ export default function Home() {
 
               <div className="pt-2 px-3 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
                 <div>
-                  <span className="font-bold text-foreground">{themeScreens[themeSectionScreen].title}</span>
-                  <span className="text-foreground/50 ml-2 font-normal hidden md:inline">{themeScreens[themeSectionScreen].desc}</span>
+                  <span className="font-bold text-slate-900 dark:text-foreground">{themeScreens[themeSectionScreen].title}</span>
+                  <span className="text-slate-600 dark:text-foreground/60 ml-2 font-normal hidden md:inline">{themeScreens[themeSectionScreen].desc}</span>
                 </div>
-                <span className="font-mono text-foreground/40 text-[11px]">
+                <span className="font-mono text-slate-500 dark:text-foreground/50 text-[11px]">
                   Windows Desktop Application · {themeSectionMode === "dark" ? "Dark Obsidian" : "Light Theme"}
                 </span>
               </div>
@@ -318,17 +309,17 @@ export default function Home() {
         {/* ===================================================
             SECTION 05: PHILOSOPHY & DIGITAL WELLBEING STORY
         =================================================== */}
-        <section id="philosophy" className="scroll-mt-28 py-24 md:py-32 border-t border-border bg-[#07090c] relative">
+        <section id="philosophy" className="scroll-mt-28 py-24 md:py-32 border-t border-slate-200 dark:border-border bg-slate-50/60 dark:bg-[#07090c] relative">
           <div className="container mx-auto px-6 max-w-5xl">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
               <div className="lg:col-span-6 space-y-6 text-left">
                 <span className="text-[11px] font-mono tracking-[0.2em] text-nyw-amber uppercase font-semibold">
                   HONEST WELLBEING
                 </span>
-                <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-foreground leading-tight">
+                <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 dark:text-foreground leading-tight">
                   Why conventional blockers fail.
                 </h2>
-                <div className="space-y-4 text-sm md:text-base text-foreground/65 leading-relaxed">
+                <div className="space-y-4 text-sm md:text-base text-slate-600 dark:text-foreground/70 leading-relaxed">
                   <p>
                     Conventional website blockers ask you to negotiate with yourself every ten minutes. They rely on browser extensions you can disable in two clicks, and barrage you with patronizing &quot;productivity scores&quot;.
                   </p>
@@ -343,32 +334,32 @@ export default function Home() {
 
               <div className="lg:col-span-6">
                 <div className="space-y-4">
-                  <div className="p-6 rounded-2xl glass-card border border-border text-left">
-                    <h4 className="text-sm font-bold text-foreground uppercase tracking-wide flex items-center gap-2">
+                  <div className="p-6 rounded-2xl glass-card border border-slate-200 dark:border-border text-left">
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-foreground uppercase tracking-wide flex items-center gap-2">
                       <Zap className="w-4 h-4 text-nyw-amber" />
                       <span>Zero Friction Negotiation</span>
                     </h4>
-                    <p className="text-xs text-foreground/55 mt-2 leading-relaxed">
+                    <p className="text-xs text-slate-600 dark:text-foreground/60 mt-2 leading-relaxed">
                       Lock your game clients and social platforms into Deep Focus sessions. The barrier is physical and intentional, not psychological.
                     </p>
                   </div>
 
-                  <div className="p-6 rounded-2xl glass-card border border-border text-left">
-                    <h4 className="text-sm font-bold text-foreground uppercase tracking-wide flex items-center gap-2">
+                  <div className="p-6 rounded-2xl glass-card border border-slate-200 dark:border-border text-left">
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-foreground uppercase tracking-wide flex items-center gap-2">
                       <Terminal className="w-4 h-4 text-nyw-emerald" />
                       <span>Protected Process Architecture</span>
                     </h4>
-                    <p className="text-xs text-foreground/55 mt-2 leading-relaxed">
+                    <p className="text-xs text-slate-600 dark:text-foreground/60 mt-2 leading-relaxed">
                       Windows system processes (`explorer.exe`, `dwm.exe`, background services) are strictly immune to termination, keeping your PC stable.
                     </p>
                   </div>
 
-                  <div className="p-6 rounded-2xl glass-card border border-border text-left">
-                    <h4 className="text-sm font-bold text-foreground uppercase tracking-wide flex items-center gap-2">
-                      <Moon className="w-4 h-4 text-indigo-400" />
+                  <div className="p-6 rounded-2xl glass-card border border-slate-200 dark:border-border text-left">
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-foreground uppercase tracking-wide flex items-center gap-2">
+                      <Moon className="w-4 h-4 text-indigo-500" />
                       <span>Circadian Sleep Guard</span>
                     </h4>
-                    <p className="text-xs text-foreground/55 mt-2 leading-relaxed">
+                    <p className="text-xs text-slate-600 dark:text-foreground/60 mt-2 leading-relaxed">
                       Prevents late-night passive video bingeing by safely sleeping the computer when user inactivity is verified.
                     </p>
                   </div>
@@ -381,41 +372,41 @@ export default function Home() {
         {/* ===================================================
             SECTION 06: PRIVACY GUARANTEE
         =================================================== */}
-        <section id="privacy" className="scroll-mt-28 py-24 md:py-32 border-t border-border relative">
+        <section id="privacy" className="scroll-mt-28 py-24 md:py-32 border-t border-slate-200 dark:border-border relative">
           <div className="container mx-auto px-6 max-w-5xl">
             <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
               <span className="text-[11px] font-mono tracking-[0.2em] text-nyw-emerald uppercase font-semibold">
                 PRIVACY FIRST · LOCAL ONLY
               </span>
-              <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-foreground">
+              <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-slate-900 dark:text-foreground">
                 Your data never leaves your hard drive.
               </h2>
-              <p className="text-sm md:text-base text-foreground/60 leading-relaxed">
+              <p className="text-sm md:text-base text-slate-600 dark:text-foreground/65 leading-relaxed">
                 Privacy is not a feature we toggle on. It is the fundamental architecture of Notch.
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-              <div className="p-6 rounded-2xl glass-card border border-border space-y-3">
+              <div className="p-6 rounded-2xl glass-card border border-slate-200 dark:border-border space-y-3">
                 <HardDrive className="w-6 h-6 text-nyw-emerald" />
-                <h4 className="text-base font-bold text-foreground">100% Local SQLite</h4>
-                <p className="text-xs text-foreground/60 leading-relaxed">
+                <h4 className="text-base font-bold text-slate-900 dark:text-foreground">100% Local SQLite</h4>
+                <p className="text-xs text-slate-600 dark:text-foreground/65 leading-relaxed">
                   Every application timestamp and session event is committed directly to a local SQLite database in your user folder.
                 </p>
               </div>
 
-              <div className="p-6 rounded-2xl glass-card border border-border space-y-3">
+              <div className="p-6 rounded-2xl glass-card border border-slate-200 dark:border-border space-y-3">
                 <EyeOff className="w-6 h-6 text-nyw-amber" />
-                <h4 className="text-base font-bold text-foreground">No Telemetry or Tracking</h4>
-                <p className="text-xs text-foreground/60 leading-relaxed">
+                <h4 className="text-base font-bold text-slate-900 dark:text-foreground">No Telemetry or Tracking</h4>
+                <p className="text-xs text-slate-600 dark:text-foreground/65 leading-relaxed">
                   No telemetry pings, no usage beacons, no analytics servers, and no third-party data broker partnerships.
                 </p>
               </div>
 
-              <div className="p-6 rounded-2xl glass-card border border-border space-y-3">
-                <ShieldCheck className="w-6 h-6 text-indigo-400" />
-                <h4 className="text-base font-bold text-foreground">No Account Required</h4>
-                <p className="text-xs text-foreground/60 leading-relaxed">
+              <div className="p-6 rounded-2xl glass-card border border-slate-200 dark:border-border space-y-3">
+                <ShieldCheck className="w-6 h-6 text-indigo-500" />
+                <h4 className="text-base font-bold text-slate-900 dark:text-foreground">No Account Required</h4>
+                <p className="text-xs text-slate-600 dark:text-foreground/65 leading-relaxed">
                   The desktop app functions completely offline without sign-in, cloud sync, or remote dependencies.
                 </p>
               </div>
@@ -426,7 +417,7 @@ export default function Home() {
         {/* ===================================================
             SECTION 07: CONTROLLED BETA ACCESS CTA
         =================================================== */}
-        <section className="py-24 md:py-36 border-t border-border bg-[#07090c] relative overflow-hidden text-center">
+        <section className="py-24 md:py-36 border-t border-slate-200 dark:border-border bg-slate-50/60 dark:bg-[#07090c] relative overflow-hidden text-center">
           <div className="container mx-auto px-6 max-w-3xl space-y-8">
             <div className="w-16 h-16 rounded-full mx-auto relative flex-shrink-0 mb-4">
               <Image
@@ -439,10 +430,10 @@ export default function Home() {
             </div>
 
             <div className="space-y-3">
-              <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-foreground">
+              <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-slate-900 dark:text-foreground">
                 Experience intentional computing.
               </h2>
-              <p className="text-sm md:text-base text-foreground/60 max-w-lg mx-auto leading-relaxed">
+              <p className="text-sm md:text-base text-slate-600 dark:text-foreground/65 max-w-lg mx-auto leading-relaxed">
                 Public downloads are paused while we conduct controlled testing. Request access below to join our next cohort.
               </p>
             </div>
@@ -451,7 +442,7 @@ export default function Home() {
               <BetaRequest variant="card" id="beta-cta-input" />
             </div>
 
-            <p className="text-[11px] font-mono text-foreground/35">
+            <p className="text-[11px] font-mono text-slate-500 dark:text-foreground/45 font-medium">
               Windows 10 / Windows 11 (64-bit) · Independent Software · v3.1.6
             </p>
           </div>

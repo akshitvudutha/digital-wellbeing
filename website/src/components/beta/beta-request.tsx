@@ -1,7 +1,7 @@
 "use client"
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ArrowRight, CheckCircle2, Loader2, ShieldCheck, Sparkles } from "lucide-react"
+import { ArrowRight, CheckCircle2, Loader2, ShieldCheck } from "lucide-react"
 
 interface BetaRequestProps {
   variant?: "hero" | "card"
@@ -10,7 +10,6 @@ interface BetaRequestProps {
 
 export function BetaRequest({ variant = "hero", id = "beta-input" }: BetaRequestProps) {
   const [email, setEmail] = useState("")
-  const [osVersion, setOsVersion] = useState<"Windows 11" | "Windows 10">("Windows 11")
   const [honeypot, setHoneypot] = useState("")
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
@@ -29,7 +28,7 @@ export function BetaRequest({ variant = "hero", id = "beta-input" }: BetaRequest
       const res = await fetch("/api/beta", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, osVersion, honeypot }),
+        body: JSON.stringify({ email, osVersion: "Windows 11", honeypot }),
       })
 
       const data = await res.json()
@@ -63,8 +62,8 @@ export function BetaRequest({ variant = "hero", id = "beta-input" }: BetaRequest
             <div className="w-10 h-10 rounded-full bg-nyw-emerald/15 text-nyw-emerald flex items-center justify-center mx-auto mb-3">
               <CheckCircle2 className="w-5 h-5" />
             </div>
-            <h4 className="font-semibold text-white text-base">Request Received</h4>
-            <p className="text-sm text-foreground/70 leading-relaxed max-w-md mx-auto">
+            <h4 className="font-semibold text-slate-900 dark:text-white text-base">Request Received</h4>
+            <p className="text-sm text-slate-600 dark:text-foreground/75 leading-relaxed max-w-md mx-auto">
               {result.message}
             </p>
             <button
@@ -88,7 +87,7 @@ export function BetaRequest({ variant = "hero", id = "beta-input" }: BetaRequest
             />
 
             {/* Streamlined Pill Container */}
-            <div className="glass-island rounded-full p-1.5 pl-5 flex items-center justify-between gap-2 shadow-2xl relative">
+            <div className="glass-island rounded-full p-1.5 pl-5 flex items-center justify-between gap-2 shadow-xl relative">
               <input
                 type="email"
                 required
@@ -99,14 +98,14 @@ export function BetaRequest({ variant = "hero", id = "beta-input" }: BetaRequest
                   if (result) setResult(null)
                 }}
                 placeholder="Enter your email for beta access..."
-                className="w-full bg-transparent text-sm md:text-base text-foreground placeholder:text-foreground/35 focus:outline-none font-normal"
+                className="w-full bg-transparent text-sm md:text-base text-slate-900 dark:text-foreground placeholder:text-slate-400 dark:placeholder:text-foreground/40 focus:outline-none font-normal"
               />
 
               <button
                 type="submit"
                 disabled={loading}
                 suppressHydrationWarning
-                className="flex-shrink-0 flex items-center gap-2 px-5 py-3 rounded-full text-xs md:text-sm font-semibold transition-all duration-200 cursor-pointer bg-white text-black hover:bg-white/90 shadow-lg glow-emerald disabled:opacity-50"
+                className="flex-shrink-0 flex items-center gap-2 px-5 py-3 rounded-full text-xs md:text-sm font-semibold transition-all duration-200 cursor-pointer bg-slate-900 text-white dark:bg-white dark:text-black hover:opacity-90 shadow-lg glow-emerald disabled:opacity-50"
               >
                 {loading ? (
                   <>
@@ -127,33 +126,19 @@ export function BetaRequest({ variant = "hero", id = "beta-input" }: BetaRequest
               <motion.p
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-xs text-red-400 font-medium"
+                className="text-xs text-red-500 font-medium"
               >
                 {result.message}
               </motion.p>
             )}
 
-            {/* Sub-bar options: OS version selector & privacy notice */}
-            <div className="flex items-center justify-center gap-4 text-xs text-foreground/45 pt-1">
-              <div className="flex items-center gap-1.5">
-                <span className="font-mono text-[11px]">Platform:</span>
-                <select
-                  value={osVersion}
-                  onChange={(e) => setOsVersion(e.target.value as any)}
-                  className="bg-transparent border-none text-foreground/75 font-mono text-[11px] focus:outline-none cursor-pointer"
-                >
-                  <option value="Windows 11" className="bg-[#0e1116] text-white">
-                    Windows 11
-                  </option>
-                  <option value="Windows 10" className="bg-[#0e1116] text-white">
-                    Windows 10
-                  </option>
-                </select>
-              </div>
+            {/* Modern understated platform & safety metadata */}
+            <div className="flex items-center justify-center gap-3 text-xs text-slate-500 dark:text-foreground/50 pt-1.5 font-mono text-[11px]">
+              <span>Built for Windows 10 & 11 (64-bit)</span>
               <span>•</span>
               <div className="flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-nyw-emerald" />
-                <span>Zero spam · Controlled test batches</span>
+                <span>Controlled Beta · Zero Spam</span>
               </div>
             </div>
           </form>

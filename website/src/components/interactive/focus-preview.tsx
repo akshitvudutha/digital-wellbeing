@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
-import { Play, Square, ShieldCheck, Lock, Sparkles, Check } from "lucide-react"
+import { Play, Square, Check } from "lucide-react"
 
 export function FocusPreview() {
   const [isFocusing, setIsFocusing] = useState(true)
@@ -28,9 +28,9 @@ export function FocusPreview() {
       {/* Dynamic Island / Floating Focus Pill */}
       <motion.div
         layout
-        className="glass-island rounded-full p-2.5 px-4 md:px-6 flex items-center justify-between shadow-2xl relative overflow-hidden"
+        className="glass-island rounded-full p-2.5 px-4 md:px-6 flex items-center justify-between shadow-xl relative overflow-hidden"
       >
-        {/* Ambient Subtle Accent Glow */}
+        {/* Ambient Accent Glow */}
         <div
           className={`absolute inset-0 opacity-15 pointer-events-none transition-all duration-700 ${
             isFocusing
@@ -53,7 +53,7 @@ export function FocusPreview() {
           </div>
           <div className="flex flex-col text-left">
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-xs text-foreground/90 tracking-wide uppercase">
+              <span className="font-semibold text-xs text-slate-900 dark:text-foreground/90 tracking-wide uppercase">
                 {isFocusing ? (mode === "deep" ? "Deep Focus Active" : "Pomodoro Sprint") : "Session Paused"}
               </span>
               <span
@@ -62,14 +62,14 @@ export function FocusPreview() {
                 }`}
               />
             </div>
-            <span className="text-[11px] text-foreground/50 font-mono">
+            <span className="text-[11px] text-slate-500 dark:text-foreground/50 font-mono">
               {isFocusing ? "Allowlist Enforced · Windows Safe" : "Ready for next block"}
             </span>
           </div>
         </div>
 
         {/* Center: Monospaced Timer */}
-        <div className="relative z-10 px-3 py-1 rounded-lg bg-black/40 border border-white/5 font-mono text-base md:text-lg font-medium tracking-wider text-foreground">
+        <div className="relative z-10 px-3 py-1 rounded-lg bg-slate-100 dark:bg-black/40 border border-slate-200 dark:border-white/5 font-mono text-base md:text-lg font-medium tracking-wider text-slate-900 dark:text-foreground">
           {formatTime(seconds)}
         </div>
 
@@ -82,7 +82,7 @@ export function FocusPreview() {
             }}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 cursor-pointer ${
               isFocusing
-                ? "bg-white/10 hover:bg-white/15 text-foreground border border-white/10"
+                ? "bg-slate-200/80 hover:bg-slate-300 dark:bg-white/10 dark:hover:bg-white/15 text-slate-800 dark:text-foreground border border-slate-300 dark:border-white/10"
                 : "bg-nyw-emerald text-black hover:bg-nyw-emerald/90 shadow-lg glow-emerald"
             }`}
           >
@@ -109,21 +109,21 @@ export function FocusPreview() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.25 }}
-            className="mt-3 flex flex-wrap items-center justify-center gap-2 text-xs text-foreground/60"
+            className="mt-3 flex flex-wrap items-center justify-center gap-2 text-xs"
           >
-            <span className="text-[11px] uppercase tracking-wider text-foreground/40 font-mono">
+            <span className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-foreground/50 font-mono">
               Active Allowlist:
             </span>
             {["Code.exe", "WindowsTerminal.exe", "Figma.exe"].map((app) => (
               <span
                 key={app}
-                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/[0.03] border border-white/[0.06] text-foreground/75 font-mono text-[11px]"
+                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06] text-slate-700 dark:text-foreground/75 font-mono text-[11px]"
               >
                 <Check className="w-2.5 h-2.5 text-nyw-emerald" />
                 {app}
               </span>
             ))}
-            <span className="text-[11px] text-foreground/40 font-mono">
+            <span className="text-[11px] text-slate-500 dark:text-foreground/50 font-mono">
               (All others restricted)
             </span>
           </motion.div>
