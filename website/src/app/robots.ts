@@ -1,11 +1,14 @@
 import { MetadataRoute } from 'next'
- 
+
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: {
-      userAgent: '*',
-      allow: '/',
-    },
-    sitemap: 'https://notyourwellbeing.vercel.app/sitemap.xml',
+    rules: [
+      {
+        userAgent: '*',
+        allow: '/',
+        disallow: ['/api/'],
+      },
+    ],
+    sitemap: 'https://notch1.vercel.app/sitemap.xml',
   }
 }

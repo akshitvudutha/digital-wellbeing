@@ -3,15 +3,16 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   async redirects() {
     return [
+      // Redirect old domain to canonical production domain
       {
         source: '/:path*',
         has: [
           {
             type: 'host',
-            value: 'digital-wellbeing.vercel.app',
+            value: 'notyourwellbeing.vercel.app',
           },
         ],
-        destination: 'https://not-your-wellbeing.vercel.app/:path*',
+        destination: 'https://notch1.vercel.app/:path*',
         permanent: true,
       },
     ];

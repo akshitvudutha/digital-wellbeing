@@ -4,6 +4,8 @@ import "./globals.css"
 import { siteConfig } from "@/config/site"
 import { Navbar } from "@/components/layout/navbar"
 import { Footer } from "@/components/layout/footer"
+import { Analytics } from "@vercel/analytics/react"
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 
@@ -22,17 +24,23 @@ export const metadata: Metadata = {
   keywords: [
     "Notch",
     "Notch Windows",
-    "Digital Wellbeing for Windows",
-    "Windows digital wellbeing",
-    "intentional computing",
-    "deep focus",
-    "app timer",
-    "app locker",
+    "digital wellbeing Windows",
+    "Windows screen time tracker",
+    "screen time control Windows",
+    "Focus Mode Windows",
+    "app blocker Windows",
+    "app timer Windows",
     "SleepGuard",
-    "local-first",
+    "app locker Windows",
+    "attention control app",
+    "productivity Windows",
+    "local-first wellbeing",
     "privacy-first screen time",
   ],
   authors: [{ name: siteConfig.developer }],
+  alternates: {
+    canonical: "https://notch1.vercel.app/",
+  },
   icons: {
     icon: "/notch-logo.png",
     apple: "/notch-logo.png",
@@ -40,10 +48,11 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: siteConfig.url,
+    url: "https://notch1.vercel.app/",
     title: "Notch — Digital Wellbeing for Windows",
-    description: siteConfig.description,
-    siteName: siteConfig.fullName,
+    description:
+      "Understand your computer usage. Block distractions. Set limits. Protect your attention with Notch.",
+    siteName: "Notch",
     images: [
       {
         url: "/notch-logo.png",
@@ -56,7 +65,8 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Notch — Digital Wellbeing for Windows",
-    description: siteConfig.description,
+    description:
+      "Understand your computer usage. Block distractions. Set limits. Protect your attention with Notch.",
     images: ["/notch-logo.png"],
   },
 }
@@ -66,17 +76,33 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const jsonLd = {
+  const softwareAppJsonLd = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     name: "Notch",
     alternateName: "Notch — Digital Wellbeing for Windows",
+    url: "https://notch1.vercel.app/",
+    downloadUrl: "https://notch1.vercel.app/api/download",
     operatingSystem: "Windows 10, Windows 11",
     applicationCategory: "ProductivityApplication",
+    description: siteConfig.description,
     offers: {
       "@type": "Offer",
       price: "0",
-      availability: "https://schema.org/PreOrder",
+      priceCurrency: "USD",
+      availability: "https://schema.org/InStock",
+    },
+  }
+
+  const websiteJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "Notch",
+    url: "https://notch1.vercel.app/",
+    description: siteConfig.description,
+    potentialAction: {
+      "@type": "SearchAction",
+      target: "https://notch1.vercel.app/",
     },
   }
 
@@ -90,13 +116,19 @@ export default function RootLayout({
         />
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareAppJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
         />
       </head>
       <body className={`${inter.variable} min-h-screen bg-background font-sans antialiased text-foreground selection:bg-nyw-emerald/20 selection:text-white`}>
         <Navbar />
         {children}
         <Footer />
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   )

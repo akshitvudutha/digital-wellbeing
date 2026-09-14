@@ -2,7 +2,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { siteConfig } from "@/config/site"
-import { ShieldCheck, GitBranch, Code2, Bug, Sparkles } from "lucide-react"
+import { ShieldCheck, GitBranch, Code2, Bug, Sparkles, Mail } from "lucide-react"
 
 export function Footer() {
   return (
@@ -102,26 +102,31 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link
+                <a
                   href={siteConfig.links.reportBug}
-                  target="_blank"
-                  rel="noreferrer"
                   className="hover:text-slate-950 dark:hover:text-white transition-colors flex items-center gap-1.5"
                 >
                   <Bug className="w-3.5 h-3.5" />
-                  <span>Report an Issue</span>
-                </Link>
+                  <span>Report a Bug</span>
+                </a>
               </li>
               <li>
-                <Link
+                <a
                   href={siteConfig.links.requestFeature}
-                  target="_blank"
-                  rel="noreferrer"
                   className="hover:text-slate-950 dark:hover:text-white transition-colors flex items-center gap-1.5"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>Feature Requests</span>
-                </Link>
+                  <span>Request a Feature</span>
+                </a>
+              </li>
+              <li>
+                <a
+                  href={siteConfig.links.contactSupport}
+                  className="hover:text-slate-950 dark:hover:text-white transition-colors flex items-center gap-1.5"
+                >
+                  <Mail className="w-3.5 h-3.5" />
+                  <span>Contact Support</span>
+                </a>
               </li>
             </ul>
           </div>
@@ -130,8 +135,14 @@ export function Footer() {
         {/* Bottom Bar */}
         <div className="mt-16 pt-8 border-t border-slate-200 dark:border-white/[0.04] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-600 dark:text-foreground/65 font-medium">
           <p>© {new Date().getFullYear()} {siteConfig.developer}. All rights reserved.</p>
-          <p className="font-mono text-[11px]">
-            Engineered with PySide6 & Next.js · Native Windows Integration
+          <p className="font-mono text-[11px] flex items-center gap-1.5">
+            <Mail className="w-3 h-3 flex-shrink-0" />
+            <a
+              href={siteConfig.links.contactSupport}
+              className="hover:text-slate-900 dark:hover:text-white transition-colors"
+            >
+              {siteConfig.supportEmail}
+            </a>
           </p>
         </div>
       </div>

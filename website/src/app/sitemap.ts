@@ -1,11 +1,11 @@
 import { MetadataRoute } from 'next'
- 
+
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
     {
-      url: 'https://notyourwellbeing.vercel.app',
+      url: 'https://notch1.vercel.app/',
       lastModified: new Date(),
-      changeFrequency: 'monthly',
+      changeFrequency: 'weekly',
       priority: 1,
     },
   ]
