@@ -4,7 +4,7 @@ app_row.py — Premium application usage row for Top Applications list on Home D
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtCore import Qt, QSize, Signal
 from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QProgressBar, QSizePolicy, QVBoxLayout,
@@ -16,6 +16,8 @@ from analytics.engine import AnalyticsEngine
 
 class AppUsageRow(QFrame):
     """A row widget representing app usage with icon, name, category, duration, and progress bar."""
+
+    app_clicked = Signal(str)
 
     def __init__(
         self,
@@ -44,6 +46,11 @@ class AppUsageRow(QFrame):
         from ui.theme import ThemeManager
         ThemeManager.instance().theme_changed.connect(self._apply_theme)
         self._apply_theme(ThemeManager.instance().is_dark)
+
+    def mousePressEvent(self, event) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.app_clicked.emit(self.process_name)
+        super().mousePressEvent(event)
 
     def _setup_ui(
         self, rank: int, display_name: str, category: AppCategory | str, duration_s: float, max_duration_s: float
@@ -74,7 +81,17 @@ class AppUsageRow(QFrame):
         name_cat_layout = QHBoxLayout()
         name_cat_layout.setSpacing(8)
         
-        self._name_lbl = QLabel(display_name)
+        clean_name = display_name
+        if not clean_name or clean_name.lower().endswith(".exe"):
+            try:
+                from utils.win_utils import clean_fallback_name
+                cleaned = clean_fallback_name(self.process_name)
+                if cleaned:
+                    clean_name = cleaned
+            except Exception:
+                pass
+
+        self._name_lbl = QLabel(clean_name)
         self._name_lbl.setObjectName("name_lbl")
         name_cat_layout.addWidget(self._name_lbl)
         name_cat_layout.addStretch()

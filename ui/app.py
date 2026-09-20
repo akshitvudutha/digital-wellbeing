@@ -89,9 +89,7 @@ class DigitalWellbeingApp:
 
         # 2. Standard initialization for primary process
         self._sm = SettingsManager()
-        dark_mode = self._sm.get_bool("dark_mode", True)
-
-        apply_theme(self._app, dark_mode)
+        apply_theme(self._app, self._sm.theme)
 
         self._tracker = TrackingManager()
         from tracker.sleepguard import SleepGuardController
@@ -102,6 +100,7 @@ class DigitalWellbeingApp:
         self._setup_tray()
         
         from notifications.notifier import Notifier
+        self._notifier = Notifier()
         if self._tray:
             Notifier.set_tray_icon(self._tray)
             
@@ -137,112 +136,144 @@ class DigitalWellbeingApp:
             from ui.widgets.update_dialog import UpdateDialog
 
             self._updater = Updater()
-
+            self._latest_update_info = None
+            self._active_update_dialog = None
             self._manual_update_check_in_progress = False
+            self._has_checked_startup_update = False
+            self._update_dismissed_this_session = False
+
+            def _start_download_flow():
+                if not self._latest_update_info:
+                    return
+                info = self._latest_update_info
+                ver = info.get("version", "")
+                if hasattr(self, "_window") and self._window and hasattr(self._window, "_settings_page"):
+                    self._window._settings_page.set_download_progress(0, ver)
+
+                self._updater.download_installer(
+                    asset_url=info.get("asset_url"),
+                    asset_name=info.get("asset_name"),
+                    asset_id=info.get("asset_id"),
+                    checksum_url=info.get("checksum_url"),
+                    checksum_id=info.get("checksum_id"),
+                    expected_sha256=info.get("expected_sha256"),
+                    version=ver,
+                )
 
             def _on_update_available(info: dict) -> None:
+                self._latest_update_info = info
                 is_manual = self._manual_update_check_in_progress
                 self._manual_update_check_in_progress = False
-                
-                # If this was an automatic background check and the user already dismissed it this session, skip.
-                if not is_manual and getattr(self, "_update_dismissed_this_session", False):
-                    logger.info("Update available but user dismissed it this session. Skipping dialog.")
+
+                ver = info.get("version", "")
+                if hasattr(self, "_window") and self._window and hasattr(self._window, "_settings_page"):
+                    self._window._settings_page.set_update_available(ver)
+
+                # If this was an automatic background check and user already dismissed it this session, skip modal dialog
+                if not is_manual and self._update_dismissed_this_session:
+                    logger.info("Updater: update available (%s) but dismissed for this session. Skipping modal dialog.", ver)
                     return
 
-                # Never interrupt active SleepGuard countdown or focus sessions
+                # Defer if active SleepGuard countdown or active focus session
+                sg_active = False
                 try:
                     sg_active = getattr(self, "_sleepguard", None) and getattr(self._sleepguard, "_idle_fired", None) and self._sleepguard._idle_fired.is_set()
                 except Exception:
-                    sg_active = False
+                    pass
+                focus_active = False
                 try:
-                    focus_active = False
                     if hasattr(self, "_window") and self._window and hasattr(self._window, "_wellbeing_page"):
                         ft = getattr(self._window._wellbeing_page, "_focus_timer", None)
                         if ft and getattr(ft, "_is_running", False):
                             focus_active = True
                 except Exception:
-                    focus_active = False
+                    pass
 
                 if sg_active or focus_active:
-                    logger.info("Deferring update dialog due to active SleepGuard or FocusSession; will retry in 30s")
+                    logger.info("Updater: deferring update dialog due to active session; will retry in 30s")
                     QTimer.singleShot(30_000, lambda: self._updater.check_for_updates())
                     return
 
-                # Show the update dialog non-blocking
+                # Show update dialog
                 try:
-                    dlg = UpdateDialog(current_version=APP_VERSION, new_version=info.get("version"), notes=info.get("notes", ""), parent=self._window or None)
+                    self._active_update_dialog = UpdateDialog(
+                        current_version=APP_VERSION,
+                        new_version=ver,
+                        notes=info.get("notes", ""),
+                        parent=self._window or None
+                    )
 
-                    def _on_update_now():
-                        # start download, show progress
-                        self._updater.download_installer(
-                            info.get("asset_url"), 
-                            info.get("asset_name"), 
-                            info.get("asset_id"),
-                            info.get("checksum_url"),
-                            info.get("checksum_id")
-                        )
-
-                    def _on_download_progress(pct: int):
-                        try:
-                            dlg.set_progress(pct)
-                        except Exception:
-                            pass
-
-                    def _on_download_complete(path: str):
-                        # launch installer via wrapper and exit app
-                        try:
-                            # Ensure cleanup to close DB handles
-                            self._cleanup()
-                        except Exception:
-                            pass
-                        self._updater.launch_installer_and_exit(path)
-                        # call quit after launching wrapper
-                        try:
-                            self._app.quit()
-                        except Exception:
-                            pass
-
-                    def _on_download_error(msg: str):
-                        try:
-                            dlg.show_error(msg)
-                        except Exception:
-                            logger.error("Update dialog error: %s", msg)
-
-                    dlg.update_now.connect(_on_update_now)
-                    dlg.later.connect(lambda: setattr(self, "_update_dismissed_this_session", True))
-
-                    self._updater.download_progress.connect(_on_download_progress)
-                    self._updater.download_complete.connect(_on_download_complete)
-                    self._updater.error.connect(_on_download_error)
-
-                    dlg.show()
+                    self._active_update_dialog.update_now.connect(_start_download_flow)
+                    self._active_update_dialog.later.connect(lambda: setattr(self, "_update_dismissed_this_session", True))
+                    self._active_update_dialog.show()
                 except Exception as exc:
-                    logger.exception("Failed to show update dialog: %s", exc)
+                    logger.exception("Updater: failed to show update dialog: %s", exc)
 
             def _on_no_update():
-                if self._manual_update_check_in_progress:
-                    from PySide6.QtWidgets import QMessageBox
-                    QMessageBox.information(self._window, "No Updates", "You are on the latest stable version.")
-                    self._manual_update_check_in_progress = False
+                self._manual_update_check_in_progress = False
+                if hasattr(self, "_window") and self._window and hasattr(self._window, "_settings_page"):
+                    self._window._settings_page.set_update_status_up_to_date()
 
             def _on_check_error(msg: str):
-                if self._manual_update_check_in_progress:
-                    from PySide6.QtWidgets import QMessageBox
-                    QMessageBox.warning(self._window, "Update Error", f"Failed to check for updates:\n{msg}")
-                    self._manual_update_check_in_progress = False
+                self._manual_update_check_in_progress = False
+                if hasattr(self, "_window") and self._window and hasattr(self._window, "_settings_page"):
+                    self._window._settings_page.set_update_error("Couldn't check for updates right now.")
 
-            # Connect and schedule an initial check a few seconds after startup
+            def _on_download_progress(pct: int):
+                ver = self._latest_update_info.get("version", "") if self._latest_update_info else ""
+                if hasattr(self, "_window") and self._window and hasattr(self._window, "_settings_page"):
+                    self._window._settings_page.set_download_progress(pct, ver)
+                if self._active_update_dialog:
+                    try:
+                        self._active_update_dialog.set_progress(pct)
+                    except Exception:
+                        pass
+
+            def _on_download_complete(installer_path: str):
+                ver = self._latest_update_info.get("version", "") if self._latest_update_info else ""
+                if hasattr(self, "_window") and self._window and hasattr(self._window, "_settings_page"):
+                    self._window._settings_page.set_installing_status(ver)
+                if self._active_update_dialog:
+                    try:
+                        self._active_update_dialog.set_installing(ver)
+                    except Exception:
+                        pass
+
+                # Launch Inno Setup installer via detached wrapper script and exit Notch cleanly
+                self._updater.launch_installer_and_exit(installer_path)
+                self._quit()
+
+            def _on_download_error(msg: str):
+                if hasattr(self, "_window") and self._window and hasattr(self._window, "_settings_page"):
+                    self._window._settings_page.set_update_error("Couldn't check for updates right now.")
+                if self._active_update_dialog:
+                    try:
+                        self._active_update_dialog.show_error(msg)
+                    except Exception:
+                        pass
+
             self._updater.update_available.connect(_on_update_available)
             self._updater.no_update.connect(_on_no_update)
             self._updater.error.connect(_on_check_error)
-            
+            self._updater.download_progress.connect(_on_download_progress)
+            self._updater.download_complete.connect(_on_download_complete)
+            self._updater.error.connect(_on_download_error)
+
             def _handle_manual_update_request():
                 self._manual_update_check_in_progress = True
                 self._updater.check_for_updates(force=True)
-                
-            self._window.manual_update_requested.connect(_handle_manual_update_request)
 
-            QTimer.singleShot(5_000, lambda: self._updater.check_for_updates())
+            self._window.manual_update_requested.connect(_handle_manual_update_request)
+            self._window.update_now_requested.connect(_start_download_flow)
+            self._window.update_later_requested.connect(lambda: setattr(self, "_update_dismissed_this_session", True))
+
+            # Automatic check on startup (once per session, delayed by 5s)
+            def _startup_update_check():
+                if not self._has_checked_startup_update:
+                    self._has_checked_startup_update = True
+                    self._updater.check_for_updates()
+
+            QTimer.singleShot(5_000, _startup_update_check)
         except Exception as exc:
             logger.warning("Updater initialization failed: %s", exc)
 
@@ -305,7 +336,7 @@ class DigitalWellbeingApp:
             "QMenu::item:selected { background: #0078d4; }"
         )
 
-        show_action = QAction("Open Not Your Wellbeing", self._app)
+        show_action = QAction("Open Notch", self._app)
         show_action.triggered.connect(self._show_window)
 
         toggle_tracking = QAction("Pause Tracking", self._app)
@@ -348,22 +379,18 @@ class DigitalWellbeingApp:
         if self._tracker.is_running:
             self._tracker.stop()
             self._toggle_tracking_action.setText("Resume Tracking")
-            if self._tray:
-                self._tray.showMessage(APP_NAME, "Tracking paused.", QSystemTrayIcon.MessageIcon.Information, 2000)
+            self._notifier.notify(APP_NAME, "Tracking paused.", duration=2)
         else:
             self._tracker.start()
             self._toggle_tracking_action.setText("Pause Tracking")
-            if self._tray:
-                self._tray.showMessage(APP_NAME, "Tracking resumed.", QSystemTrayIcon.MessageIcon.Information, 2000)
+            self._notifier.notify(APP_NAME, "Tracking resumed.", duration=2)
 
     def _on_focus_completed(self) -> None:
-        if self._tray and self._sm.get_bool("notifications_enabled", True):
-            self._tray.showMessage(
-                "Focus Session Complete",
-                "Great job! Take a well-deserved break.",
-                QSystemTrayIcon.MessageIcon.Information,
-                5000,
-            )
+        self._notifier.notify(
+            "Focus Session Complete",
+            "Great job! Take a well-deserved break.",
+            duration=5,
+        )
 
     def _on_daily_check_timer(self) -> None:
         from datetime import date
@@ -384,14 +411,13 @@ class DigitalWellbeingApp:
         summary = engine.get_today_summary()
         used_min = summary.active_time_s / 60
 
-        if used_min >= limit_min and self._tray:
+        if used_min >= limit_min:
             h = int(limit_min // 60)
             m = int(limit_min % 60)
-            self._tray.showMessage(
+            self._notifier.notify(
                 "Daily Limit Reached",
                 f"You've used {h}h {m}m of screen time today.",
-                QSystemTrayIcon.MessageIcon.Warning,
-                5000,
+                duration=5,
             )
             self._daily_check_timer.setInterval(3_600_000)
 

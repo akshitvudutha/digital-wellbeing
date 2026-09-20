@@ -59,10 +59,11 @@ def fake_server():
     
     os.environ["GITHUB_API_BASE"] = f"http://localhost:{FAKE_PORT}"
     
-    # We need a QCoreApplication instance for QObject signals to work
-    app = QCoreApplication.instance()
+    # We need a QApplication instance for QObject signals and UI widgets to work
+    from PySide6.QtWidgets import QApplication
+    app = QApplication.instance()
     if not app:
-        app = QCoreApplication([])
+        app = QApplication([])
         
     yield server
     server.shutdown()

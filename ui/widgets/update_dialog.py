@@ -21,11 +21,9 @@ class UpdateDialog(QDialog):
         self.new_version = new_version
         self.notes = notes
         self._setup_ui()
-        self._apply_theme()
-        
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        from ui.theme import ThemeManager, apply_mica
-        apply_mica(int(self.winId()), ThemeManager.instance().is_dark)
+        from ui.theme import ThemeManager
+        ThemeManager.instance().theme_changed.connect(self._apply_theme)
+        self._apply_theme(ThemeManager.instance().is_dark)
 
     def _setup_ui(self):
         from core.constants import APP_NAME
@@ -49,7 +47,7 @@ class UpdateDialog(QDialog):
         title_font.setBold(True)
         title_lbl.setFont(title_font)
         
-        subtitle_lbl = QLabel("A newer version of NYW is ready to be installed.")
+        subtitle_lbl = QLabel(f"A newer version of {APP_NAME} is ready to be installed.")
         subtitle_lbl.setObjectName("subtitle")
         sub_font = subtitle_lbl.font()
         sub_font.setPixelSize(14)
@@ -147,60 +145,96 @@ class UpdateDialog(QDialog):
         self.btn_layout.addWidget(self.update_btn)
         layout.addLayout(self.btn_layout)
 
-    def _apply_theme(self):
+    def _apply_theme(self, is_dark=None):
         try:
             from ui.theme import ThemeManager
-            tm = ThemeManager.instance()
+            if is_dark is None:
+                is_dark = ThemeManager.instance().is_dark
+                
+            bg_col = "#0B0E14" if is_dark else "#FFFFFF"
+            border_col = "rgba(255, 255, 255, 0.12)" if is_dark else "rgba(0, 0, 0, 0.12)"
+            text_main = "#F8FAFC" if is_dark else "#0F172A"
+            text_sub = "#94A3B8" if is_dark else "#475569"
+            text_muted = "#64748B" if is_dark else "#64748B"
+            card_bg = "#121721" if is_dark else "#F1F5F9"
+            card_border = "rgba(255, 255, 255, 0.08)" if is_dark else "rgba(0, 0, 0, 0.08)"
+            notes_bg = "#080A0D" if is_dark else "#F8FAFC"
+            notes_border = "rgba(255, 255, 255, 0.07)" if is_dark else "rgba(0, 0, 0, 0.09)"
+            scrollbar_handle = "rgba(255, 255, 255, 0.16)" if is_dark else "rgba(0, 0, 0, 0.16)"
+
             self.setStyleSheet(f"""
-                QDialog {{
-                    background-color: {tm.color('window_bg')};
+                UpdateDialog, QDialog {{
+                    background-color: {bg_col};
+                    border: 1px solid {border_col};
+                    border-radius: 14px;
                 }}
                 QLabel {{ 
-                    color: {tm.color('text_main')}; 
+                    color: {text_main}; 
                 }}
                 QLabel#subtitle {{
-                    color: {tm.color('text_sub')};
+                    color: {text_sub};
                 }}
                 QLabel#version_label {{
-                    color: {tm.color('text_sub')};
+                    color: {text_muted};
                     font-size: 12px;
                 }}
                 QLabel#version_val {{
-                    color: {tm.color('text_main')};
+                    color: {text_main};
                     font-size: 16px;
-                    font-weight: 500;
+                    font-weight: 600;
                 }}
                 QLabel#new_version_val {{
-                    color: {tm.color('accent')};
+                    color: #10B981;
                     font-size: 18px;
-                    font-weight: bold;
+                    font-weight: 800;
                 }}
                 QLabel#arrow {{
-                    color: {tm.color('text_sub')};
+                    color: #10B981;
                 }}
                 QWidget#version_container {{
-                    background-color: {tm.color('card_bg')};
-                    border: 1px solid {tm.color('border')};
+                    background-color: {card_bg};
+                    border: 1px solid {card_border};
                     border-radius: 12px;
                 }}
                 QTextEdit {{
-                    background-color: {tm.color('card_bg')};
-                    color: {tm.color('text_main')};
-                    border: 1px solid {tm.color('border')};
+                    background-color: {notes_bg};
+                    color: {text_sub};
+                    border: 1px solid {notes_border};
                     border-radius: 8px;
                     padding: 12px;
                     font-size: 13px;
                 }}
+                QScrollBar:vertical {{
+                    background: transparent;
+                    width: 6px;
+                    margin: 4px 2px 4px 0px;
+                    border-radius: 3px;
+                }}
+                QScrollBar::handle:vertical {{
+                    background: {scrollbar_handle};
+                    min-height: 24px;
+                    border-radius: 3px;
+                }}
+                QScrollBar::handle:vertical:hover {{
+                    background: #10B981;
+                }}
+                QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+                    height: 0px;
+                    background: none;
+                }}
+                QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{
+                    background: none;
+                }}
                 QProgressBar {{
-                    background: {tm.color('card_bg')};
-                    border: 1px solid {tm.color('border')};
-                    border-radius: 4px;
+                    background: {card_bg};
+                    border: 1px solid {card_border};
+                    border-radius: 6px;
                     text-align: center;
-                    color: {tm.color('text_main')};
+                    color: {text_main};
                 }}
                 QProgressBar::chunk {{
-                    background-color: {tm.color('accent')};
-                    border-radius: 4px;
+                    background-color: #10B981;
+                    border-radius: 6px;
                 }}
             """)
         except Exception:
@@ -221,8 +255,17 @@ class UpdateDialog(QDialog):
         self.update_now.emit()
 
     def set_progress(self, percent: int):
+        clean_ver = str(self.new_version).lstrip("vV")
         self.progress_bar.setValue(percent)
-        self.progress_lbl.setText(f"Downloading update... {percent}%")
+        self.progress_lbl.setText(f"Downloading Notch {clean_ver}... {percent}%")
+
+    def set_installing(self, version: str = ""):
+        clean_ver = str(version or self.new_version).lstrip("vV")
+        self.progress_bar.setValue(100)
+        self.progress_lbl.setText(f"Installing Notch {clean_ver}...")
+        self.update_btn.setEnabled(False)
+        self.later_btn.setEnabled(False)
+        self.notes_text.setEnabled(False)
 
     def show_error(self, msg: str):
         self.progress_lbl.setVisible(False)
@@ -230,5 +273,5 @@ class UpdateDialog(QDialog):
         self.update_btn.setEnabled(True)
         self.later_btn.setEnabled(True)
         self.notes_text.setEnabled(True)
-        QMessageBox.critical(self, "Update Failed", f"Update couldn't be completed.\n{msg}")
+        QMessageBox.warning(self, "Update Failed", f"Update couldn't be completed.\n{msg}")
         self.reject()

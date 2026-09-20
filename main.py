@@ -1,10 +1,39 @@
 from __future__ import annotations
 
-import argparse
 import sys
-import time
-from pathlib import Path
+import traceback
 
+def _show_fatal_error(msg: str) -> None:
+    try:
+        import ctypes
+        MB_OK = 0x0
+        MB_ICONERROR = 0x10
+        ctypes.windll.user32.MessageBoxW(0, msg, "Notch Fatal Startup Error", MB_OK | MB_ICONERROR)
+    except Exception:
+        pass
+
+try:
+    import argparse
+    import time
+    from pathlib import Path
+except Exception as e:
+    _show_fatal_error(f"A critical error occurred while initializing the application.\n\nError details: {e}")
+    sys.exit(1)
+
+
+def _early_log(msg: str) -> None:
+    try:
+        p = Path.home() / "AppData" / "Local" / "DigitalWellbeing"
+        p.mkdir(parents=True, exist_ok=True)
+        with open(p / "startup_diagnostic.txt", "a", encoding="utf-8") as f:
+            import datetime
+            f.write(f"[{datetime.datetime.now().isoformat()}] {msg}\n")
+    except Exception:
+        pass
+
+_early_log("--- NEW STARTUP ---")
+_early_log(f"Executable: {sys.executable}")
+_early_log(f"Python version: {sys.version}")
 
 def _setup_path() -> None:
     root = Path(__file__).parent
@@ -14,7 +43,7 @@ def _setup_path() -> None:
 
 def run_headless_service() -> None:
     from core.logger import logger
-    logger.info("Starting NYW Headless Tracking Service")
+    logger.info("Starting Notch Headless Tracking Service")
     
     from tracker.manager import TrackingManager
     tracker = TrackingManager()
@@ -46,7 +75,7 @@ def main() -> None:
             from core.logger import logger
             logger.warning(f"Could not set AppUserModelID: {e}")
 
-    parser = argparse.ArgumentParser(description="NYW Windows Tracker")
+    parser = argparse.ArgumentParser(description="Notch Windows Tracker")
     parser.add_argument(
         "--service",
         action="store_true",
@@ -86,7 +115,7 @@ def main() -> None:
         success = FocusManager.run_elevated_action(args.action, args.domains)
         sys.exit(0 if success else 1)
 
-    logger.info("[LIFECYCLE] Starting NYW GUI Application (main.py entry)")
+    logger.info("[LIFECYCLE] Starting Notch GUI Application (main.py entry)")
     FOCUS_ENFORCEMENT_BUILD_MARKER = "FOCUS-V3-1-4-CLOSE-TAB"
     logger.info(f"[DIAGNOSTICS] {FOCUS_ENFORCEMENT_BUILD_MARKER}")
     
@@ -115,7 +144,11 @@ def main() -> None:
         logger.info("[LIFECYCLE] QApplication.exec() RETURNED with exit code %d", exit_code)
         log_lifecycle_state("main.py: after QApplication.exec() returned")
     except Exception as exc:
+        clean_err_msg = f"A fatal error occurred during execution: {exc}\nPlease check the application logs."
         logger.critical("Fatal error: %s", exc, exc_info=True)
+        _early_log(f"main() Fatal error caught: {type(exc).__name__} - {exc}")
+        _early_log(traceback.format_exc())
+        _show_fatal_error(clean_err_msg)
         exit_code = 1
 
     import os
@@ -124,4 +157,12 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as global_exc:
+        clean_err_msg = f"A critical startup error occurred: {global_exc}\nPlease check the application logs."
+        full_err_msg = f"FATAL STARTUP EXCEPTION: {type(global_exc).__name__}: {global_exc}\n\n{traceback.format_exc()}"
+        _early_log(full_err_msg)
+        _show_fatal_error(clean_err_msg)
+        import os
+        os._exit(1)

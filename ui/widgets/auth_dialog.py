@@ -107,30 +107,49 @@ class AppLockerAuthDialog(QDialog):
         inner.setSpacing(0)
 
         # ── Lock icon + title ──────────────────────────────────────────────
-        icon_row = QHBoxLayout()
-        icon_lbl = QLabel("🔒")
-        icon_lbl.setObjectName("auth_icon")
-        icon_lbl.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        icon_row.addWidget(icon_lbl)
-        icon_row.addStretch()
-        inner.addLayout(icon_row)
+        from ui.icons import get_pixmap
+        icon_box = QHBoxLayout()
+        icon_box.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        icon_badge = QFrame()
+        icon_badge.setFixedSize(52, 52)
+        icon_badge.setStyleSheet("""
+            QFrame {
+                background: rgba(245, 158, 11, 0.12);
+                border: 1px solid rgba(245, 158, 11, 0.30);
+                border-radius: 26px;
+            }
+        """)
+        ib_layout = QVBoxLayout(icon_badge)
+        ib_layout.setContentsMargins(0, 0, 0, 0)
+        ib_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        icon_lbl = QLabel()
+        icon_lbl.setPixmap(get_pixmap("lock", "#F59E0B", 24))
+        icon_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        ib_layout.addWidget(icon_lbl)
+        
+        icon_box.addWidget(icon_badge)
+        inner.addLayout(icon_box)
 
         inner.addSpacing(12)
 
         title_lbl = QLabel("Application Locked")
         title_lbl.setObjectName("auth_title")
+        title_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         inner.addWidget(title_lbl)
 
         inner.addSpacing(4)
 
         app_lbl = QLabel(self._display_name)
         app_lbl.setObjectName("auth_app_name")
+        app_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         inner.addWidget(app_lbl)
 
         inner.addSpacing(6)
 
-        desc_lbl = QLabel("This application is protected by Not Your Wellbeing.")
+        desc_lbl = QLabel("This application is protected by Notch.")
         desc_lbl.setObjectName("auth_desc")
+        desc_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         desc_lbl.setWordWrap(True)
         inner.addWidget(desc_lbl)
 
@@ -166,8 +185,8 @@ class AppLockerAuthDialog(QDialog):
         pin_layout.setContentsMargins(0, 0, 0, 0)
         pin_layout.setSpacing(8)
 
-        # "Use NYW PIN instead" toggle (shown when Hello is available)
-        self._pin_toggle_btn = QPushButton("Use NYW PIN instead")
+        # "Use Notch PIN instead" toggle (shown when Hello is available)
+        self._pin_toggle_btn = QPushButton("Use Notch PIN instead")
         self._pin_toggle_btn.setObjectName("auth_link_btn")
         self._pin_toggle_btn.setFlat(True)
         self._pin_toggle_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -179,7 +198,7 @@ class AppLockerAuthDialog(QDialog):
         inner.addWidget(self._pin_toggle_btn)
 
         self._pin_input = QLineEdit()
-        self._pin_input.setPlaceholderText("Enter NYW PIN")
+        self._pin_input.setPlaceholderText("Enter Notch PIN")
         self._pin_input.setEchoMode(QLineEdit.EchoMode.Password)
         self._pin_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._pin_input.setMaxLength(8)
@@ -325,7 +344,7 @@ class AppLockerAuthDialog(QDialog):
         if self._hello_available:
             self._status_lbl.setText("Use your face, fingerprint, or Windows Hello PIN.")
         elif self._pin_manager and self._pin_manager.is_enabled():
-            self._status_lbl.setText("Enter your NYW PIN to unlock.")
+            self._status_lbl.setText("Enter your Notch PIN to unlock.")
         else:
             self._status_lbl.setText("No authentication method configured.")
 
@@ -390,7 +409,7 @@ class AppLockerAuthDialog(QDialog):
         self._update_state_verifying()
         self._hello_timer.start()
         self._hello.request_verification(
-            f"Unlock {self._display_name} in Not Your Wellbeing"
+            f"Unlock {self._display_name} in Notch"
         )
 
     def _on_hello_result(self, result_int: int) -> None:
@@ -415,7 +434,7 @@ class AppLockerAuthDialog(QDialog):
         elif result == HelloResult.FAILED:
             self._update_state_error("Windows Hello authentication failed. Try again.")
         else:
-            self._update_state_error("An unexpected error occurred. Use your NYW PIN.")
+            self._update_state_error("An unexpected error occurred. Use your Notch PIN.")
             if self._auth_method == "hello_pin":
                 self._show_pin_section()
 

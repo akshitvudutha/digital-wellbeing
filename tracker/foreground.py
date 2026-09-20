@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 import psutil
+import threading
 import win32gui
 import win32process
 
@@ -91,8 +92,23 @@ class ForegroundApp:
     is_fullscreen: bool = False
 
 
-# Generic overlay detection replaces hardcoded OVERLAY_PROCESSES
-# Overlays often use specific extended window styles to draw over games without stealing focus.
+BROWSER_PROCESSES = frozenset({
+    "chrome.exe",
+    "msedge.exe",
+    "brave.exe",
+    "firefox.exe",
+    "opera.exe",
+    "vivaldi.exe",
+    "arc.exe",
+})
+
+OVERLAY_PROCESSES = {
+    "gameoverlayui.exe",
+    "discord.exe",
+    "geforcenow.exe",
+    "obs64.exe",
+    "overwolf.exe",
+}
 
 _SYSTEM_IGNORED_PROCESSES = {
     "dwm.exe",
@@ -370,8 +386,23 @@ def is_window_fullscreen(hwnd: int) -> bool:
         return False
 
 
+_thread_desktop_attached = threading.local()
+
+def _ensure_interactive_desktop() -> None:
+    if getattr(_thread_desktop_attached, "done", False):
+        return
+    try:
+        h_desk = _user32.OpenDesktopW("Default", 0, False, 0x01FF)
+        if h_desk:
+            _user32.SetThreadDesktop(h_desk)
+            _thread_desktop_attached.done = True
+    except Exception:
+        pass
+
+
 def get_foreground_app(last_known_app: Optional[ForegroundApp] = None) -> Optional[ForegroundApp]:
     global _last_valid_app
+    _ensure_interactive_desktop()
     try:
         hwnd = win32gui.GetForegroundWindow()
         fallback = last_known_app or _last_valid_app
@@ -419,11 +450,15 @@ def get_foreground_app(last_known_app: Optional[ForegroundApp] = None) -> Option
         exe_path = _get_exe_path(pid)
 
         # Sanitize window title if the active window is an Incognito/Private browser session
+        url = ""
         if is_private_browsing(name, title):
             title = "Private Browsing"
-
-        # URL tracking has been permanently disabled in v3.1.5 due to lack of a browser extension
-        url = ""
+        else:
+            try:
+                from tracker.browser_domain import get_active_browser_domain
+                url = get_active_browser_domain(name, title, hwnd=root_hwnd or hwnd)
+            except Exception:
+                url = ""
 
         # Safely detect fullscreen on the root window or the actual foreground window (e.g. video child window)
         is_fs = False

@@ -4,7 +4,7 @@ simple_category_row.py — Minimalist category row for the redesigned dashboard.
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import (
     QFrame, QVBoxLayout, QHBoxLayout, QLabel
@@ -18,6 +18,8 @@ from ui.widgets.fluent import FluentCard
 
 class ClickableCategoryCard(FluentCard):
     """A minimal card widget representing category usage with icon, name, and duration."""
+
+    clicked = Signal()
 
     def __init__(
         self,
@@ -37,6 +39,11 @@ class ClickableCategoryCard(FluentCard):
         from ui.theme import ThemeManager
         ThemeManager.instance().theme_changed.connect(self._apply_theme)
         self._apply_theme(ThemeManager.instance().is_dark)
+
+    def mousePressEvent(self, event) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit()
+        super().mousePressEvent(event)
 
     def _setup_ui(self, duration_s: float) -> None:
         layout = QHBoxLayout(self)
@@ -62,7 +69,7 @@ class ClickableCategoryCard(FluentCard):
         # Category Icon
         self._icon_lbl = QLabel()
         self._icon_lbl.setObjectName("cat_icon_lbl")
-        self._icon_lbl.setFixedSize(40, 40)
+        self._icon_lbl.setFixedSize(28, 28)
         self._icon_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._icon_name = icon_text
         layout.addWidget(self._icon_lbl)
@@ -107,13 +114,12 @@ class ClickableCategoryCard(FluentCard):
                 border-color: {cat_color};
             }}
             QLabel#cat_icon_lbl {{ 
-                background-color: {cat_color}18;
-                border: 1px solid {cat_color}30;
-                border-radius: 8px;
+                background: transparent;
+                border: none;
             }}
             QLabel#cat_name_lbl {{ color: {tm.color('text_main')}; font-size: 14px; font-weight: 700; letter-spacing: 0.2px; }}
             QLabel#cat_dur_lbl {{ color: {tm.color('text_sub')}; font-size: 12px; font-weight: 500; font-family: monospace; }}
         """)
         
-        pix = get_icon(self._icon_name, color=cat_color, size=20).pixmap(20, 20)
+        pix = get_icon(self._icon_name, color=cat_color, size=24).pixmap(24, 24)
         self._icon_lbl.setPixmap(pix)

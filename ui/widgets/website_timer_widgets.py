@@ -101,16 +101,22 @@ class WebsiteTimerItem(QFrame):
         """)
 
 class WebsiteTimerConfigDialog(QDialog):
-    def __init__(self, parent=None, domain: str = "", rule: dict = None):
+    def __init__(self, parent=None, domain: str = "", rule: dict = None, browser_name: str = "", browser_process: str = ""):
         super().__init__(parent, Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.domain = domain
         self.rule = rule or {}
+        self.browser_name = browser_name
+        self.browser_process = browser_process
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setup_ui()
 
+    def _set_preset(self, h: int, m: int):
+        self.hours_combo.setCurrentText(str(h))
+        self.mins_combo.setCurrentText(str(m))
+
     def setup_ui(self):
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(20, 20, 20, 20) # Space for drop shadow
+        main_layout.setContentsMargins(20, 20, 20, 20)  # Space for drop shadow
         
         self.container = QFrame()
         self.container.setObjectName("dialogContainer")
@@ -123,74 +129,15 @@ class WebsiteTimerConfigDialog(QDialog):
         
         layout = QVBoxLayout(self.container)
         layout.setContentsMargins(32, 32, 32, 32)
-        layout.setSpacing(24)
-        
-        tm = ThemeManager.instance()
-        self.setStyleSheet(f"""
-            QFrame#dialogContainer {{
-                background-color: {tm.color('window_bg')};
-                border-radius: 16px;
-                border: 1px solid {tm.color('border')};
-            }}
-            QLabel {{
-                color: {tm.color('text_main')};
-                font-family: "Segoe UI", sans-serif;
-            }}
-            QLabel#titleLbl {{
-                font-size: 22px;
-                font-weight: 700;
-            }}
-            QLabel#subLbl {{
-                font-size: 14px;
-                font-weight: 600;
-                color: {tm.color('text_sub')};
-                margin-bottom: 4px;
-            }}
-            QLineEdit, QComboBox {{
-                background-color: {tm.color('card_bg')};
-                border: 1px solid {tm.color('border')};
-                border-radius: 8px;
-                color: {tm.color('text_main')};
-                padding: 12px;
-                font-size: 14px;
-                selection-background-color: {tm.color('accent')};
-            }}
-            QLineEdit:focus, QComboBox:focus {{
-                border: 1px solid {tm.color('accent')};
-                background-color: {tm.color('card_hover')};
-            }}
-            QComboBox::drop-down {{
-                border: none;
-            }}
-            QPushButton {{
-                background-color: {tm.color('accent')};
-                color: white;
-                border-radius: 8px;
-                padding: 12px 24px;
-                font-weight: 700;
-                font-size: 14px;
-                border: none;
-            }}
-            QPushButton:hover {{
-                background-color: {tm.color('accent_hover')};
-            }}
-            QPushButton:pressed {{
-                background-color: {tm.color('accent')};
-            }}
-            QPushButton#cancelBtn {{
-                background-color: {tm.color('card_bg')};
-                color: {tm.color('text_main')};
-                border: 1px solid {tm.color('border')};
-            }}
-            QPushButton#cancelBtn:hover {{
-                background-color: {tm.color('card_hover')};
-            }}
-            QPushButton#cancelBtn:pressed {{
-                background-color: {tm.color('card_pressed')};
-            }}
-        """)
-        
-        title = QLabel("Configure Website Timer" if self.domain else "Add Website Timer")
+        layout.setSpacing(20)
+
+        if self.browser_name:
+            title_text = f"Add Website Timer — {self.browser_name}"
+        elif self.domain:
+            title_text = "Configure Website Timer"
+        else:
+            title_text = "Add Website Timer"
+        title = QLabel(title_text)
         title.setObjectName("titleLbl")
         layout.addWidget(title)
         
@@ -248,7 +195,25 @@ class WebsiteTimerConfigDialog(QDialog):
         time_section_layout.addLayout(time_h_layout)
         layout.addLayout(time_section_layout)
         
-        layout.addSpacing(16)
+        # Presets Row
+        preset_layout = QHBoxLayout()
+        preset_layout.setSpacing(8)
+        lbl_preset = QLabel("Presets:")
+        lbl_preset.setObjectName("subLbl")
+        preset_layout.addWidget(lbl_preset)
+        
+        presets = [("15m", 0, 15), ("30m", 0, 30), ("1h", 1, 0), ("2h", 2, 0), ("Unlimited", 0, 0)]
+        for plabel, ph, pm_val in presets:
+            pbtn = QPushButton(plabel)
+            pbtn.setObjectName("presetBtn")
+            pbtn.setCursor(Qt.CursorShape.PointingHandCursor)
+            pbtn.setFixedHeight(28)
+            pbtn.clicked.connect(lambda _, h_val=ph, m_val=pm_val: self._set_preset(h_val, m_val))
+            preset_layout.addWidget(pbtn)
+        preset_layout.addStretch()
+        layout.addLayout(preset_layout)
+        
+        layout.addSpacing(8)
         
         # Buttons
         btn_layout = QHBoxLayout()
@@ -267,6 +232,102 @@ class WebsiteTimerConfigDialog(QDialog):
         layout.addLayout(btn_layout)
         
         main_layout.addWidget(self.container)
+
+        from ui.theme import ThemeManager
+        ThemeManager.instance().theme_changed.connect(self._apply_theme)
+        self._apply_theme(ThemeManager.instance().is_dark)
+
+    def _apply_theme(self, is_dark=None):
+        if is_dark is None:
+            from ui.theme import ThemeManager
+            is_dark = ThemeManager.instance().is_dark
+        
+        bg_col = "#0B0E14" if is_dark else "#FFFFFF"
+        border_col = "rgba(255, 255, 255, 0.12)" if is_dark else "rgba(0, 0, 0, 0.12)"
+        title_col = "#F8FAFC" if is_dark else "#0F172A"
+        sub_col = "#94A3B8" if is_dark else "#475569"
+        input_bg = "#121721" if is_dark else "#F8FAFC"
+        input_border = "rgba(255, 255, 255, 0.1)" if is_dark else "rgba(0, 0, 0, 0.14)"
+        input_col = "#F8FAFC" if is_dark else "#0F172A"
+        cancel_bg = "rgba(255, 255, 255, 0.05)" if is_dark else "#F1F5F9"
+        cancel_col = "#94A3B8" if is_dark else "#475569"
+        cancel_border = "rgba(255, 255, 255, 0.1)" if is_dark else "rgba(0, 0, 0, 0.1)"
+
+        self.setStyleSheet(f"""
+            QFrame#dialogContainer {{
+                background-color: {bg_col};
+                border-radius: 16px;
+                border: 1px solid {border_col};
+            }}
+            QLabel {{
+                color: {title_col};
+                font-family: "Segoe UI", sans-serif;
+            }}
+            QLabel#titleLbl {{
+                font-size: 20px;
+                font-weight: 800;
+                letter-spacing: -0.3px;
+                color: {title_col};
+            }}
+            QLabel#subLbl {{
+                font-size: 13px;
+                font-weight: 700;
+                color: {sub_col};
+                margin-bottom: 2px;
+            }}
+            QLineEdit, QComboBox {{
+                background-color: {input_bg};
+                border: 1px solid {input_border};
+                border-radius: 8px;
+                color: {input_col};
+                padding: 10px;
+                font-size: 14px;
+                selection-background-color: #10B981;
+            }}
+            QLineEdit:focus, QComboBox:focus {{
+                border: 1px solid #10B981;
+                background-color: {input_bg};
+            }}
+            QComboBox::drop-down {{
+                border: none;
+            }}
+            QPushButton {{
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #10B981, stop:1 #059669);
+                color: white;
+                border-radius: 8px;
+                padding: 10px 22px;
+                font-weight: 700;
+                font-size: 13px;
+                border: 1px solid rgba(16, 185, 129, 0.4);
+            }}
+            QPushButton:hover {{
+                background: #059669;
+                border-color: #10B981;
+            }}
+            QPushButton#cancelBtn {{
+                background-color: {cancel_bg};
+                color: {cancel_col};
+                border: 1px solid {cancel_border};
+            }}
+            QPushButton#cancelBtn:hover {{
+                background-color: rgba(255, 255, 255, 0.09);
+                color: {title_col};
+            }}
+            QPushButton#presetBtn {{
+                background-color: {cancel_bg};
+                color: {sub_col};
+                border: 1px solid {cancel_border};
+                border-radius: 6px;
+                padding: 4px 10px;
+                font-size: 12px;
+                font-weight: 600;
+            }}
+            QPushButton#presetBtn:hover {{
+                background-color: rgba(16, 185, 129, 0.15);
+                color: #10B981;
+                border: 1px solid #10B981;
+            }}
+        """)
 
     def get_data(self):
         h = int(self.hours_combo.currentText())

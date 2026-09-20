@@ -19,19 +19,32 @@ class AppIconProvider:
             cls._instance._repo = Repository()
         return cls._instance
 
-    def get_icon(self, process_name: str) -> QIcon:
-        """Get the cached icon for the given process name, or extract it."""
-        if process_name in self._cache:
-            return self._cache[process_name]
+    def get_icon(self, process_name: str, exe_path: str = "") -> QIcon:
+        """Get the cached icon for the given process name or executable path, or extract it."""
+        cache_key = (exe_path or process_name).lower()
+        if cache_key in self._cache:
+            return self._cache[cache_key]
             
-        icon = self._extract_icon(process_name)
-        self._cache[process_name] = icon
+        icon = self._extract_icon(process_name, exe_path)
+        if not icon.isNull():
+            self._cache[cache_key] = icon
         return icon
         
-    def _extract_icon(self, process_name: str) -> QIcon:
+    def _extract_icon(self, process_name: str, exe_path: str = "") -> QIcon:
+        # Direct extraction if valid executable path provided
+        if exe_path and os.path.exists(exe_path):
+            try:
+                info = QFileInfo(exe_path)
+                icon = self._provider.icon(info)
+                if not icon.isNull():
+                    return icon
+            except Exception:
+                pass
+
         # First, see if we have the full path in app_info
         app_info = self._repo.get_app_info(process_name)
-        exe_path = app_info.exe_path if app_info else ""
+        if not exe_path:
+            exe_path = app_info.exe_path if app_info else ""
         
         # If no path from DB, try searching common locations (heuristic)
         if not exe_path or not os.path.exists(exe_path):
@@ -59,10 +72,11 @@ class AppIconProvider:
 
         # If we finally have a valid path, extract
         if exe_path and os.path.exists(exe_path):
-            info = QFileInfo(exe_path)
-            return self._provider.icon(info)
+            try:
+                info = QFileInfo(exe_path)
+                return self._provider.icon(info)
+            except Exception:
+                pass
             
-        # Fallback to default generic executable icon
-        # In Windows, we can use the provider to get a default file icon
-        # but creating a dummy file isn't ideal. We'll use the QIcon fallback.
-        return QIcon.fromTheme("application-x-executable")
+        # Fallback to default Windows executable/file icon
+        return self._provider.icon(QFileIconProvider.IconType.File)

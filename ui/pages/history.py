@@ -1,22 +1,23 @@
 """
-history.py — Daily History Timeline Page
+history.py — Daily History Timeline Page in NYW Obsidian Aesthetic.
 """
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QScrollArea, QFrame, QPushButton
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QScrollArea, QFrame,
 )
 from database.repository import Repository
 from analytics.engine import AnalyticsEngine
 from ui.theme import ThemeManager
 
+
 class HistoryTimelineItem(QFrame):
     def __init__(self, date_str: str, active_s: float, idle_s: float, top_app: str, parent=None):
         super().__init__(parent)
-        self.setObjectName("timeline_item")
+        self.setObjectName("timeline_card")
         
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setContentsMargins(20, 16, 20, 16)
         layout.setSpacing(16)
         
         # Left: Date
@@ -24,7 +25,7 @@ class HistoryTimelineItem(QFrame):
         date_lbl.setObjectName("timeline_date")
         date_lbl.setFixedWidth(120)
         
-        # Middle: Graph/Dot (Visual)
+        # Middle: Graph/Dot
         dot = QLabel("●")
         dot.setObjectName("timeline_dot")
         
@@ -32,79 +33,89 @@ class HistoryTimelineItem(QFrame):
         stats_layout = QVBoxLayout()
         stats_layout.setSpacing(4)
         
-        active_lbl = QLabel(f"Active: {AnalyticsEngine.format_duration_short(active_s)}")
+        active_lbl = QLabel(f"Active Screen Time: {AnalyticsEngine.format_duration_short(active_s)}")
         active_lbl.setObjectName("timeline_stat")
         
-        idle_lbl = QLabel(f"Idle: {AnalyticsEngine.format_duration_short(idle_s)}")
+        idle_lbl = QLabel(f"Idle Time: {AnalyticsEngine.format_duration_short(idle_s)}")
         idle_lbl.setObjectName("timeline_stat_sub")
         
-        top_app_lbl = QLabel(f"Top App: {top_app if top_app else 'None'}")
+        top_app_lbl = QLabel(f"Primary Application: {top_app if top_app else 'None'}")
         top_app_lbl.setObjectName("timeline_stat_sub")
         
         stats_layout.addWidget(active_lbl)
         stats_layout.addWidget(idle_lbl)
         stats_layout.addWidget(top_app_lbl)
         
-        layout.addWidget(date_lbl, alignment=Qt.AlignmentFlag.AlignTop)
-        layout.addWidget(dot, alignment=Qt.AlignmentFlag.AlignTop)
+        layout.addWidget(date_lbl, alignment=Qt.AlignmentFlag.AlignVCenter)
+        layout.addWidget(dot, alignment=Qt.AlignmentFlag.AlignVCenter)
         layout.addLayout(stats_layout, 1)
         
-        ThemeManager.instance().theme_changed.connect(lambda _: self._apply_theme())
-        self._apply_theme()
-        
-    def _apply_theme(self):
+        from ui.theme import ThemeManager
+        ThemeManager.instance().theme_changed.connect(self._apply_theme)
+        self._apply_theme(ThemeManager.instance().is_dark)
+
+    def _apply_theme(self, is_dark: bool = True):
+        from ui.theme import ThemeManager
         tm = ThemeManager.instance()
+        card_bg = tm.color('surface_elevated') if not is_dark else "#0E121A"
+        card_hover = tm.color('card_hover') if not is_dark else "#121722"
+        border_col = tm.color('border')
+        border_hover = tm.color('border_hover')
+        text_main = tm.color('text_main')
+        text_sub = tm.color('text_sub')
+        accent = tm.color('accent')
+
         self.setStyleSheet(f"""
-            QFrame#timeline_item {{
-                background-color: {tm.color('surface')};
-                border-left: 2px solid {tm.color('border')};
-                border-bottom: 1px solid {tm.color('border')};
-                margin-left: 20px;
-                padding-left: 20px;
+            QFrame#timeline_card {{
+                background-color: {card_bg};
+                border: 1px solid {border_col};
+                border-radius: 12px;
             }}
-            QFrame#timeline_item:hover {{
-                background-color: {tm.color('surface_elevated')};
+            QFrame#timeline_card:hover {{
+                background-color: {card_hover};
+                border-color: {border_hover};
             }}
             QLabel#timeline_date {{
-                color: {tm.color('text_main')};
+                color: {text_main};
                 font-size: 14px;
                 font-weight: 700;
             }}
             QLabel#timeline_dot {{
-                color: {tm.color('accent')};
-                font-size: 18px;
+                color: {accent};
+                font-size: 14px;
             }}
             QLabel#timeline_stat {{
-                color: {tm.color('text_main')};
-                font-size: 14px;
-                font-weight: 600;
+                color: {text_main};
+                font-size: 13px;
+                font-weight: 700;
             }}
             QLabel#timeline_stat_sub {{
-                color: {tm.color('text_sub')};
+                color: {text_sub};
                 font-size: 12px;
             }}
         """)
+
 
 class HistoryPage(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._repo = Repository()
         self._setup_ui()
-        
+        from ui.theme import ThemeManager
         ThemeManager.instance().theme_changed.connect(self._apply_theme)
         self._apply_theme(ThemeManager.instance().is_dark)
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(32, 28, 32, 28)
-        layout.setSpacing(24)
+        layout.setContentsMargins(36, 28, 36, 28)
+        layout.setSpacing(20)
         
-        # Header Title
         title_box = QVBoxLayout()
         title_box.setSpacing(4)
+
         title = QLabel("History Timeline")
         title.setObjectName("page_title")
-        subtitle = QLabel("A chronological view of your daily screen time.")
+        subtitle = QLabel("A chronological view of your daily screen time and primary applications.")
         subtitle.setObjectName("page_subtitle")
         title_box.addWidget(title)
         title_box.addWidget(subtitle)
@@ -113,15 +124,16 @@ class HistoryPage(QWidget):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll.setStyleSheet("QScrollArea { background: transparent; } QWidget { background: transparent; }")
         
         inner = QWidget()
         self._inner_layout = QVBoxLayout(inner)
         self._inner_layout.setContentsMargins(0, 0, 0, 0)
-        self._inner_layout.setSpacing(0)
+        self._inner_layout.setSpacing(10)
         scroll.setWidget(inner)
         
-        layout.addWidget(scroll)
+        layout.addWidget(scroll, 1)
         
         self._build_timeline()
         self._inner_layout.addStretch()
@@ -131,8 +143,8 @@ class HistoryPage(QWidget):
         sorted_stats = sorted(stats, key=lambda x: x.date, reverse=True)
         
         if not sorted_stats:
-            lbl = QLabel("No historical data available yet.")
-            lbl.setObjectName("page_subtitle")
+            lbl = QLabel("No historical data recorded yet.")
+            lbl.setStyleSheet("color: #64748B; font-size: 14px; font-weight: 500; margin-top: 20px;")
             self._inner_layout.addWidget(lbl)
             return
             
@@ -146,17 +158,19 @@ class HistoryPage(QWidget):
             )
             self._inner_layout.insertWidget(self._inner_layout.count() - 1, item)
 
-    def _apply_theme(self, is_dark: bool):
+    def _apply_theme(self, is_dark: bool = True):
+        from ui.theme import ThemeManager
         tm = ThemeManager.instance()
         self.setStyleSheet(f"""
             QLabel#page_title {{
-                font-size: 28px;
+                font-size: 26px;
                 font-weight: 800;
                 color: {tm.color('text_main')};
+                letter-spacing: -0.5px;
             }}
             QLabel#page_subtitle {{
-                font-size: 15px;
-                font-weight: 600;
+                font-size: 14px;
+                font-weight: 500;
                 color: {tm.color('text_sub')};
             }}
         """)
@@ -165,5 +179,7 @@ class HistoryPage(QWidget):
         while self._inner_layout.count() > 1:
             item = self._inner_layout.takeAt(0)
             if item.widget():
+                item.widget().hide()
+                item.widget().setParent(None)
                 item.widget().deleteLater()
         self._build_timeline()

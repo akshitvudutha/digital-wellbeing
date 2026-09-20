@@ -49,10 +49,17 @@ class TimerEngine:
         """Return today's active time for the application in seconds."""
         process_name = process_name.lower()
         with self._lock:
-            if self._current_date != date.today():
+            today = date.today()
+            if self._current_date != today:
+                self._current_date = today
+                self._timers.clear()
                 return 0.0
             return self._timers.get(process_name, 0.0)
 
     def get_all_times(self) -> Dict[str, float]:
         with self._lock:
+            today = date.today()
+            if self._current_date != today:
+                self._current_date = today
+                self._timers.clear()
             return self._timers.copy()

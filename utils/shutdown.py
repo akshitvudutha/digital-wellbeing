@@ -23,6 +23,15 @@ VALID_ACTIONS = {"shutdown", "sleep", "hibernate", "lock", "cancel"}
 # Minimum countdown floor to prevent accidental immediate execution
 MIN_COUNTDOWN_SECONDS = 10
 
+
+def _format_command_output(value: Optional[str], limit: int = 500) -> str:
+    """Return bounded one-line subprocess output suitable for diagnostics."""
+    if not value:
+        return "<empty>"
+    normalized = " ".join(value.split())
+    return normalized[:limit] + ("..." if len(normalized) > limit else "")
+
+
 def _enable_shutdown_privilege() -> bool:
     advapi32 = ctypes.WinDLL('advapi32', use_last_error=True)
     kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
@@ -56,12 +65,16 @@ def _enable_shutdown_privilege() -> bool:
     tp.Privileges[0].Luid = luid
     tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED
     
+    ctypes.set_last_error(0)
     res = advapi32.AdjustTokenPrivileges(token, False, ctypes.byref(tp), ctypes.sizeof(tp), None, None)
-    if not res:
-        logger.warning(f"AdjustTokenPrivileges failed. Error: {ctypes.get_last_error()}")
+    err = ctypes.get_last_error()
+    if not res or err:
+        logger.warning("AdjustTokenPrivileges failed or did not assign SeShutdownPrivilege. Error: %s", err)
+        kernel32.CloseHandle(token)
+        return False
     
     kernel32.CloseHandle(token)
-    return bool(res)
+    return True
 
 
 
@@ -133,14 +146,27 @@ class ShutdownManager:
         """Cancel any pending scheduled shutdown command."""
         logger.info("Cancelling any pending scheduled shutdown...")
         try:
-            subprocess.run(
+            result = subprocess.run(
                 ["shutdown", "/a"],
                 capture_output=True,
                 text=True,
                 check=False,
             )
-        except OSError as exc:
-            logger.error("Failed to cancel shutdown: %s", exc)
+        except Exception:
+            logger.exception("Failed to cancel pending shutdown request.")
+            return
+
+        if result.returncode == 0:
+            logger.info("Pending shutdown cancellation accepted by Windows.")
+        else:
+            # A non-zero result commonly means there was no pending shutdown;
+            # retain it as useful diagnostics without turning a safe cancel into an error.
+            logger.info(
+                "No pending shutdown was cancelled. return_code=%d, stdout=%s, stderr=%s",
+                result.returncode,
+                _format_command_output(result.stdout),
+                _format_command_output(result.stderr),
+            )
 
     @staticmethod
     def _execute_shutdown() -> bool:
@@ -149,20 +175,32 @@ class ShutdownManager:
         
         shutdown_exe = r"C:\Windows\System32\shutdown.exe"
         try:
-            subprocess.run(
+            result = subprocess.run(
                 [shutdown_exe, "/s", "/f", "/t", "0"],
-                check=True,
+                check=False,
                 capture_output=True,
                 text=True,
+                stdin=subprocess.DEVNULL,
+                creationflags=subprocess.CREATE_NO_WINDOW,
             )
-        except subprocess.CalledProcessError as exc:
-            logger.error("shutdown command failed (exit %d): %s", exc.returncode, exc.stderr)
-            return False
-        except OSError as exc:
-            logger.error("Failed to invoke shutdown command: %s", exc)
+        except Exception:
+            logger.exception("[SLEEPGUARD_ACTION] Failed to invoke shutdown command.")
             return False
 
-        logger.info("[SLEEPGUARD_ACTION] Shutdown command accepted by Windows.")
+        if result.returncode != 0:
+            logger.error(
+                "[SLEEPGUARD_ACTION] Shutdown command failed. return_code=%d, stdout=%s, stderr=%s",
+                result.returncode,
+                _format_command_output(result.stdout),
+                _format_command_output(result.stderr),
+            )
+            return False
+
+        logger.info(
+            "[SLEEPGUARD_ACTION] Shutdown command accepted by Windows. return_code=0, stdout=%s, stderr=%s",
+            _format_command_output(result.stdout),
+            _format_command_output(result.stderr),
+        )
         return True
 
     @staticmethod
@@ -171,7 +209,8 @@ class ShutdownManager:
         logger.info("[SLEEPGUARD_ACTION] Executing SLEEP (suspend) at %s", ts)
         
         # Required for both Sleep and Hibernate via SetSuspendState
-        _enable_shutdown_privilege()
+        if not _enable_shutdown_privilege():
+            logger.warning("[SLEEPGUARD_ACTION] Could not enable SeShutdownPrivilege before sleep; attempting the existing Windows call.")
         
         try:
             powrprof = ctypes.WinDLL('powrprof', use_last_error=True)
@@ -195,7 +234,8 @@ class ShutdownManager:
     def _execute_hibernate() -> bool:
         ts = datetime.now().isoformat()
         logger.info("[SLEEPGUARD_ACTION] Executing HIBERNATE at %s", ts)
-        _enable_shutdown_privilege()
+        if not _enable_shutdown_privilege():
+            logger.warning("[SLEEPGUARD_ACTION] Could not enable SeShutdownPrivilege before hibernate; attempting the existing Windows call.")
         try:
             powrprof = ctypes.WinDLL('powrprof', use_last_error=True)
             result = powrprof.SetSuspendState(
@@ -224,7 +264,7 @@ class ShutdownManager:
                 logger.info("[SLEEPGUARD_ACTION] LockWorkStation succeeded.")
                 return True
             else:
-                logger.error("[SLEEPGUARD_ACTION] LockWorkStation returned False.")
+                logger.error("[SLEEPGUARD_ACTION] LockWorkStation returned False. Win32 Error: %s", ctypes.get_last_error())
                 return False
         except Exception as exc:
             logger.error("[SLEEPGUARD_ACTION] Failed to execute lock: %s", exc)

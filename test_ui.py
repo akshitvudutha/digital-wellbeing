@@ -58,12 +58,13 @@ try:
 
     # Settings Navigation Regression Test
     expected_categories = [
-        "Protection & PIN",
         "General",
+        "Appearance",
         "Tracking",
         "SleepGuard",
-        "Data Management",
-        "Updates & About"
+        "Security & PIN",
+        "Data & Storage",
+        "About / Updates",
     ]
     assert p._sidebar.count() == len(expected_categories), f"Expected {len(expected_categories)} sidebar items, found {p._sidebar.count()}"
     

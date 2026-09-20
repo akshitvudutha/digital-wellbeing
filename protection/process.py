@@ -1,48 +1,63 @@
-from __future__ import annotations
-
-import subprocess
-import time
+import os
+import psutil
 from core.logger import logger
+from utils.win_utils import is_safe_lock_target
 
 class ProcessController:
     @staticmethod
     def close_process(process_name: str) -> bool:
-        """Attempt graceful shutdown first, fallback to forceful termination."""
-        if not process_name.lower().endswith(".exe"):
-            # Ensure it ends with .exe for taskkill
-            process_name += ".exe"
-            
-        logger.info(f"ProcessController: Attempting graceful close for {process_name}")
-        
+        """Terminate user processes matching process_name cleanly and without blocking the UI."""
+        if not process_name:
+            return False
+
+        proc_lower = process_name.lower()
+        if not proc_lower.endswith(".exe"):
+            proc_lower += ".exe"
+
+        logger.info(f"ProcessController: Terminating process {proc_lower}")
+        my_pid = os.getpid()
+        killed_any = False
+
         try:
-            # Attempt graceful close
-            res = subprocess.run(
-                ["taskkill", "/IM", process_name], 
-                capture_output=True, 
-                text=True,
-                creationflags=subprocess.CREATE_NO_WINDOW
-            )
-            
-            # Wait for process to exit
-            time.sleep(1.5)
-            
-            # Check if still running
-            check = subprocess.run(
-                ["tasklist", "/FI", f"IMAGENAME eq {process_name}"], 
-                capture_output=True, 
-                text=True,
-                creationflags=subprocess.CREATE_NO_WINDOW
-            )
-            
-            if process_name.lower() in check.stdout.lower():
-                logger.warning(f"ProcessController: {process_name} did not close gracefully. Terminating forcefully.")
-                subprocess.run(
-                    ["taskkill", "/F", "/IM", process_name], 
-                    capture_output=True,
-                    creationflags=subprocess.CREATE_NO_WINDOW
-                )
-            
-            return True
+            for proc in psutil.process_iter(["pid", "name"]):
+                try:
+                    pid = proc.info["pid"]
+                    if pid <= 4 or pid == my_pid:
+                        continue
+                    name = (proc.info["name"] or "").lower()
+                    if name == proc_lower:
+                        try:
+                            exe = proc.exe()
+                        except Exception:
+                            exe = ""
+                        if not is_safe_lock_target(exe, name):
+                            continue
+                        proc.kill()
+                        killed_any = True
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    continue
+            return killed_any
         except Exception as exc:
             logger.error(f"ProcessController failed to close {process_name}: {exc}")
+            return False
+
+    @staticmethod
+    def close_browser_tab(hwnd: int = 0) -> bool:
+        """Gracefully closes the active browser tab without terminating the browser process."""
+        try:
+            import win32gui
+            import win32con
+            import win32api
+            if not hwnd:
+                hwnd = win32gui.GetForegroundWindow()
+            if not hwnd:
+                return False
+            win32api.keybd_event(win32con.VK_CONTROL, 0, 0, 0)
+            win32api.keybd_event(ord('W'), 0, 0, 0)
+            win32api.keybd_event(ord('W'), 0, win32con.KEYEVENTF_KEYUP, 0)
+            win32api.keybd_event(win32con.VK_CONTROL, 0, win32con.KEYEVENTF_KEYUP, 0)
+            logger.info(f"ProcessController: Sent Ctrl+W to close active tab on hwnd {hwnd}")
+            return True
+        except Exception as exc:
+            logger.error(f"ProcessController failed to close browser tab: {exc}")
             return False

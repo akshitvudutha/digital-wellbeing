@@ -10,16 +10,21 @@ pathex = [str(project_root.resolve())]
 a = Analysis(
     ['main.py'],
     pathex=pathex,
-    binaries=[],
+    binaries=[
+        ('C:\\Windows\\System32\\msvcp140.dll', '.'),
+        ('C:\\Windows\\System32\\vcruntime140.dll', '.'),
+        ('C:\\Windows\\System32\\vcruntime140_1.dll', '.')
+    ],
     datas=[
         (str(project_root / 'assets'), 'assets'),
         (str(project_root / 'version.json'), '.'),
         (str(project_root / 'file_version_info.txt'), '.'),
     ],
     hiddenimports=[
-        'PySide6.QtNetwork',
-        # WinRT Windows Hello / UserConsentVerifier
-        # PyInstaller cannot auto-detect these due to dynamic WinRT loading
+        'winrt.windows.ui.notifications',
+        'winrt.windows.data.xml.dom',
+        'winrt._winrt_windows_ui_notifications',
+        'winrt._winrt_windows_data_xml_dom',
         'winrt.windows.security.credentials.ui',
         'winrt.windows.security',
         'winrt._winrt_windows_security_credentials_ui',
@@ -29,13 +34,22 @@ a = Analysis(
         'winrt._winrt_windows_foundation_collections',
         'winrt.runtime',
         'winrt._winrt',
+        'PySide6.QtNetwork',
+        'plyer.platforms.win.notification',
+        'appdirs',
+        'win32com',
+        'win32com.client',
+        'win32com.propsys',
+        'win32api',
     ],
     hookspath=[],
+    hooksconfig={},
     runtime_hooks=[],
     excludes=[],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
+    noarchive=False,
 )
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)

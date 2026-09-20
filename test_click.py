@@ -11,28 +11,9 @@ if __name__ == "__main__":
 
     class MockTracker:
         pass
-    class MockProtectionManager:
-        class Limits:
-            def get_limit_rule(self, p): return {}
-            def set_limit_rule(self, p, r): pass
-        class Notifications:
-            show_limit_dialog = None
-        class Pin:
-            def is_enabled(self): return False
-        def __init__(self):
-            from PySide6.QtCore import Signal
-            self.limits = self.Limits()
-            self.notifications = self.Notifications()
-            self.pin = self.Pin()
-        def has_active_override(self, p): return False
-
-    pm = MockProtectionManager()
-    
-    # Mock show_limit_dialog signal
-    from PySide6.QtCore import QObject, Signal
-    class S(QObject):
-        show_limit_dialog = Signal(str, int)
-    pm.notifications = S()
+    from database.repository import Repository
+    from protection.core import ProtectionManager
+    pm = ProtectionManager(Repository())
     
     win = MainWindow(tracker=MockTracker(), protection_manager=pm)
     

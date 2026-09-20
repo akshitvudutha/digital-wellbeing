@@ -22,38 +22,34 @@ class FakeInstallerHandler(BaseHTTPRequestHandler):
             self.end_headers()
             mock_data = [
                 {
-                    "tag_name": "v9.9.9",
+                    "tag_name": "v3.6.2",
                     "draft": False,
                     "prerelease": False,
-                    "body": "• Fake release notes for testing\n• Verifies the update dialog UI\n• Tests the download progress bar\n• Checks SHA-256 verification",
+                    "body": "• Notch 3.6.2 Feature & Stability Update\n• In-app update verification\n• SHA-256 verified package",
                     "assets": [
                         {
-                            "name": "DigitalWellbeingSetup-9.9.9.exe", 
-                            "browser_download_url": f"http://localhost:{FAKE_INSTALLER_PORT}/DigitalWellbeingSetup-9.9.9.exe"
+                            "name": "NotchSetup-3.6.2.exe", 
+                            "browser_download_url": f"http://localhost:{FAKE_INSTALLER_PORT}/NotchSetup-3.6.2.exe"
                         },
                         {
-                            "name": "DigitalWellbeingSetup-9.9.9.exe.sha256", 
-                            "browser_download_url": f"http://localhost:{FAKE_INSTALLER_PORT}/DigitalWellbeingSetup-9.9.9.exe.sha256"
+                            "name": "NotchSetup-3.6.2.exe.sha256", 
+                            "browser_download_url": f"http://localhost:{FAKE_INSTALLER_PORT}/NotchSetup-3.6.2.exe.sha256"
                         }
                     ]
                 }
             ]
             self.wfile.write(json.dumps(mock_data).encode("utf-8"))
 
-        elif self.path == "/DigitalWellbeingSetup-9.9.9.exe":
+        elif self.path == "/NotchSetup-3.6.2.exe":
             self.send_response(200)
             self.send_header("Content-Type", "application/x-msdownload")
-            self.send_header("Content-Length", "1024000") # 1MB fake file
+            fake_data = b"MZ\x90\x00" + b"\x00" * 512000 # 500KB fake installer
+            self.send_header("Content-Length", str(len(fake_data)))
             self.end_headers()
-            
-            # Send 1MB of zeroes
-            fake_data = b"0" * 1024000
             self.wfile.write(fake_data)
-            
-            # Calculate SHA256 of the fake data to use in the checksum request
             self.server.fake_sha256 = hashlib.sha256(fake_data).hexdigest()
             
-        elif self.path == "/DigitalWellbeingSetup-9.9.9.exe.sha256":
+        elif self.path == "/NotchSetup-3.6.2.exe.sha256":
             self.send_response(200)
             self.send_header("Content-Type", "text/plain")
             self.end_headers()

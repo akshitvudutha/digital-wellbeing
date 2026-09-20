@@ -32,6 +32,7 @@ class ProtectionManager:
         self._website_overrides: Dict[str, datetime] = {}
         self._warnings_sent: Dict[str, Set[int]] = {}  # process_name -> set of warning thresholds hit (e.g. 10, 5, 1)
         self._website_warnings_sent: Dict[str, Set[int]] = {}
+        self._current_date = datetime.now().date()
         self._lock = threading.Lock()
 
     @property
@@ -62,6 +63,17 @@ class ProtectionManager:
         """Called by TrackingManager every tick."""
         if not process_name:
             return
+
+        today = datetime.now().date()
+        if today != self._current_date:
+            with self._lock:
+                self._current_date = today
+                self._warnings_sent.clear()
+                self._website_warnings_sent.clear()
+                now = datetime.now()
+                self._overrides = {k: v for k, v in self._overrides.items() if v > now}
+                self._website_overrides = {k: v for k, v in self._website_overrides.items() if v > now}
+                logger.info(f"ProtectionManager: Midnight rollover detected. Reset warnings for {today}.")
             
         process_name = process_name.lower()
         self._timer.add_time(process_name, delta_s)
@@ -138,9 +150,21 @@ class ProtectionManager:
         remaining_s = limit_s - elapsed_s
         
         if remaining_s > 0:
-            return # We don't have website warnings yet
-            
+            remaining_mins = int(remaining_s // 60)
+            if remaining_mins in (5, 1):
+                with self._lock:
+                    sent = self._warnings_sent.setdefault(domain, set())
+                    if remaining_mins not in sent:
+                        sent.add(remaining_mins)
+                        self._notifications.send_website_warning(domain, remaining_mins)
+            return
+
         # Website limit reached
+        with self._lock:
+            sent = self._warnings_sent.setdefault(domain, set())
+            if 0 not in sent:
+                sent.add(0)
+                self._notifications.send_website_warning(domain, 0)
         self._notifications.trigger_website_lock_dialog(process_name, domain, limit_s)
 
     def add_override(self, process_name: str, duration_minutes: int) -> None:
@@ -177,6 +201,8 @@ class ProtectionManager:
                 self._website_overrides[domain] = end_of_day
             else:
                 self._website_overrides[domain] = datetime.now() + timedelta(minutes=duration_minutes)
+            self._warnings_sent.pop(domain, None)
+            logger.info(f"ProtectionManager: Website override added for {domain} ({duration_minutes}m)")
                 
     def has_active_website_override(self, domain: str) -> bool:
         domain = domain.lower()

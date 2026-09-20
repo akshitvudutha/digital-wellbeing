@@ -1,40 +1,42 @@
 # REBRAND_NOTES.md
 
 ## Brand Changes
-- **Old brand:** Digital Wellbeing
-- **New brand:** NYW — Not Your Wellbeing
-- **Descriptor:** Digital wellbeing for Windows
-- **Tagline:** Your time. Your rules.
+- **Retired brands:** Digital Wellbeing, NYW (Not Your Wellbeing)
+- **Final Product Brand:** Notch (Visual treatment: NOTCH)
+- **Product Descriptor:** Digital Wellbeing for Windows
+- **Version:** 3.1.6
 
 ## What User-Facing Surfaces Changed
 1. **Desktop Application UI:**
-   - Sidebar logo label now reads "NYW".
-   - Settings page descriptions reflect "NYW".
-   - Update dialog title changed to "NYW Update Available".
-   - Tray icon menu action renamed to "Open Not Your Wellbeing".
+   - Sidebar logo header now displays "NOTCH".
+   - Window title dynamically displays "Notch v3.1.6".
+   - Settings page descriptions reflect "Notch".
+   - Update dialog title and copy changed to "Notch Update Available" / "A newer version of Notch is ready to be installed."
+   - Tray icon menu action renamed to "Open Notch".
+   - All protection and authentication dialogs updated to "Notch" (e.g. "This application is protected by Notch", "Enter Notch PIN", "App Blocked by Focus — Notch").
 2. **Installer Metadata:**
-   - Inno Setup wizard dialogs and titles display "NYW" and "Not Your Wellbeing".
-   - Windows shortcuts inside start menu and desktop use "NYW".
-   - Windows Registry metadata for Apps & Features lists "Not Your Wellbeing".
+   - Inno Setup wizard dialogs and titles display "Notch".
+   - Windows shortcuts inside Start Menu, Startup, and Desktop use "Notch".
+   - Output installer named `NotchSetup-3.1.6.exe`.
+   - Windows Registry metadata for Apps & Features lists "Notch".
 3. **Executable Metadata:**
-   - Embedded `ProductName` and `FileDescription` updated to "Not Your Wellbeing".
+   - Embedded `ProductName` updated to "Notch".
+   - `FileDescription` set to "Notch — Digital Wellbeing for Windows".
 4. **Website:**
-   - SEO metadata, Hero Section, Feature Sections, and Download Fallback updated to "NYW" and the new tagline.
-   - All references to "Digital Wellbeing" were replaced appropriately to fit the new context.
+   - Site title: "Notch — Digital Wellbeing for Windows".
+   - Navbar brand: "NOTCH".
+   - Footer brand: "NOTCH".
+   - Canonical logo asset referenced cleanly as `/notch-logo.png`.
+   - All hero, capability, philosophy, privacy, and beta registration copy updated to "Notch".
+   - All screenshots updated from running application to showcase "NOTCH" branding in Dark and Light modes.
 5. **Documentation:**
-   - README updated with the new branding.
+   - README updated with "# Notch — Digital Wellbeing for Windows".
 
 ## Technical Identifiers Intentionally Retained
-To prevent breaking existing configurations, data, or update mechanisms, the following underlying technical IDs remain unchanged:
+To prevent breaking existing configurations, user data, or update mechanisms, the following underlying technical IDs remain unchanged:
 - **Executable Name:** `DigitalWellbeing.exe` (maintains compatibility with registry paths, shortcut targets, startup tasks, and updater hooks)
-- **Installer Filename:** `DigitalWellbeingSetup-2.5.2.exe` (keeps Vercel fallback URL checks and updater string matching intact)
 - **GitHub Repository:** `akshitvudutha/digital-wellbeing` (remains active until formally changed)
-- **App Data Directory/DB:** `digital_wellbeing.db` inside `.digital_wellbeing` folder.
-- **Python Module Imports:** Internal module structures remain under `digitalwellbeing` namespaces.
+- **App Data Directory/DB:** `digital_wellbeing.db` inside user AppData (`DigitalWellbeing`).
+- **Python Module Imports:** Internal module structures remain under existing package namespaces.
 - **Windows Toast AppID:** `DigitalWellbeing` ID retained for notification permission grouping.
-- **CHANGELOG:** Historical entries retain "Digital Wellbeing" for accuracy.
-
-## Future Cleanup Recommendations
-- **Logo Replacement:** Current icon assets (`app_icon.ico`, `app_logo.png`) have been retained. In the future, new logo assets should be swapped at the same paths to safely replace them without touching UI code.
-- **Repository Rename:** Once all clients are on v2.5.2 or greater (which uses the `/releases` endpoint search instead of hardcoded github repo paths if changed in config), the repository can safely be renamed on GitHub.
-- **Installer Filename Rename:** The installer filename can be safely renamed in a future major version bump (e.g. v3.0) where website API `route.ts` and `core/updater.py` logic are synchronously updated to seek `NYWSetup.exe`.
+- **CHANGELOG:** Historical entries retain past names for archival accuracy.

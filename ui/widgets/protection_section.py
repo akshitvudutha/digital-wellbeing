@@ -82,14 +82,40 @@ class ProtectionSection(QWidget):
     def _refresh(self) -> None:
         if self._protection.pin.is_enabled():
             self.status_lbl.setText("Protected by PIN")
+            self.pin_input.setVisible(False)
             self.btn_action.setText("Change PIN")
             self.btn_disable.setVisible(True)
         else:
             self.status_lbl.setText("Not Protected")
+            self.pin_input.setVisible(True)
             self.btn_action.setText("Set PIN")
             self.btn_disable.setVisible(False)
             
     def _on_action(self) -> None:
+        if self._protection.pin.is_enabled():
+            from ui.widgets.auth_dialog import AppLockerAuthDialog
+            from PySide6.QtWidgets import QDialog, QInputDialog
+            dialog = AppLockerAuthDialog(
+                process_name="settings",
+                display_name="Change Notch PIN",
+                pin_manager=self._protection.pin,
+                auth_method="pin",
+                parent=self
+            )
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                new_pin, ok = QInputDialog.getText(
+                    self, "New PIN", "Enter your new PIN (4 to 8 digits):", 
+                    QLineEdit.EchoMode.Password
+                )
+                if ok and new_pin:
+                    new_pin = new_pin.strip()
+                    if self._protection.pin.set_pin(new_pin):
+                        QMessageBox.information(self, "PIN Changed", "Your PIN has been successfully changed.")
+                        self._refresh()
+                    else:
+                        QMessageBox.warning(self, "Error", "PIN must be 4 to 8 digits.")
+            return
+
         pin = self.pin_input.text().strip()
         if not pin:
             QMessageBox.warning(self, "Error", "Please enter a PIN.")
@@ -104,7 +130,17 @@ class ProtectionSection(QWidget):
             
     def _on_disable(self) -> None:
         if self._protection.pin.is_enabled():
-            self._protection.pin.disable_pin()
-            QMessageBox.information(self, "PIN Disabled", "PIN protection has been disabled.")
-            self.pin_input.clear()
-            self._refresh()
+            from ui.widgets.auth_dialog import AppLockerAuthDialog
+            from PySide6.QtWidgets import QDialog
+            dialog = AppLockerAuthDialog(
+                process_name="settings",
+                display_name="Disable Notch PIN",
+                pin_manager=self._protection.pin,
+                auth_method="pin",
+                parent=self
+            )
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                self._protection.pin.disable_pin()
+                QMessageBox.information(self, "PIN Disabled", "PIN protection has been disabled.")
+                self.pin_input.clear()
+                self._refresh()

@@ -39,7 +39,7 @@ class ActivityPage(QWidget):
         self._sm = SettingsManager()
         self._current_date = date.today()
         self._chart_end_date = date.today()
-        self._time_range = 7  # Default to 7 Days
+        self._time_range = 1  # Default to Today
         self._setup_ui()
         self._refresh()
 
@@ -104,11 +104,11 @@ class ActivityPage(QWidget):
         
         self._btn_today = QPushButton("Today")
         self._btn_today.setCheckable(True)
+        self._btn_today.setChecked(True)
         self._btn_today.setObjectName("segment_btn_left")
         
         self._btn_7d = QPushButton("7 Days")
         self._btn_7d.setCheckable(True)
-        self._btn_7d.setChecked(True)
         self._btn_7d.setObjectName("segment_btn_mid")
         
         self._btn_30d = QPushButton("30 Days")
@@ -127,31 +127,52 @@ class ActivityPage(QWidget):
         self._range_group.idClicked.connect(self._on_range_changed)
         self._content_layout.addLayout(range_layout)
         
-        # 2. Primary Navigation Graph
+        # 2. Analytical KPI Overview Cards
+        kpi_row = QHBoxLayout()
+        kpi_row.setSpacing(14)
+        self._kpi_screen_time = self._create_kpi_card("SCREEN TIME", "0h 0m", "clock", kpi_row)
+        self._kpi_active_time = self._create_kpi_card("ACTIVE TIME", "0h 0m", "usage", kpi_row)
+        self._kpi_idle_time = self._create_kpi_card("IDLE TIME", "0h 0m", "hourglass", kpi_row)
+        self._kpi_top_cat = self._create_kpi_card("TOP CATEGORY", "-", "apps", kpi_row)
+        self._content_layout.addLayout(kpi_row)
+
+        # 3. Charts (Hourly for Today, Daily for 7D / 30D)
+        from ui.widgets.charts import HourlyIntensityChart
+        self._hourly_chart = HourlyIntensityChart()
+        self._hourly_chart.setVisible(False)
+        self._content_layout.addWidget(self._hourly_chart)
+
         self._chart = DailyScreenTimeChart()
         self._chart.day_selected.connect(self._on_day_selected)
         self._content_layout.addWidget(self._chart)
 
-        # 3. Category Breakdown (New)
-        lbl_cat = QLabel("Category Breakdown")
+        # 4. Category Breakdown
+        lbl_cat = QLabel("CATEGORY BREAKDOWN")
         lbl_cat.setObjectName("section_header")
         self._content_layout.addWidget(lbl_cat)
         
-        from ui.widgets.flow_layout import FlowLayout
-        self._category_layout = FlowLayout()
-        self._category_layout.setSpacing(12)
-        self._content_layout.addLayout(self._category_layout)
+        from PySide6.QtWidgets import QGridLayout
+        self._category_grid = QGridLayout()
+        self._category_grid.setSpacing(12)
+        self._content_layout.addLayout(self._category_grid)
         
-        # 4. Applications List (New)
+        # 5. Applications List
         lbl_apps = QLabel("Top Applications")
         lbl_apps.setObjectName("section_header")
         self._content_layout.addWidget(lbl_apps)
         
-        self._apps_layout = QVBoxLayout()
-        self._apps_layout.setSpacing(8)
-        self._content_layout.addLayout(self._apps_layout)
+        apps_card = QFrame()
+        apps_card.setObjectName("v2_card")
+        apps_card_l = QVBoxLayout(apps_card)
+        apps_card_l.setContentsMargins(18, 14, 18, 14)
+        apps_card_l.setSpacing(6)
 
-        # 5. Long Term Analytics Layout
+        self._apps_layout = QVBoxLayout()
+        self._apps_layout.setSpacing(6)
+        apps_card_l.addLayout(self._apps_layout)
+        self._content_layout.addWidget(apps_card)
+
+        # 6. Long Term Analytics Layout
         self._analytics_layout = QVBoxLayout()
         self._analytics_layout.setSpacing(20)
         self._content_layout.addLayout(self._analytics_layout)
@@ -160,6 +181,35 @@ class ActivityPage(QWidget):
         self._build_analytics_cards()
 
         self._content_layout.addStretch()
+
+    def _create_kpi_card(self, title: str, default_val: str, icon_name: str, layout: QHBoxLayout) -> QLabel:
+        from ui.icons import get_icon
+        from ui.theme import ThemeManager
+        tm = ThemeManager.instance()
+        card = QFrame()
+        card.setObjectName("v2_card")
+        l = QVBoxLayout(card)
+        l.setContentsMargins(18, 16, 18, 16)
+        l.setSpacing(6)
+        
+        top_h = QHBoxLayout()
+        top_h.setSpacing(8)
+        lbl_title = QLabel(title)
+        lbl_title.setObjectName("metric_hdr")
+        top_h.addWidget(lbl_title)
+        top_h.addStretch()
+        
+        ico = QLabel()
+        ico.setPixmap(get_icon(icon_name, color=tm.color("text_muted"), size=15).pixmap(15, 15))
+        top_h.addWidget(ico)
+        l.addLayout(top_h)
+        
+        lbl_val = QLabel(default_val)
+        lbl_val.setObjectName("metric_val_success")
+        l.addWidget(lbl_val)
+        
+        layout.addWidget(card, 1)
+        return lbl_val
 
     def _build_analytics_cards(self) -> None:
         # Clear existing
@@ -227,24 +277,24 @@ class ActivityPage(QWidget):
         tm = ThemeManager.instance()
         
         self.setStyleSheet(f"""
-            QLabel#page_title {{ font-size: 28px; font-weight: 800; color: {tm.color('text_main')}; }}
-            QLabel#page_subtitle {{ font-size: 15px; font-weight: 600; color: {tm.color('text_sub')}; }}
-            QLabel#metric_hdr {{ color: {tm.color('text_sub')}; font-weight: 600; }}
-            QLabel#metric_val_success {{ font-size: 24px; font-weight: 800; color: {tm.color('text_main')}; }}
-            QLabel#section_header {{ font-size: 14px; font-weight: 700; color: {tm.color('accent')}; letter-spacing: 1.2px; margin-top: 10px; }}
+            QLabel#page_title {{ font-size: 26px; font-weight: 800; color: {tm.color('text_main')}; letter-spacing: -0.5px; }}
+            QLabel#page_subtitle {{ font-size: 13px; font-weight: 500; color: {tm.color('text_sub')}; }}
+            QLabel#metric_hdr {{ color: {tm.color('text_muted')}; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }}
+            QLabel#metric_val_success {{ font-size: 22px; font-weight: 800; color: {tm.color('text_main')}; letter-spacing: -0.5px; }}
+            QLabel#section_header {{ font-size: 11px; font-weight: 700; color: {tm.color('text_muted')}; letter-spacing: 1.5px; text-transform: uppercase; margin-top: 6px; }}
             
             /* Segmented Control Buttons */
             QPushButton#segment_btn_left, QPushButton#segment_btn_mid, QPushButton#segment_btn_right {{
                 background: {tm.color('surface')};
                 border: 1px solid {tm.color('border')};
                 color: {tm.color('text_sub')};
-                padding: 6px 16px;
+                padding: 7px 18px;
                 font-weight: 600;
                 font-size: 13px;
             }}
             QPushButton#segment_btn_left {{
-                border-top-left-radius: 6px;
-                border-bottom-left-radius: 6px;
+                border-top-left-radius: 8px;
+                border-bottom-left-radius: 8px;
                 border-right: none;
             }}
             QPushButton#segment_btn_mid {{
@@ -252,16 +302,17 @@ class ActivityPage(QWidget):
                 border-right: none;
             }}
             QPushButton#segment_btn_right {{
-                border-top-right-radius: 6px;
-                border-bottom-right-radius: 6px;
+                border-top-right-radius: 8px;
+                border-bottom-right-radius: 8px;
             }}
             QPushButton#segment_btn_left:hover, QPushButton#segment_btn_mid:hover, QPushButton#segment_btn_right:hover {{
-                background: {tm.color('surface_elevated')};
+                background: {tm.color('card_hover')};
                 color: {tm.color('text_main')};
             }}
             QPushButton#segment_btn_left:checked, QPushButton#segment_btn_mid:checked, QPushButton#segment_btn_right:checked {{
-                background: {tm.color('accent')};
-                color: #FFFFFF;
+                background: {tm.color('accent_emerald_bg')};
+                color: {tm.color('accent')};
+                font-weight: 700;
                 border: 1px solid {tm.color('accent')};
             }}
         """)
@@ -275,13 +326,18 @@ class ActivityPage(QWidget):
     def _update_chart(self) -> None:
         end_d = self._chart_end_date
         start_d = end_d - timedelta(days=self._time_range - 1)
-        daily_pts = self._engine.get_daily_chart_data(start_d, end_d)
         
-        # Don't show chart if it's just "Today"
         if self._time_range == 1:
+            # Show hourly chart for Today
             self._chart.setVisible(False)
+            self._hourly_chart.setVisible(True)
+            hourly_data = self._engine.get_hourly_chart_data(start_d)
+            self._hourly_chart.update_data(hourly_data)
         else:
+            self._hourly_chart.setVisible(False)
             self._chart.setVisible(True)
+            self._chart.set_range_title("PAST 30 DAYS" if self._time_range == 30 else "PAST 7 DAYS")
+            daily_pts = self._engine.get_daily_chart_data(start_d, end_d)
             self._chart.update_data(daily_pts)
             
         summary = self._update_lists(start_d, end_d)
@@ -289,34 +345,56 @@ class ActivityPage(QWidget):
         
     def _on_range_changed(self, range_id: int) -> None:
         self._time_range = range_id
+        btn = self._range_group.button(range_id)
+        if btn and not btn.isChecked():
+            btn.setChecked(True)
         self._chart_end_date = date.today()
         self._refresh()
         
     def _update_lists(self, start_d: date, end_d: date) -> None:
-        self._clear_layout(self._category_layout)
+        self._clear_layout(self._category_grid)
         self._clear_layout(self._apps_layout)
         
         # We need aggregated data for the range
         summary = self._engine.get_custom_summary(start_d, end_d)
         
+        # KPI updates
+        self._kpi_screen_time.setText(self._engine.format_duration(summary.total_screen_time_s))
+        self._kpi_active_time.setText(self._engine.format_duration(summary.active_time_s))
+        self._kpi_idle_time.setText(self._engine.format_duration(summary.idle_time_s))
+        top_c = summary.category_breakdown[0]["category"] if summary.category_breakdown else "-"
+        if hasattr(top_c, "value"):
+            top_c = top_c.value
+        self._kpi_top_cat.setText(str(top_c).title())
+
         # Categories
         cat_breakdown = summary.category_breakdown
         if not cat_breakdown:
             lbl = QLabel("No category data recorded.")
-            self._category_layout.addWidget(lbl)
+            lbl.setStyleSheet("color: rgba(255, 255, 255, 0.4); font-size: 13px; font-weight: 500;")
+            self._category_grid.addWidget(lbl, 0, 0)
         else:
             sorted_cats = sorted(cat_breakdown, key=lambda x: float(x.get("total_s", 0)), reverse=True)
+            row_idx = 0
+            col_idx = 0
             for item in sorted_cats:
                 dur = float(item.get("total_s", 0))
                 if dur > 60:  # Only show > 1 min
                     from ui.widgets.simple_category_row import ClickableCategoryCard
-                    row = ClickableCategoryCard(item["category"], dur)
-                    self._category_layout.addWidget(row)
+                    card = ClickableCategoryCard(item["category"], dur)
+                    cat_val = item["category"].value if hasattr(item["category"], "value") else str(item["category"])
+                    card.clicked.connect(lambda c=cat_val: self.open_category_details(c))
+                    self._category_grid.addWidget(card, row_idx, col_idx)
+                    col_idx += 1
+                    if col_idx >= 3:
+                        col_idx = 0
+                        row_idx += 1
                     
         # Apps
         top_apps = summary.top_apps
         if not top_apps:
             lbl = QLabel("No application data recorded.")
+            lbl.setStyleSheet("color: rgba(255, 255, 255, 0.4); font-size: 13px; font-weight: 500;")
             self._apps_layout.addWidget(lbl)
         else:
             max_dur = top_apps[0]["total_s"] if top_apps else 0
@@ -330,6 +408,7 @@ class ActivityPage(QWidget):
                         duration_s=app["total_s"],
                         max_duration_s=max_dur
                     )
+                    row.app_clicked.connect(self._open_app_details)
                     self._apps_layout.addWidget(row)
         return summary
         
@@ -363,16 +442,24 @@ class ActivityPage(QWidget):
         
         self._lbl_current_streak.setText(f"{long_term.get('current_streak', 0)} Days")
         self._lbl_best_streak.setText(f"{long_term.get('best_streak', 0)} Days")
-    def _clear_layout(self, layout: QVBoxLayout) -> None:
+
+    def _clear_layout(self, layout) -> None:
         while layout.count():
             item = layout.takeAt(0)
             if item.widget():
-                item.widget().deleteLater()
+                w = item.widget()
+                w.hide()
+                w.setParent(None)
+                w.deleteLater()
+            elif item.layout():
+                self._clear_layout(item.layout())
                 
     def open_category_details(self, category_name: str) -> None:
-        if hasattr(self, "_current_apps_for_drilldown"):
-            self._category_page.set_data(category_name, self._current_apps_for_drilldown, getattr(self, "_current_active_s", 0))
-            self._navigate_to(1)
+        start_d = self._chart_end_date - timedelta(days=self._time_range - 1)
+        end_d = self._chart_end_date
+        summary = self._engine.get_custom_summary(start_d, end_d)
+        self._category_page.set_data(category_name, summary.top_apps, summary.active_time_s)
+        self._navigate_to(1)
 
     def _on_category_card_clicked(self, event) -> None:
         self.open_category_details("All Categories")

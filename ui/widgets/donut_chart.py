@@ -290,28 +290,43 @@ class CategoryLegendWidget(QWidget):
             self._layout.addWidget(lbl)
             return [("Active", 1.0, tm.color('accent'))]
 
-        # Sort categories descending by duration
-        sorted_cats = sorted(category_breakdown, key=lambda x: float(x.get("total_s", 0.0)), reverse=True)
-        top_cats = sorted_cats[:5]
-        remaining = sorted_cats[5:]
-
-        consolidated: list[tuple[str, float, str]] = []
-        for item in top_cats:
+        agg_map = {}
+        for item in category_breakdown:
             dur = float(item.get("total_s", 0.0))
             if dur <= 0:
                 continue
             cat_raw = item.get("category", "").title()
             try:
                 cat_enum = AppCategory(cat_raw)
+                cat_name = cat_enum.value.title()
                 color_hex = CATEGORY_COLORS.get(cat_enum, tm.color('accent'))
             except ValueError:
-                color_hex = tm.color('accent')
-            consolidated.append((cat_raw, dur, color_hex))
+                cat_name = "Other"
+                color_hex = CATEGORY_COLORS.get(AppCategory.OTHER, tm.color('text_muted'))
+            
+            if cat_name not in agg_map:
+                agg_map[cat_name] = {"dur": 0.0, "color": color_hex}
+            agg_map[cat_name]["dur"] += dur
+
+        sorted_cats = sorted(agg_map.items(), key=lambda x: x[1]["dur"], reverse=True)
+        top_cats = sorted_cats[:5]
+        remaining = sorted_cats[5:]
+
+        consolidated: list[tuple[str, float, str]] = []
+        for name, data in top_cats:
+            consolidated.append((name, data["dur"], data["color"]))
 
         if remaining:
-            other_dur = sum(float(x.get("total_s", 0.0)) for x in remaining)
+            other_dur = sum(data["dur"] for name, data in remaining)
             if other_dur > 0:
-                consolidated.append(("Other", other_dur, CATEGORY_COLORS.get(AppCategory.OTHER, tm.color('text_muted'))))
+                found = False
+                for i, (n, d, c) in enumerate(consolidated):
+                    if n == "Other":
+                        consolidated[i] = (n, d + other_dur, c)
+                        found = True
+                        break
+                if not found:
+                    consolidated.append(("Other", other_dur, CATEGORY_COLORS.get(AppCategory.OTHER, tm.color('text_muted'))))
 
         text_main = tm.color("text_main")
         text_sub = tm.color("text_sub")
@@ -376,21 +391,20 @@ class CategoryBreakdownCard(QFrame):
 
         container_widget = QWidget()
         container = QHBoxLayout(container_widget)
-        container.setSpacing(10)
+        container.setContentsMargins(0, 0, 0, 0)
+        container.setSpacing(40)
+        container.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
         self.donut = DonutChart()
-        self.donut.setMinimumSize(240, 240)
-        container.addWidget(self.donut, 1)
+        self.donut.setFixedSize(180, 180)
+        self.donut.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        container.addWidget(self.donut, 0, Qt.AlignmentFlag.AlignTop)
 
         self.legend = CategoryLegendWidget()
-        
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.Shape.NoFrame)
-        scroll.setWidget(self.legend)
-        scroll.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        container.addWidget(scroll, 1)
+        self.legend.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
+        container.addWidget(self.legend)
 
+        container.addStretch()
         layout.addWidget(container_widget, 1)
 
     def _apply_theme(self, is_dark: bool) -> None:

@@ -23,7 +23,7 @@ class PINManager:
 
     def is_enabled(self) -> bool:
         """Check if PIN protection is enabled."""
-        return self._repo.get_setting("pin_hash") is not None
+        return bool(self._repo.get_setting("pin_hash"))
 
     def set_pin(self, pin: str) -> bool:
         """Set or update the PIN. Must be 4-8 digits."""

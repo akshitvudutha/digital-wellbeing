@@ -79,7 +79,15 @@ class HourlyIntensityChart(QFrame):
         self._plot.setXRange(-0.8, 23.8, padding=0)
         self._plot.setYRange(0, 10, padding=0)
 
+        # Empty State Label
+        self._empty_lbl = QLabel("No usage recorded yet", self._plot)
+        self._empty_lbl.setObjectName("chart_empty_lbl")
+        self._empty_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._empty_lbl.setVisible(False)
+
         # Bar Graph Item
+        self._hourly_rows: List[dict] = []
+        self._heights: List[float] = []
         self._bar_item = pg.BarGraphItem(
             x=list(range(24)),
             height=[0.0] * 24,
@@ -90,6 +98,13 @@ class HourlyIntensityChart(QFrame):
         self._plot.addItem(self._bar_item)
         layout.addWidget(self._plot)
 
+        self._plot.scene().sigMouseMoved.connect(self._on_mouse_moved)
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        if hasattr(self, "_empty_lbl") and hasattr(self, "_plot"):
+            self._empty_lbl.setGeometry(0, 0, self._plot.width(), self._plot.height())
+
     def _apply_theme(self, is_dark: bool) -> None:
         from ui.theme import ThemeManager
         tm = ThemeManager.instance()
@@ -97,6 +112,7 @@ class HourlyIntensityChart(QFrame):
         self.setStyleSheet(f"""
             QLabel#section_header {{ font-size: 14px; font-weight: 800; color: {tm.color('text_main')}; letter-spacing: 0.5px; }}
             QLabel#page_subtitle {{ font-size: 12px; color: {tm.color('text_sub')}; }}
+            QLabel#chart_empty_lbl {{ font-size: 13px; font-weight: 500; color: {tm.color('text_muted')}; background: transparent; }}
         """)
         
         # Style Axes
@@ -116,18 +132,48 @@ class HourlyIntensityChart(QFrame):
             pen=pg.mkPen(QColor(tm.color('border')), width=1)
         )
 
+    def _on_mouse_moved(self, pos) -> None:
+        if not self._hourly_rows or not self._heights:
+            return
+
+        mouse_point = self._plot.getViewBox().mapSceneToView(pos)
+        x = mouse_point.x()
+        idx = int(round(x))
+
+        if 0 <= idx < len(self._hourly_rows) and abs(x - idx) <= 0.4:
+            h = self._heights[idx]
+            if 0 <= mouse_point.y() <= max(h, 0.5) and h > 0:
+                hour_str = self._hourly_rows[idx].get("hour", f"{idx:02d}:00")
+                total_s = float(self._hourly_rows[idx].get("total_s", 0.0))
+                mins = int(total_s // 60)
+                secs = int(total_s % 60)
+                tooltip_text = f"<b>{hour_str}</b><br/>Active: {mins}m {secs}s"
+                screen_pos = self._plot.mapToGlobal(self._plot.mapFromScene(pos))
+                QToolTip.showText(screen_pos, tooltip_text, self._plot)
+                return
+
+        QToolTip.hideText()
+
     def update_data(self, hourly_rows: List[dict]) -> None:
         """Update chart with list of 24 dicts containing 'hour' and 'total_s'."""
         if not hourly_rows or len(hourly_rows) != 24:
             return
 
+        self._hourly_rows = hourly_rows
         heights = [max(0.0, float(r.get("total_s", 0.0)) / 60.0) for r in hourly_rows]
+        self._heights = heights
         self._bar_item.setOpts(height=heights)
 
         max_val = max(heights) if heights else 0.0
         upper = max(10.0, max_val * 1.15)
         self._plot.setYRange(0, upper, padding=0)
         self._plot.getViewBox().setLimits(yMin=0, yMax=upper * 1.5)
+
+        if max_val <= 0.0:
+            self._empty_lbl.setVisible(True)
+            self._empty_lbl.setGeometry(0, 0, self._plot.width(), self._plot.height())
+        else:
+            self._empty_lbl.setVisible(False)
 
 
 class DailyScreenTimeChart(QFrame):
@@ -194,6 +240,12 @@ class DailyScreenTimeChart(QFrame):
         self._plot.setXRange(-0.6, 6.6, padding=0)
         self._plot.setYRange(0, 8.0, padding=0)
 
+        # Empty State Label
+        self._empty_lbl = QLabel("No usage recorded yet", self._plot)
+        self._empty_lbl.setObjectName("chart_empty_lbl")
+        self._empty_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._empty_lbl.setVisible(False)
+
         # Bar Graph Item
         self._bar_item = pg.BarGraphItem(
             x=list(range(7)),
@@ -208,6 +260,15 @@ class DailyScreenTimeChart(QFrame):
         self._plot.scene().sigMouseMoved.connect(self._on_mouse_moved)
         self._plot.scene().sigMouseClicked.connect(self._on_mouse_clicked)
 
+    def set_range_title(self, range_name: str) -> None:
+        """Dynamically update chart title e.g. 'PAST 7 DAYS' or 'PAST 30 DAYS'."""
+        self._title_lbl.setText(f"DAILY SCREEN TIME ({range_name.upper()})")
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        if hasattr(self, "_empty_lbl") and hasattr(self, "_plot"):
+            self._empty_lbl.setGeometry(0, 0, self._plot.width(), self._plot.height())
+
     def _apply_theme(self, is_dark: bool) -> None:
         from ui.theme import ThemeManager
         tm = ThemeManager.instance()
@@ -215,6 +276,7 @@ class DailyScreenTimeChart(QFrame):
         self.setStyleSheet(f"""
             QLabel#section_header {{ font-size: 14px; font-weight: 800; color: {tm.color('text_main')}; letter-spacing: 0.5px; }}
             QLabel#page_subtitle {{ font-size: 12px; color: {tm.color('text_sub')}; }}
+            QLabel#chart_empty_lbl {{ font-size: 13px; font-weight: 500; color: {tm.color('text_muted')}; background: transparent; }}
         """)
         
         # Style Axes
@@ -245,7 +307,7 @@ class DailyScreenTimeChart(QFrame):
         if 0 <= idx < len(self._day_strings) and abs(x - idx) <= 0.35:
             # Check if hovered over the bar (Y check)
             h = self._bar_item.opts['height'][idx]
-            if 0 <= mouse_point.y() <= h:
+            if 0 <= mouse_point.y() <= max(h, 0.5) and h > 0:
                 day_str = self._day_strings[idx]
                 total_s = self._raw_heights[idx]
                 
@@ -260,7 +322,7 @@ class DailyScreenTimeChart(QFrame):
                 limit_s = SettingsManager().get_int("daily_limit_minutes", 480) * 60
                 goal_status = "Over Goal" if total_s > limit_s else "Under Goal"
                 
-                tooltip_text = f"<b>{friendly_day}</b><br/>Time: {time_str}<br/>Status: {goal_status}"
+                tooltip_text = f"<b>{friendly_day}</b><br/>Active: {time_str}<br/>Status: {goal_status}"
                 
                 screen_pos = self._plot.mapToGlobal(self._plot.mapFromScene(pos))
                 QToolTip.showText(screen_pos, tooltip_text, self._plot)
@@ -297,6 +359,7 @@ class DailyScreenTimeChart(QFrame):
         heights: List[float] = []
         ticks: List[tuple] = []
         max_active_s = 0.0
+        n_points = len(daily_points)
 
         for idx, pt in enumerate(daily_points):
             active_s = getattr(pt, "active_s", None)
@@ -316,7 +379,12 @@ class DailyScreenTimeChart(QFrame):
             except (ValueError, TypeError):
                 pass
             
-            ticks.append((idx, formatted_date))
+            # Clean tick spacing for large intervals (e.g. 30 Days)
+            if n_points > 14:
+                if idx % 5 == 0 or idx == n_points - 1:
+                    ticks.append((idx, formatted_date))
+            else:
+                ticks.append((idx, formatted_date))
             heights.append(active_s)
             
         self._day_strings = [str(getattr(pt, "day", pt.get("day", ""))) if isinstance(pt, dict) else str(getattr(pt, "day", "")) for pt in daily_points]
@@ -333,10 +401,18 @@ class DailyScreenTimeChart(QFrame):
             heights_scaled = [h / 60.0 for h in heights]
             self._plot.getPlotItem().setLabel("left", "Minutes", color=tm.color('text_sub'), size="11pt")
 
-        self._bar_item.setOpts(x=list(range(len(heights_scaled))), height=heights_scaled)
+        # Adjust bar width based on count of points
+        bar_width = 0.55 if n_points <= 7 else 0.4
+        self._bar_item.setOpts(x=list(range(len(heights_scaled))), height=heights_scaled, width=bar_width)
         self._plot.getPlotItem().getAxis("bottom").setTicks([ticks, []])
 
         max_val = max(heights_scaled) if heights_scaled else 0.0
         upper = max(2.0, max_val * 1.15)
         self._plot.setYRange(0, upper, padding=0)
         self._plot.getViewBox().setLimits(yMin=0, xMin=-0.8, xMax=max(6.8, len(heights_scaled) - 0.2), yMax=upper * 1.5)
+
+        if max_active_s <= 0.0:
+            self._empty_lbl.setVisible(True)
+            self._empty_lbl.setGeometry(0, 0, self._plot.width(), self._plot.height())
+        else:
+            self._empty_lbl.setVisible(False)

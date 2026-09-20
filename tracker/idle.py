@@ -85,7 +85,12 @@ except Exception:
 
 JOY_RETURNALL = 0x000000FF
 
-_last_xinput_packets: list[Optional[int]] = [None] * 4
+# Standard XInput deadzones
+XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE = 7849
+XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE = 8689
+XINPUT_GAMEPAD_TRIGGER_THRESHOLD = 30
+
+_last_xinput_states: list[Optional[tuple[int, int, int, int, int, int, int]]] = [None] * 4
 _last_joy_states: list[Optional[tuple[int, int, int, int, int, int]]] = [None] * 2
 _last_controller_activity_tick: int = 0
 
@@ -98,13 +103,27 @@ def _check_controller_activity(tick_now: int) -> None:
         for i in range(4):
             state = _XINPUT_STATE()
             if _xinput.XInputGetState(i, ctypes.byref(state)) == 0:
-                pkt = state.dwPacketNumber
-                prev_pkt = _last_xinput_packets[i]
-                _last_xinput_packets[i] = pkt
-                if prev_pkt is not None and pkt != prev_pkt:
-                    _last_controller_activity_tick = tick_now
+                gp = state.Gamepad
+                # Check for active buttons, triggers, or sticks outside deadzones
+                buttons = gp.wButtons
+                lt = gp.bLeftTrigger
+                rt = gp.bRightTrigger
+                lx = gp.sThumbLX if abs(gp.sThumbLX) > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE else 0
+                ly = gp.sThumbLY if abs(gp.sThumbLY) > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE else 0
+                rx = gp.sThumbRX if abs(gp.sThumbRX) > XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE else 0
+                ry = gp.sThumbRY if abs(gp.sThumbRY) > XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE else 0
+                
+                curr_state = (buttons, lt > XINPUT_GAMEPAD_TRIGGER_THRESHOLD, rt > XINPUT_GAMEPAD_TRIGGER_THRESHOLD,
+                              lx >> 11, ly >> 11, rx >> 11, ry >> 11)
+                prev_state = _last_xinput_states[i]
+                _last_xinput_states[i] = curr_state
+
+                # Only genuine input changes outside deadzones count as activity
+                if prev_state is not None and curr_state != prev_state:
+                    if buttons != 0 or lt > XINPUT_GAMEPAD_TRIGGER_THRESHOLD or rt > XINPUT_GAMEPAD_TRIGGER_THRESHOLD or lx or ly or rx or ry:
+                        _last_controller_activity_tick = tick_now
             else:
-                _last_xinput_packets[i] = None
+                _last_xinput_states[i] = None
 
     # 2. Check WinMM Joysticks (ports 0..1)
     if _winmm is not None:
@@ -113,19 +132,19 @@ def _check_controller_activity(tick_now: int) -> None:
             ji.dwSize = ctypes.sizeof(_JOYINFOEX)
             ji.dwFlags = JOY_RETURNALL
             if _winmm.joyGetPosEx(j, ctypes.byref(ji)) == 0:
-                # Quantize axes to avoid analog drift noise triggering activity
                 state_tuple = (
-                    ji.dwXpos >> 10,
-                    ji.dwYpos >> 10,
-                    ji.dwZpos >> 10,
-                    ji.dwRpos >> 10,
+                    ji.dwXpos >> 11,
+                    ji.dwYpos >> 11,
+                    ji.dwZpos >> 11,
+                    ji.dwRpos >> 11,
                     ji.dwButtons,
                     ji.dwPOV,
                 )
                 prev_state = _last_joy_states[j]
                 _last_joy_states[j] = state_tuple
                 if prev_state is not None and state_tuple != prev_state:
-                    _last_controller_activity_tick = tick_now
+                    if ji.dwButtons != 0 or any(abs((s << 11) - 32767) > 8000 for s in state_tuple[:4]):
+                        _last_controller_activity_tick = tick_now
             else:
                 _last_joy_states[j] = None
 
@@ -136,17 +155,38 @@ def _elapsed_ms(tick_now: int, last_input: int) -> int:
     return (_TICK_MAX - last_input) + tick_now + 1
 
 
-def get_idle_seconds() -> float:
+def get_last_input_tick() -> int:
+    """Return the raw Windows GetLastInputInfo tick count directly."""
+    try:
+        from tracker.foreground import _ensure_interactive_desktop
+        _ensure_interactive_desktop()
+    except Exception:
+        pass
+    lii = _LASTINPUTINFO()
+    lii.cbSize = _LASTINPUTINFO_SIZE
+    if _user32.GetLastInputInfo(ctypes.byref(lii)):
+        return int(lii.dwTime)
+    return int(_kernel32.GetTickCount())
+
+
+def get_idle_seconds(strict_user_input: bool = False) -> float:
+    try:
+        from tracker.foreground import _ensure_interactive_desktop
+        _ensure_interactive_desktop()
+    except Exception:
+        pass
     lii = _LASTINPUTINFO()
     lii.cbSize = _LASTINPUTINFO_SIZE
     has_lii = _user32.GetLastInputInfo(ctypes.byref(lii))
 
     tick_now: int = _kernel32.GetTickCount()
-    _check_controller_activity(tick_now)
-
     last_win32: int = lii.dwTime if has_lii else tick_now
     elapsed_win32 = _elapsed_ms(tick_now, last_win32)
 
+    if strict_user_input:
+        return max(0.0, elapsed_win32 / 1000.0)
+
+    _check_controller_activity(tick_now)
     elapsed_ctrl = (
         _elapsed_ms(tick_now, _last_controller_activity_tick)
         if _last_controller_activity_tick > 0
@@ -159,38 +199,29 @@ def get_idle_seconds() -> float:
 
 def is_idle(
     threshold_s: float,
-    current_category: Optional[AppCategory] = None,
+    current_category: Optional["AppCategory"] = None,
     is_media_playing: bool = False,
     mode: str = "smart",
-    media_timeout_s: float = 900.0,
+    media_timeout_s: Optional[float] = None,
 ) -> bool:
+    """Return True when the user has been input-idle for at least *threshold_s* seconds."""
     idle_s = get_idle_seconds()
 
     if is_media_playing:
         if mode == "media":
             return False
-        elif mode == "strict":
-            return idle_s >= threshold_s
-        else:  # smart
-            # Activity-aware multipliers when media is playing (entertainment vs gaming)
-            # Cap the threshold at media_timeout_s (e.g. 120 minutes)
-            try:
-                from core.constants import AppCategory as _Cat
-                multiplier = 1.0
-                if current_category == _Cat.GAMING:
-                    multiplier = 2.5
-                elif current_category == _Cat.ENTERTAINMENT:
-                    multiplier = 3.0
-            except Exception:
-                multiplier = 1.0
-            
-            # Allow media_timeout_s to override the multiplier if it's longer
-            effective_threshold = max(threshold_s * multiplier, media_timeout_s)
-            return idle_s >= effective_threshold
+        if mode == "smart" and media_timeout_s is not None:
+            return idle_s >= media_timeout_s
 
     if current_category is not None:
-        from core.constants import AppCategory as _Cat
-        if current_category == _Cat.GAMING:
-            return idle_s >= threshold_s * 2.5
+        try:
+            from core.constants import AppCategory as _Cat
+            if current_category == _Cat.GAMING:
+                return idle_s >= threshold_s * 2.5
+            if current_category == _Cat.ENTERTAINMENT and is_media_playing:
+                return idle_s >= threshold_s * 3.0
+        except Exception:
+            pass
 
     return idle_s >= threshold_s
+

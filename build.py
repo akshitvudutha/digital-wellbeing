@@ -129,9 +129,12 @@ if __name__ == "__main__":
     sign_file(Path("dist") / "DigitalWellbeing" / "DigitalWellbeing.exe")
     run_inno_setup()
     # Rename generated installer to include version for updater discoverability
-    inno_out = Path("dist") / "DigitalWellbeingSetup.exe"
+    inno_out = Path("dist") / "NotchSetup.exe"
+    if not inno_out.exists():
+        inno_out = Path("dist") / "DigitalWellbeingSetup.exe"
+        
     if inno_out.exists():
-        dest_name = Path(f"DigitalWellbeingSetup-{v}.exe")
+        dest_name = Path(f"NotchSetup-{v}.exe")
         dest_path = Path("dist") / dest_name
         try:
             inno_out.replace(dest_path)
@@ -142,5 +145,5 @@ if __name__ == "__main__":
             # fallback to signing original
             sign_file(inno_out)
     else:
-        print("Warning: Inno Setup did not produce expected installer 'DigitalWellbeingSetup.exe'. Skipping rename.")
+        print("Warning: Inno Setup did not produce expected installer 'NotchSetup.exe'. Skipping rename.")
     print(f"--- Successfully built release v{v} ---")

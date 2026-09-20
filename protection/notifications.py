@@ -27,6 +27,18 @@ class NotificationManager(QObject):
         logger.info(f"NotificationManager: {title} - {msg}")
         self._notifier.notify(title, msg, duration=5)
 
+    def send_website_warning(self, domain: str, remaining_minutes: int) -> None:
+        """Send a Windows toast notification for upcoming website limits."""
+        if remaining_minutes == 0:
+            title = "Website Limit Reached"
+            msg = f"{domain} has reached its screen time limit."
+        else:
+            title = "Website Limit Warning"
+            msg = f"You have {remaining_minutes} minute{'s' if remaining_minutes > 1 else ''} left for {domain}."
+
+        logger.info(f"NotificationManager: {title} - {msg}")
+        self._notifier.notify(title, msg, duration=5)
+
     def trigger_lock_dialog(self, process_name: str, limit_seconds: int) -> None:
         """Emit a signal to the UI thread to show the blocking Lock Dialog."""
         logger.info(f"NotificationManager: Triggering lock dialog for {process_name}")

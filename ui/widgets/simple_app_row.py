@@ -103,8 +103,8 @@ class SimpleAppRow(QFrame):
 
     def _setup_ui(self, display_name: str, duration_s: float) -> None:
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(16, 12, 16, 12)
-        layout.setSpacing(16)
+        layout.setContentsMargins(14, 7, 14, 7)
+        layout.setSpacing(14)
 
         if self._legend_color:
             self._dot_lbl = QLabel()
@@ -117,9 +117,9 @@ class SimpleAppRow(QFrame):
         icon = icon_provider.get_icon(self.process_name)
         
         self._icon_lbl = QLabel()
-        self._icon_lbl.setFixedSize(36, 36)
+        self._icon_lbl.setFixedSize(32, 32)
         if not icon.isNull():
-            pixmap = icon.pixmap(QSize(36, 36))
+            pixmap = icon.pixmap(QSize(32, 32))
             self._icon_lbl.setPixmap(pixmap)
             
         self._icon_lbl.setObjectName("icon_lbl")
@@ -128,7 +128,17 @@ class SimpleAppRow(QFrame):
         layout.addWidget(self._icon_lbl)
 
         # Center Column (Name)
-        self._name_lbl = QLabel(display_name)
+        clean_name = display_name
+        if not clean_name or clean_name.lower().endswith(".exe"):
+            try:
+                from utils.win_utils import clean_fallback_name
+                cleaned = clean_fallback_name(self.process_name)
+                if cleaned:
+                    clean_name = cleaned
+            except Exception:
+                pass
+
+        self._name_lbl = QLabel(clean_name)
         self._name_lbl.setObjectName("name_lbl")
         self._name_lbl.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         layout.addWidget(self._name_lbl, 1)

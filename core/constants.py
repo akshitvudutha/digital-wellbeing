@@ -35,9 +35,10 @@ class EventType(str, Enum):
     RESUME = "resume"
 
 
-APP_NAME = "Not Your Wellbeing"
+APP_NAME = "Notch"
 from core.version import get_version
 APP_VERSION = get_version()
+APP_AUMID = "AkshitVudutha.DigitalWellbeing.App.2"
 DB_FILENAME = "digital_wellbeing.db"
 LOG_FILENAME = "digital_wellbeing.log"
 
@@ -64,10 +65,10 @@ CATEGORY_COLORS: dict[AppCategory, str] = {
 
 CATEGORY_ICONS: dict[AppCategory, str] = {
     AppCategory.BROWSER: "globe",
-    AppCategory.PROGRAMMING: "system",
+    AppCategory.PROGRAMMING: "code",
     AppCategory.GAMING: "gamepad",
     AppCategory.COMMUNICATION: "message",
-    AppCategory.PRODUCTIVITY: "bar_chart",
+    AppCategory.PRODUCTIVITY: "target",
     AppCategory.ENTERTAINMENT: "play",
     AppCategory.SYSTEM: "system",
     AppCategory.UTILITIES: "system",

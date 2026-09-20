@@ -48,9 +48,28 @@ SYSTEM_SAFE: frozenset[str] = frozenset({
     "taskmgr.exe",
     "systemsettings.exe",
     "searchapp.exe",
+    "searchhost.exe",
     "startmenuexperiencehost.exe",
+    "shellexperiencehost.exe",
     "applicationframehost.exe",
+    "textinputhost.exe",
+    "ctfmon.exe",
+    "sihost.exe",
+    "runtimebroker.exe",
+    "smartscreen.exe",
+    "lockapp.exe",
+    "securityhealthsystray.exe",
+    # Windows screenshot and capture utilities (never blockable)
+    "snippingtool.exe",
+    "screenclippinghost.exe",
+    # Digital Wellbeing / Notch & IDE runtime safety (never terminate development environment)
     "digitalwellbeing.exe",   # NYW itself
+    "antigravity.exe",        # Antigravity IDE runtime
+    "antigravity ide.exe",    # Antigravity IDE runner
+    "python.exe",             # Python runtime (development/runner safety)
+    "pythonw.exe",            # Python windowed runtime
+    "py.exe",                 # Python launcher
+    "pytest.exe",             # Test runner
     "registry",               # Windows registry pseudo-process
 })
 
@@ -58,9 +77,10 @@ SYSTEM_SAFE: frozenset[str] = frozenset({
 # ── Auth enums ────────────────────────────────────────────────────────────────
 
 class AuthMethod(str, Enum):
-    WINDOWS_HELLO  = "hello"        # Windows Hello only
-    NYW_PIN        = "pin"          # NYW PIN only
-    HELLO_THEN_PIN = "hello_pin"    # Try Windows Hello, fall back to PIN
+    WINDOWS_HELLO  = "hello"        # Windows Hello (PIN, Face, Fingerprint)
+    NOTCH_PIN      = "pin"          # Notch PIN only
+    NYW_PIN        = "pin"          # Legacy alias
+    HELLO_THEN_PIN = "hello_pin"    # Hello first, Notch PIN fallback to PIN
 
 
 class AuthDuration(str, Enum):
@@ -195,6 +215,13 @@ class AppLockerManager(QObject):
         if p in SYSTEM_SAFE:
             logger.warning("Cannot lock system-safe process: %s", p)
             return False
+            
+        if exe_path:
+            from utils.win_utils import is_safe_lock_target
+            if not is_safe_lock_target(exe_path, p):
+                logger.warning("Attempted to lock invalid application: %s (%s)", p, exe_path)
+                return False
+                
         ok = self._repo.add_locked_app(p, display_name, exe_path, icon_path)
         if ok:
             self.state_changed.emit()
@@ -324,6 +351,16 @@ class AppLockerManager(QObject):
 
             if not self.is_locked(p_name):
                 return
+                
+            try:
+                exe_path = p.exe()
+            except Exception:
+                exe_path = ""
+                
+            if exe_path:
+                from utils.win_utils import is_safe_lock_target
+                if not is_safe_lock_target(exe_path, p_name):
+                    return
 
             if self.is_access_granted(p_name):
                 return

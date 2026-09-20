@@ -4,7 +4,7 @@ from database.repository import Repository
 
 
 class SettingsManager:
-    _BOOL_KEYS = {"autostart", "dark_mode", "minimize_to_tray", "notifications_enabled", "debug_tracking", "auto_update_enabled", "notify_updates"}
+    _BOOL_KEYS = {"autostart", "dark_mode", "minimize_to_tray", "notifications_enabled", "debug_tracking", "auto_update_enabled", "notify_updates", "name_prompt_completed"}
     _INT_KEYS = {"idle_threshold_s", "daily_limit_minutes"}
 
     def __init__(self) -> None:
@@ -37,6 +37,23 @@ class SettingsManager:
 
     def all(self) -> dict[str, str]:
         return self._repo.get_all_settings()
+
+    # Personalization Extensions
+    @property
+    def display_name(self) -> str:
+        return self.get("display_name", "")
+
+    @display_name.setter
+    def display_name(self, value: str) -> None:
+        self.set("display_name", value.strip() if value else "")
+
+    @property
+    def name_prompt_completed(self) -> bool:
+        return self.get_bool("name_prompt_completed", False)
+
+    @name_prompt_completed.setter
+    def name_prompt_completed(self, value: bool) -> None:
+        self.set_bool("name_prompt_completed", value)
 
     # Theme & Appearance Extensions
     @property
@@ -130,6 +147,20 @@ class SettingsManager:
     @media_idle_timeout_minutes.setter
     def media_idle_timeout_minutes(self, value: int) -> None:
         self.set_int("media_idle_timeout_minutes", value)
+
+    @property
+    def media_grace_minutes(self) -> int:
+        """Additional grace period (minutes) given when media is actively playing
+        at the moment the inactivity threshold is first reached.
+        This is a one-shot delay — it cannot be repeated within the same idle cycle.
+        Default: 5 minutes. Range: 1–30.
+        """
+        val = self.get_int("media_grace_minutes", 5)
+        return max(1, min(30, val))
+
+    @media_grace_minutes.setter
+    def media_grace_minutes(self, value: int) -> None:
+        self.set_int("media_grace_minutes", max(1, min(30, int(value))))
 
     @property
     def bedtime_start(self) -> str:

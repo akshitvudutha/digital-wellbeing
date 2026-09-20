@@ -31,20 +31,21 @@ from core.logger import logger
 
 
 class _LockedAppRow(QFrame):
-    """Single row in the locked apps list."""
+    """Single card row in the locked apps list."""
     remove_requested = Signal(str, str)  # process_name, display_name
 
     def __init__(self, process_name: str, display_name: str, exe_path: str = "", parent=None):
         super().__init__(parent)
         self._process_name = process_name
         self._display_name = display_name
-        self.setObjectName("locker_app_row")
+        self._exe_path = exe_path
+        self.setObjectName("locker_app_card")
         self._setup_ui()
 
     def _setup_ui(self) -> None:
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(16, 12, 16, 12)
-        layout.setSpacing(12)
+        layout.setContentsMargins(18, 12, 18, 12)
+        layout.setSpacing(16)
 
         from utils.icon_provider import AppIconProvider
         from PySide6.QtCore import QSize
@@ -52,39 +53,40 @@ class _LockedAppRow(QFrame):
         icon = icon_provider.get_icon(self._process_name)
         
         icon_lbl = QLabel()
-        icon_lbl.setFixedSize(32, 32)
+        icon_lbl.setFixedSize(36, 36)
         if not icon.isNull():
-            icon_lbl.setPixmap(icon.pixmap(QSize(32, 32)))
+            icon_lbl.setPixmap(icon.pixmap(QSize(36, 36)))
         else:
             from ui.icons import get_icon
-            from ui.theme import ThemeManager
-            icon_lbl.setPixmap(get_icon("lock", color=ThemeManager.instance().color('text_sub'), size=24).pixmap(32, 32))
+            icon_lbl.setPixmap(get_icon("lock", color="#F59E0B", size=22).pixmap(36, 36))
             icon_lbl.setObjectName("locker_row_icon")
             icon_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(icon_lbl)
 
         text_col = QVBoxLayout()
-        text_col.setSpacing(0)
+        text_col.setSpacing(2)
         
-        from PySide6.QtGui import QFontMetrics
-        metrics = QFontMetrics(self.font())
-        elided_name = metrics.elidedText(self._display_name, Qt.TextElideMode.ElideRight, 120)
-        elided_proc = metrics.elidedText(self._process_name, Qt.TextElideMode.ElideRight, 120)
-        
-        name_lbl = QLabel(elided_name)
+        name_row = QHBoxLayout()
+        name_row.setSpacing(8)
+        name_lbl = QLabel(self._display_name)
         name_lbl.setObjectName("locker_row_name")
-        proc_lbl = QLabel(elided_proc)
+        name_row.addWidget(name_lbl)
+        
+        badge = QLabel("● LOCKED")
+        badge.setObjectName("locker_locked_badge")
+        name_row.addWidget(badge)
+        name_row.addStretch()
+        text_col.addLayout(name_row)
+        
+        proc_lbl = QLabel(self._process_name)
         proc_lbl.setObjectName("locker_row_proc")
-        
-        name_lbl.setToolTip(self._display_name)
-        proc_lbl.setToolTip(self._process_name)
-        
-        text_col.addWidget(name_lbl)
         text_col.addWidget(proc_lbl)
+        
         layout.addLayout(text_col, 1)
 
         remove_btn = QPushButton("Remove")
         remove_btn.setObjectName("locker_remove_btn")
+        remove_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         remove_btn.setFixedHeight(32)
         remove_btn.clicked.connect(
             lambda: self.remove_requested.emit(self._process_name, self._display_name)
@@ -95,13 +97,18 @@ class _LockedAppRow(QFrame):
 class AppLockerPage(QWidget):
     """Dedicated App Locker configuration page."""
 
-    def __init__(self, parent=None) -> None:
+    def __init__(self, protection_manager=None, parent=None) -> None:
         super().__init__(parent)
         self._repo = Repository()
         self._pin_manager = PINManager(self._repo)
         self._alm = AppLockerManager.instance(self._repo)
         self._alm.state_changed.connect(self._refresh_locked_apps)
-
+        
+        self._pm = protection_manager
+        if not self._pm:
+            from protection.core import ProtectionManager
+            self._pm = ProtectionManager(self._repo)
+            
         self._setup_ui()
 
         from ui.theme import ThemeManager
@@ -112,7 +119,7 @@ class AppLockerPage(QWidget):
 
     def _setup_ui(self) -> None:
         root = QVBoxLayout(self)
-        root.setContentsMargins(32, 28, 32, 28)
+        root.setContentsMargins(32, 22, 32, 22)
         root.setSpacing(0)
 
         # Page title
@@ -120,12 +127,12 @@ class AppLockerPage(QWidget):
         title_box.setSpacing(4)
         title = QLabel("App Locker")
         title.setObjectName("page_title")
-        subtitle = QLabel("Protect distracting applications with Windows Hello or your NYW PIN.")
+        subtitle = QLabel("Protect distracting applications with Windows Hello or your Notch PIN.")
         subtitle.setObjectName("page_subtitle")
         title_box.addWidget(title)
         title_box.addWidget(subtitle)
         root.addLayout(title_box)
-        root.addSpacing(24)
+        root.addSpacing(16)
 
         # Scroll area
         scroll = QScrollArea()
@@ -135,7 +142,7 @@ class AppLockerPage(QWidget):
         inner.setObjectName("content_area")
         self._inner_layout = QVBoxLayout(inner)
         self._inner_layout.setContentsMargins(0, 0, 4, 0)
-        self._inner_layout.setSpacing(20)
+        self._inner_layout.setSpacing(14)
         scroll.setWidget(inner)
         root.addWidget(scroll, 1)
 
@@ -156,10 +163,10 @@ class AppLockerPage(QWidget):
     def _make_section_card(self, header_text: str) -> QFrame:
         """Helper: create a themed card frame with a header label."""
         card = QFrame()
-        card.setObjectName("dense_card")
+        card.setObjectName("v2_card")
         layout = QVBoxLayout(card)
-        layout.setContentsMargins(28, 24, 28, 24)
-        layout.setSpacing(20)
+        layout.setContentsMargins(24, 18, 24, 18)
+        layout.setSpacing(14)
         hdr = QLabel(header_text)
         hdr.setObjectName("section_header")
         layout.addWidget(hdr)
@@ -168,12 +175,12 @@ class AppLockerPage(QWidget):
     # ── Status card ───────────────────────────────────────────────────────────
 
     def _make_status_card(self) -> QFrame:
-        card = self._make_section_card("App Locker")
+        card = self._make_section_card("App Locker Protection")
 
         row = QHBoxLayout()
         col = QVBoxLayout()
         col.setSpacing(2)
-        lbl = QLabel("App Locker Protection")
+        lbl = QLabel("Enforcement Status")
         lbl.setObjectName("setting_label")
         desc = QLabel("When enabled, selected applications require authentication before use.")
         desc.setObjectName("setting_desc")
@@ -184,7 +191,7 @@ class AppLockerPage(QWidget):
 
         self._toggle_btn = QPushButton()
         self._toggle_btn.setObjectName("locker_toggle_btn")
-        self._toggle_btn.setFixedSize(52, 28)
+        self._toggle_btn.setFixedSize(56, 30)
         self._toggle_btn.setCheckable(True)
         self._toggle_btn.setChecked(self._alm.is_enabled)
         self._toggle_btn.clicked.connect(self._on_toggle_clicked)
@@ -197,13 +204,13 @@ class AppLockerPage(QWidget):
         from protection.windows_hello import WindowsHelloAuth, HelloAvailability
         avail = WindowsHelloAuth().check_availability()
         if avail == HelloAvailability.AVAILABLE:
-            badge = QLabel("Windows Hello available on this device")
+            badge = QLabel("✓  Windows Hello biometric authentication active on this device")
             badge.setObjectName("locker_hello_badge_ok")
         elif avail == HelloAvailability.NOT_CONFIGURED:
-            badge = QLabel("Windows Hello not configured — NYW PIN fallback will be used")
+            badge = QLabel("⚠  Windows Hello not configured — Notch PIN fallback will be used")
             badge.setObjectName("locker_hello_badge_warn")
         else:
-            badge = QLabel("Windows Hello unavailable — NYW PIN will be used for authentication")
+            badge = QLabel("ℹ  Windows Hello unavailable — Notch PIN will be used for authentication")
             badge.setObjectName("locker_hello_badge_info")
         badge.setWordWrap(True)
         card.layout().addWidget(badge)
@@ -215,21 +222,20 @@ class AppLockerPage(QWidget):
     def _make_apps_section(self) -> QFrame:
         card = self._make_section_card("Locked Applications")
 
-        # App rows container (FlowLayout for chips)
-        from ui.widgets.flow_layout import FlowLayout
-        self._apps_container = FlowLayout()
-        self._apps_container.setSpacing(8)
+        # App rows container (Vertical layout for clean full cards)
+        self._apps_container = QVBoxLayout()
+        self._apps_container.setSpacing(10)
         card.layout().addLayout(self._apps_container)
 
         # Empty state label
-        self._empty_lbl = QLabel("No applications locked yet.\nClick \"+ Add Application\" to get started.")
+        self._empty_lbl = QLabel("No applications locked yet.\nClick \"+ Add Application\" to protect sensitive apps.")
         self._empty_lbl.setObjectName("locker_empty_label")
         self._empty_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._empty_lbl.setWordWrap(True)
         card.layout().addWidget(self._empty_lbl)
 
         # Add button
-        add_btn = QPushButton("  +  Add Application")
+        add_btn = QPushButton("+  Add Application")
         add_btn.setObjectName("locker_add_btn")
         add_btn.setMinimumHeight(40)
         add_btn.clicked.connect(self._on_add_app)
@@ -239,6 +245,7 @@ class AppLockerPage(QWidget):
         self._refresh_locked_apps()
 
         return card
+
 
     # ── Auth settings section ─────────────────────────────────────────────────
 
@@ -260,7 +267,7 @@ class AppLockerPage(QWidget):
         self._method_bg = QButtonGroup(self)
         methods = [
             (AuthMethod.WINDOWS_HELLO,  "hello",     "Windows Hello (Face / Fingerprint / PIN)"),
-            (AuthMethod.NYW_PIN,        "pin",       "NYW PIN only"),
+            (AuthMethod.NOTCH_PIN,      "pin",       "Notch PIN only"),
             (AuthMethod.HELLO_THEN_PIN, "hello_pin", "Hello with PIN fallback (recommended)"),
         ]
         for method, val, label_text in methods:
@@ -327,7 +334,10 @@ class AppLockerPage(QWidget):
         while self._apps_container.count():
             item = self._apps_container.takeAt(0)
             if item.widget():
-                item.widget().deleteLater()
+                w = item.widget()
+                w.hide()
+                w.setParent(None)
+                w.deleteLater()
 
         apps = self._alm.get_locked_apps()
         self._empty_lbl.setVisible(not apps)
@@ -337,11 +347,9 @@ class AppLockerPage(QWidget):
                 app["process_name"],
                 app["display_name"],
                 app.get("exe_path", ""),
+                parent=self
             )
             row.remove_requested.connect(self._on_remove_app)
-            # Constrain max width for chip appearance
-            row.setMaximumWidth(280)
-            row.setMinimumWidth(220)
             self._apps_container.addWidget(row)
             self._apply_row_theme(row)
 
@@ -363,7 +371,7 @@ class AppLockerPage(QWidget):
 
     def _on_add_app(self) -> None:
         from ui.widgets.process_picker import ProcessPickerDialog
-        dialog = ProcessPickerDialog(self)
+        dialog = ProcessPickerDialog(self, mode="locker")
         if dialog.exec():
             ok = self._alm.add_locked_app(
                 dialog.selected_process_name,
@@ -431,7 +439,7 @@ class AppLockerPage(QWidget):
             if current == AuthMethod.WINDOWS_HELLO and "Hello" in text and "fallback" not in text.lower():
                 btn.setChecked(True)
                 break
-            elif current == AuthMethod.NYW_PIN and "NYW PIN only" in text:
+            elif current in (AuthMethod.NYW_PIN, AuthMethod.NOTCH_PIN) and "PIN only" in text:
                 btn.setChecked(True)
                 break
             elif current == AuthMethod.HELLO_THEN_PIN and "fallback" in text.lower():
@@ -459,34 +467,36 @@ class AppLockerPage(QWidget):
         mb.setIcon(QMessageBox.Icon.Warning)
         mb.exec()
 
-    # ─── Theme ───────────────────────────────────────────────────────────────
-
     def _apply_theme(self, is_dark: bool = True) -> None:
         from ui.theme import ThemeManager
         tm = ThemeManager.instance()
 
         self.setStyleSheet(f"""
             QLabel#page_title {{
-                font-size: 22px;
+                font-size: 26px;
                 font-weight: 800;
                 color: {tm.color('text_main')};
+                letter-spacing: -0.5px;
             }}
             QLabel#page_subtitle {{
                 font-size: 13px;
+                font-weight: 500;
                 color: {tm.color('text_sub')};
             }}
             QFrame#v2_card {{
-                background-color: {tm.color('card_bg')};
+                background-color: {tm.color('surface')};
                 border: 1px solid {tm.color('border')};
                 border-radius: 14px;
             }}
             QLabel#section_header {{
-                font-size: 15px;
-                font-weight: 800;
-                color: {tm.color('text_main')};
+                font-size: 11px;
+                font-weight: 700;
+                color: {tm.color('text_muted')};
+                letter-spacing: 1.5px;
+                text-transform: uppercase;
             }}
             QLabel#setting_label {{
-                font-size: 13px;
+                font-size: 14px;
                 font-weight: 700;
                 color: {tm.color('text_main')};
             }}
@@ -495,101 +505,94 @@ class AppLockerPage(QWidget):
                 color: {tm.color('text_sub')};
             }}
             QPushButton#locker_toggle_btn {{
-                background-color: {tm.color('success_text') if self._alm.is_enabled else tm.color('border')};
+                background-color: {"#10B981" if self._alm.is_enabled else tm.color('surface_secondary')};
                 color: white;
-                border: none;
+                border: 1px solid {"#10B981" if self._alm.is_enabled else tm.color('border')};
                 border-radius: 14px;
-                font-size: 10px;
+                font-size: 11px;
                 font-weight: 800;
+                letter-spacing: 0.5px;
             }}
             QPushButton#locker_add_btn {{
                 background-color: {tm.color('accent')};
                 color: #ffffff;
-                border: none;
-                border-radius: 10px;
+                border: 1px solid {tm.color('accent')};
+                border-radius: 9px;
                 font-size: 13px;
                 font-weight: 700;
-                padding: 10px;
+                padding: 8px 18px;
             }}
             QPushButton#locker_add_btn:hover {{
                 background-color: {tm.color('accent_hover')};
             }}
             QPushButton#locker_danger_btn {{
-                background-color: {tm.color('danger_bg')};
-                color: {tm.color('danger_text')};
-                border: 1px solid {tm.color('danger_border')};
-                border-radius: 10px;
-                font-size: 13px;
-                font-weight: 700;
-                padding: 8px;
-            }}
-            QPushButton#locker_danger_btn:hover {{
-                background-color: {tm.color('danger_text')};
-                color: white;
-            }}
-            QFrame#locker_app_row {{
-                background-color: {tm.color('surface_secondary')};
-                border: 1px solid {tm.color('border')};
-                border-radius: 10px;
-            }}
-            QLabel#locker_row_icon {{
-                font-size: 18px;
-            }}
-            QLabel#locker_row_name {{
-                font-size: 13px;
-                font-weight: 700;
-                color: {tm.color('text_main')};
-            }}
-            QLabel#locker_row_proc {{
-                font-size: 11px;
-                color: {tm.color('text_sub')};
-            }}
-            QPushButton#locker_remove_btn {{
-                background-color: {tm.color('danger_bg')};
-                color: {tm.color('danger_text')};
-                border: 1px solid {tm.color('danger_border')};
-                border-radius: 6px;
-                padding: 4px 12px;
+                background-color: rgba(239, 68, 68, 0.08);
+                color: #EF4444;
+                border: 1px solid rgba(239, 68, 68, 0.25);
+                border-radius: 8px;
                 font-size: 12px;
                 font-weight: 600;
+                padding: 6px 14px;
             }}
-            QPushButton#locker_remove_btn:hover {{
-                background-color: {tm.color('danger_text')};
+            QPushButton#locker_danger_btn:hover {{
+                background-color: rgba(239, 68, 68, 0.18);
                 color: white;
             }}
             QLabel#locker_empty_label {{
                 font-size: 13px;
                 color: {tm.color('text_sub')};
-                padding: 16px;
+                padding: 20px;
             }}
             QLabel#locker_hello_badge_ok {{
                 font-size: 12px;
-                color: {tm.color('success_text')};
-                background: {tm.color('success_bg')};
-                border: 1px solid {tm.color('success_border')};
-                border-radius: 6px;
-                padding: 6px 10px;
+                font-weight: 600;
+                color: #10B981;
+                background: rgba(16, 185, 129, 0.12);
+                border: 1px solid rgba(16, 185, 129, 0.28);
+                border-radius: 8px;
+                padding: 8px 14px;
             }}
             QLabel#locker_hello_badge_warn {{
                 font-size: 12px;
-                color: {tm.color('warning_text')};
-                background: {tm.color('warning_bg')};
-                border: 1px solid {tm.color('warning_border')};
-                border-radius: 6px;
-                padding: 6px 10px;
+                font-weight: 600;
+                color: #F59E0B;
+                background: rgba(245, 158, 11, 0.12);
+                border: 1px solid rgba(245, 158, 11, 0.28);
+                border-radius: 8px;
+                padding: 8px 14px;
             }}
             QLabel#locker_hello_badge_info {{
                 font-size: 12px;
-                color: {tm.color('info_text')};
-                background: {tm.color('info_bg')};
-                border: 1px solid {tm.color('info_border')};
-                border-radius: 6px;
-                padding: 6px 10px;
+                font-weight: 600;
+                color: {tm.color('text_sub')};
+                background: {tm.color('surface_secondary')};
+                border: 1px solid {tm.color('border')};
+                border-radius: 8px;
+                padding: 8px 14px;
             }}
             QRadioButton#locker_radio {{
                 font-size: 13px;
                 color: {tm.color('text_main')};
-                spacing: 8px;
+                spacing: 10px;
+                font-weight: 500;
+            }}
+            QRadioButton#locker_radio:checked {{
+                color: #10B981;
+                font-weight: 700;
+            }}
+            QRadioButton#locker_radio::indicator {{
+                width: 16px;
+                height: 16px;
+                border-radius: 8px;
+                border: 2px solid {'#334155' if is_dark else 'rgba(0, 0, 0, 0.25)'};
+                background-color: {'#0E131F' if is_dark else '#FFFFFF'};
+            }}
+            QRadioButton#locker_radio::indicator:hover {{
+                border-color: {'#64748B' if is_dark else 'rgba(0, 0, 0, 0.45)'};
+            }}
+            QRadioButton#locker_radio::indicator:checked {{
+                border-color: #10B981;
+                background-color: #10B981;
             }}
             QFrame#locker_sep {{
                 background: {tm.color('border')};
@@ -606,32 +609,48 @@ class AppLockerPage(QWidget):
     def _apply_row_theme(self, row: QFrame) -> None:
         from ui.theme import ThemeManager
         tm = ThemeManager.instance()
+        
         row.setStyleSheet(f"""
-            QFrame#locker_app_row {{
+            QFrame#locker_app_card {{
                 background-color: {tm.color('surface_secondary')};
                 border: 1px solid {tm.color('border')};
-                border-radius: 10px;
+                border-radius: 12px;
+            }}
+            QFrame#locker_app_card:hover {{
+                background-color: {tm.color('card_hover')};
+                border-color: {tm.color('border_hover')};
             }}
             QLabel#locker_row_name {{
-                font-size: 13px;
+                font-size: 14px;
                 font-weight: 700;
                 color: {tm.color('text_main')};
             }}
             QLabel#locker_row_proc {{
-                font-size: 11px;
+                font-size: 12px;
+                font-family: monospace;
                 color: {tm.color('text_sub')};
             }}
+            QLabel#locker_locked_badge {{
+                font-size: 10px;
+                font-weight: 700;
+                letter-spacing: 1px;
+                color: #F59E0B;
+                background: rgba(245, 158, 11, 0.12);
+                border: 1px solid rgba(245, 158, 11, 0.30);
+                border-radius: 8px;
+                padding: 2px 8px;
+            }}
             QPushButton#locker_remove_btn {{
-                background-color: {tm.color('danger_bg')};
-                color: {tm.color('danger_text')};
-                border: 1px solid {tm.color('danger_border')};
-                border-radius: 6px;
-                padding: 4px 12px;
+                background-color: rgba(239, 68, 68, 0.08);
+                color: #EF4444;
+                border: 1px solid rgba(239, 68, 68, 0.25);
+                border-radius: 8px;
+                padding: 5px 14px;
                 font-size: 12px;
                 font-weight: 600;
             }}
             QPushButton#locker_remove_btn:hover {{
-                background-color: {tm.color('danger_text')};
+                background-color: rgba(239, 68, 68, 0.20);
                 color: white;
             }}
         """)
@@ -639,7 +658,8 @@ class AppLockerPage(QWidget):
     def on_data_changed(self) -> None:
         """Called by MainWindow refresh cycle."""
         self._refresh_locked_apps()
-        self._apply_theme(True)
+        from ui.theme import ThemeManager
+        self._apply_theme(ThemeManager.instance().is_dark)
 
 
 # Fix missing import in _do_auth

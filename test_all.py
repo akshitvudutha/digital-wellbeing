@@ -5,7 +5,7 @@ print("=== TESTING ALL MODULES ===")
 
 # ─── Core ──────────────────────────────────────────────
 from core.constants import AppCategory, CATEGORY_COLORS, APP_NAME, APP_VERSION
-assert APP_NAME == "Not Your Wellbeing"
+assert APP_NAME == "Notch"
 assert len(list(AppCategory)) == 12
 assert len(CATEGORY_COLORS) == 12
 print(f"[OK] core.constants — {len(list(AppCategory))} categories")

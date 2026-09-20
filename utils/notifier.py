@@ -28,17 +28,11 @@ class WellbeingNotifier:
         title = f"{APP_NAME} — Daily Summary"
         message = f"Total Screen Time Today: {tot_str}\nTop Application: {top_app}"
 
-        try:
-            from PySide6.QtWidgets import QSystemTrayIcon
-            self._tray.showMessage(title, message, QSystemTrayIcon.MessageIcon.Information, 5000)
-            logger.info("Sent daily summary notification: %s", message)
-        except Exception as exc:
-            logger.warning("Failed to dispatch daily summary notification: %s", exc)
+        from notifications.notifier import Notifier
+        Notifier().notify(title, message, duration=5)
+        logger.info("Sent daily summary notification: %s", message)
 
     def send_weekly_summary(self) -> None:
-        if not self._tray:
-            return
-
         summary = self._engine.get_week_summary()
         trends = self._engine.get_trend_insights()
 
@@ -57,9 +51,6 @@ class WellbeingNotifier:
             f"Daily Average: {AnalyticsEngine.format_duration(summary.average_daily_s)}"
         )
 
-        try:
-            from PySide6.QtWidgets import QSystemTrayIcon
-            self._tray.showMessage(title, message, QSystemTrayIcon.MessageIcon.Information, 6000)
-            logger.info("Sent weekly summary notification: %s", message)
-        except Exception as exc:
-            logger.warning("Failed to dispatch weekly summary notification: %s", exc)
+        from notifications.notifier import Notifier
+        Notifier().notify(title, message, duration=6)
+        logger.info("Sent weekly summary notification: %s", message)

@@ -2,7 +2,7 @@ from PySide6.QtCore import Qt, Signal, Property, QPropertyAnimation, QEasingCurv
 from PySide6.QtGui import QPainter, QColor, QFont, QPen, QBrush, QMouseEvent, QWheelEvent
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, 
-    QDialog, QFrame, QScrollArea, QGraphicsOpacityEffect
+    QDialog, QFrame, QScrollArea, QGraphicsOpacityEffect, QSpinBox
 )
 
 from ui.theme import ThemeManager
@@ -329,8 +329,57 @@ class RadioCardGroup(QWidget):
         return ""
 
 
+class TwoDigitSpinBox(QSpinBox):
+    """Custom spin box formatted with zero-padding (e.g. 01, 15) and generous proportions."""
+    def __init__(self, max_val: int, parent=None):
+        super().__init__(parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.setRange(0, max_val)
+        self.setObjectName("duration_spin")
+        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.setFixedHeight(44)
+        self.setFixedWidth(76)
+        self.setButtonSymbols(QSpinBox.ButtonSymbols.NoButtons)
+        
+        from ui.theme import ThemeManager
+        ThemeManager.instance().theme_changed.connect(self._apply_theme)
+        self._apply_theme(ThemeManager.instance().is_dark)
+
+    def _apply_theme(self, is_dark: bool = True):
+        tm = ThemeManager.instance()
+        bg = "#080C14" if is_dark else "#FFFFFF"
+        border = "rgba(255, 255, 255, 0.18)" if is_dark else "rgba(0, 0, 0, 0.15)"
+        text_col = "#FFFFFF" if is_dark else "#0F172A"
+        focus_bg = "#0E131E" if is_dark else "#F8FAFC"
+        accent = tm.color("accent", "#10B981")
+        self.setStyleSheet(f"""
+            QSpinBox#duration_spin {{
+                background-color: {bg};
+                border: 1px solid {border};
+                border-radius: 8px;
+                color: {text_col};
+                font-size: 20px;
+                font-weight: 800;
+                padding: 4px;
+            }}
+            QSpinBox#duration_spin:focus {{
+                border: 1.5px solid {accent};
+                background-color: {focus_bg};
+            }}
+        """)
+
+    def textFromValue(self, val: int) -> str:
+        return f"{val:02d}"
+
+    def valueFromText(self, text: str) -> int:
+        try:
+            return int(text.strip())
+        except Exception:
+            return 0
+
+
 class PresetChipRow(QWidget):
-    preset_selected = Signal(int) # minutes
+    preset_selected = Signal(int)  # minutes, or -1 for custom
     
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -338,34 +387,60 @@ class PresetChipRow(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
         
-        presets = [("15m", 15), ("30m", 30), ("1h", 60), ("2h", 120), ("Unlimited", 0)]
+        self._btn_map = {}
+        presets = [("15m", 15), ("30m", 30), ("1h", 60), ("2h", 120), ("Custom", -1), ("Unlimited", 0)]
         for label, val in presets:
             btn = QPushButton(label)
+            btn.setObjectName("preset_chip")
+            btn.setCheckable(True)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            btn.setFixedHeight(32)
-            btn.clicked.connect(lambda checked=False, v=val: self.preset_selected.emit(v))
+            btn.setFixedHeight(34)
+            btn.clicked.connect(lambda checked, v=val: self._on_btn_clicked(v))
             layout.addWidget(btn)
+            self._btn_map[val] = btn
             
         layout.addStretch()
         
         from ui.theme import ThemeManager
         ThemeManager.instance().theme_changed.connect(self._apply_theme)
         self._apply_theme(ThemeManager.instance().is_dark)
+
+    def _on_btn_clicked(self, val: int):
+        self.set_active_value(val)
+        if val != -1:
+            self.preset_selected.emit(val)
+
+    def set_active_value(self, val: int):
+        target = val if val in self._btn_map else -1
+        for v, btn in self._btn_map.items():
+            is_match = (v == target)
+            btn.setChecked(is_match)
+            btn.setProperty("active", "true" if is_match else "false")
+            btn.style().unpolish(btn)
+            btn.style().polish(btn)
         
     def _apply_theme(self, is_dark):
         tm = ThemeManager.instance()
         self.setStyleSheet(f"""
-            QPushButton {{
-                background: {tm.color('card_bg')};
+            QPushButton#preset_chip {{
+                background: {tm.color('surface_secondary')};
                 border: 1px solid {tm.color('border')};
-                border-radius: 16px;
-                padding: 0 16px;
-                color: {tm.color('text_main')};
+                border-radius: 8px;
+                padding: 0 14px;
+                color: {tm.color('text_sub')};
                 font-weight: 600;
                 font-size: 13px;
             }}
-            QPushButton:hover {{
+            QPushButton#preset_chip:hover {{
                 background: {tm.color('card_hover')};
+                color: {tm.color('text_main')};
+                border-color: {tm.color('border_hover')};
+            }}
+            QPushButton#preset_chip[active="true"], QPushButton#preset_chip:checked {{
+                background: rgba(16, 185, 129, 0.14);
+                border: 1px solid #10B981;
+                color: #10B981;
+                font-weight: 700;
             }}
         """)
 
@@ -486,25 +561,82 @@ class TimerConfigDialog(QDialog):
         name_layout.addWidget(self.name_input)
         bg_layout.addLayout(name_layout)
         
-        # Time Picker Row
+        # Allowed Duration Card
+        dur_card = QFrame()
+        dur_card.setObjectName("duration_card")
+        dur_card.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        dur_layout = QVBoxLayout(dur_card)
+        dur_layout.setContentsMargins(20, 18, 20, 18)
+        dur_layout.setSpacing(14)
+
+        dur_title = FluentLabel("Daily Time Limit", FluentLabel.Style.HEADING)
+        dur_sub = QLabel("How long should this application be allowed to run each day?")
+        dur_sub.setObjectName("duration_sub_lbl")
+        dur_layout.addWidget(dur_title)
+        dur_layout.addWidget(dur_sub)
+
         picker_layout = QHBoxLayout()
+        picker_layout.setSpacing(16)
+        picker_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+
+        # Hours stepper: [ - ] [ 01 ] [ + ] hours
+        hr_box = QHBoxLayout()
+        hr_box.setSpacing(6)
+        btn_hr_dec = QPushButton("−")
+        btn_hr_dec.setObjectName("stepper_btn")
+        btn_hr_dec.setFixedSize(36, 44)
+        btn_hr_dec.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.hr_picker = TwoDigitSpinBox(23)
+        btn_hr_inc = QPushButton("+")
+        btn_hr_inc.setObjectName("stepper_btn")
+        btn_hr_inc.setFixedSize(36, 44)
+        btn_hr_inc.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_hr_dec.clicked.connect(lambda: self.hr_picker.setValue(self.hr_picker.value() - 1))
+        btn_hr_inc.clicked.connect(lambda: self.hr_picker.setValue(self.hr_picker.value() + 1))
+        hr_lbl = QLabel("hours")
+        hr_lbl.setObjectName("duration_unit_lbl")
+        hr_box.addWidget(btn_hr_dec)
+        hr_box.addWidget(self.hr_picker)
+        hr_box.addWidget(btn_hr_inc)
+        hr_box.addWidget(hr_lbl)
+        picker_layout.addLayout(hr_box)
+
+        picker_layout.addSpacing(12)
+
+        # Minutes stepper: [ - ] [ 00 ] [ + ] minutes
+        min_box = QHBoxLayout()
+        min_box.setSpacing(6)
+        btn_min_dec = QPushButton("−")
+        btn_min_dec.setObjectName("stepper_btn")
+        btn_min_dec.setFixedSize(36, 44)
+        btn_min_dec.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.min_picker = TwoDigitSpinBox(59)
+        btn_min_inc = QPushButton("+")
+        btn_min_inc.setObjectName("stepper_btn")
+        btn_min_inc.setFixedSize(36, 44)
+        btn_min_inc.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_min_dec.clicked.connect(lambda: self.min_picker.setValue(self.min_picker.value() - 1))
+        btn_min_inc.clicked.connect(lambda: self.min_picker.setValue(self.min_picker.value() + 1))
+        min_lbl = QLabel("minutes")
+        min_lbl.setObjectName("duration_unit_lbl")
+        min_box.addWidget(btn_min_dec)
+        min_box.addWidget(self.min_picker)
+        min_box.addWidget(btn_min_inc)
+        min_box.addWidget(min_lbl)
+        picker_layout.addLayout(min_box)
         picker_layout.addStretch()
-        self.hr_picker = WheelPicker([str(i) for i in range(24)])
-        self.min_picker = WheelPicker([str(i) for i in range(60)])
-        hr_lbl = FluentLabel("hr", FluentLabel.Style.HEADING)
-        min_lbl = FluentLabel("min", FluentLabel.Style.HEADING)
-        picker_layout.addWidget(self.hr_picker)
-        picker_layout.addWidget(hr_lbl)
-        picker_layout.addSpacing(16)
-        picker_layout.addWidget(self.min_picker)
-        picker_layout.addWidget(min_lbl)
-        picker_layout.addStretch()
-        bg_layout.addLayout(picker_layout)
-        
+
+        dur_layout.addLayout(picker_layout)
+
         # Presets
         self.preset_row = PresetChipRow()
         self.preset_row.preset_selected.connect(self._on_preset)
-        bg_layout.addWidget(self.preset_row)
+        dur_layout.addWidget(self.preset_row)
+
+        bg_layout.addWidget(dur_card)
+
+        self.hr_picker.valueChanged.connect(self._on_spin_changed)
+        self.min_picker.valueChanged.connect(self._on_spin_changed)
         
         # Repeat Days with Toggle
         days_header = QHBoxLayout()
@@ -563,22 +695,101 @@ class TimerConfigDialog(QDialog):
         
     def _apply_theme(self, is_dark):
         tm = ThemeManager.instance()
+        dialog_bg = "#0B0E14" if is_dark else "#FFFFFF"
+        border_col = "rgba(255, 255, 255, 0.12)" if is_dark else "rgba(0, 0, 0, 0.12)"
+        input_bg = "#121721" if is_dark else "#F8FAFC"
+        input_border = "rgba(255, 255, 255, 0.10)" if is_dark else "rgba(0, 0, 0, 0.14)"
+        text_main = "#F8FAFC" if is_dark else "#0F172A"
+        text_sub = "#94A3B8" if is_dark else "#475569"
+        focus_bg = "#161D2A" if is_dark else "#FFFFFF"
+        card_bg = "#121721" if is_dark else "#F1F5F9"
+        card_border = "rgba(255, 255, 255, 0.08)" if is_dark else "rgba(0, 0, 0, 0.09)"
+        stepper_bg = "#141924" if is_dark else "#E2E8F0"
+        stepper_border = "rgba(255, 255, 255, 0.12)" if is_dark else "rgba(0, 0, 0, 0.12)"
+        stepper_color = "#E2E8F0" if is_dark else "#0F172A"
+        stepper_hover_bg = "rgba(16, 185, 129, 0.20)" if is_dark else "rgba(16, 185, 129, 0.15)"
+        stepper_hover_col = "#FFFFFF" if is_dark else "#059669"
+        accent = tm.color("accent", "#10B981")
+        scrollbar_handle = "rgba(255, 255, 255, 0.16)" if is_dark else "rgba(0, 0, 0, 0.16)"
+
         self.setStyleSheet(f"""
             QFrame#dialog_bg {{
-                background-color: {tm.color('window_bg')};
-                border: 1px solid {tm.color('border')};
+                background-color: {dialog_bg};
+                border: 1px solid {border_col};
                 border-radius: 16px;
             }}
             QLineEdit#timer_name_input {{
-                background-color: {tm.color('card_bg')};
-                border: 1px solid {tm.color('border')};
+                background-color: {input_bg};
+                border: 1px solid {input_border};
                 border-radius: 8px;
                 padding: 0 12px;
-                color: {tm.color('text_main')};
+                color: {text_main};
                 font-size: 14px;
             }}
             QLineEdit#timer_name_input:focus {{
-                border: 1px solid {tm.color('accent')};
+                border: 1px solid {accent};
+                background-color: {focus_bg};
+            }}
+            QSpinBox {{
+                background-color: {input_bg};
+                border: 1px solid {input_border};
+                border-radius: 8px;
+                color: {text_main};
+                padding: 4px;
+            }}
+            QSpinBox:focus {{
+                border: 1px solid {accent};
+            }}
+            QFrame#duration_card {{
+                background-color: {card_bg};
+                border: 1px solid {card_border};
+                border-radius: 12px;
+            }}
+            QLabel#duration_sub_lbl {{
+                font-size: 13px;
+                color: {text_sub};
+            }}
+            QLabel#duration_unit_lbl {{
+                font-size: 14px;
+                font-weight: 600;
+                color: {text_sub};
+            }}
+            QPushButton#stepper_btn {{
+                background-color: {stepper_bg};
+                border: 1px solid {stepper_border};
+                border-radius: 8px;
+                color: {stepper_color};
+                font-size: 16px;
+                font-weight: 700;
+            }}
+            QPushButton#stepper_btn:hover {{
+                background-color: {stepper_hover_bg};
+                border-color: {accent};
+                color: {stepper_hover_col};
+            }}
+            QPushButton#stepper_btn:pressed {{
+                background-color: rgba(16, 185, 129, 0.35);
+            }}
+            QScrollBar:vertical {{
+                background: transparent;
+                width: 6px;
+                margin: 4px 2px 4px 0px;
+                border-radius: 3px;
+            }}
+            QScrollBar::handle:vertical {{
+                background: {scrollbar_handle};
+                min-height: 24px;
+                border-radius: 3px;
+            }}
+            QScrollBar::handle:vertical:hover {{
+                background: {accent};
+            }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+                height: 0px;
+                background: none;
+            }}
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{
+                background: none;
             }}
         """)
 
@@ -586,17 +797,27 @@ class TimerConfigDialog(QDialog):
         if checked:
             self.days_picker.set_selected_days([0,1,2,3,4,5,6])
 
+    def _on_spin_changed(self):
+        total_mins = (self.hr_picker.value() * 60) + self.min_picker.value()
+        self.preset_row.set_active_value(total_mins)
+
     def _on_preset(self, mins: int):
-        hr = mins // 60
-        mn = mins % 60
-        self.hr_picker.set_index(hr)
-        self.min_picker.set_index(mn)
+        if mins < 0:
+            return  # Custom duration
+        self.hr_picker.blockSignals(True)
+        self.min_picker.blockSignals(True)
+        self.hr_picker.setValue(mins // 60)
+        self.min_picker.setValue(mins % 60)
+        self.hr_picker.blockSignals(False)
+        self.min_picker.blockSignals(False)
+        self.preset_row.set_active_value(mins)
 
     def _populate_data(self):
         secs = self.current_rule.get("limit_seconds", 0)
         mins = secs // 60
-        self.hr_picker.set_index(mins // 60)
-        self.min_picker.set_index(mins % 60)
+        self.hr_picker.setValue(mins // 60)
+        self.min_picker.setValue(mins % 60)
+        self.preset_row.set_active_value(mins)
         
         self.name_input.setText(self.current_rule.get("name", ""))
         
@@ -611,7 +832,7 @@ class TimerConfigDialog(QDialog):
         self.action_group.set_selected(action)
 
     def get_rule(self) -> dict:
-        total_secs = (self.hr_picker.get_index() * 3600) + (self.min_picker.get_index() * 60)
+        total_secs = (self.hr_picker.value() * 3600) + (self.min_picker.value() * 60)
         if total_secs == 0:
             return None # Unlimited
             

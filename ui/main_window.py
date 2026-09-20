@@ -49,6 +49,8 @@ class MainWindow(QMainWindow):
     quit_requested = Signal()
     focus_completed = Signal()
     manual_update_requested = Signal()
+    update_now_requested = Signal()
+    update_later_requested = Signal()
 
     def __init__(self, tracker: TrackingManager, sleepguard: Optional[SleepGuardController] = None, protection_manager=None, parent=None) -> None:
         super().__init__(parent)
@@ -62,6 +64,7 @@ class MainWindow(QMainWindow):
         
         if self._protection_manager:
             self._protection_manager.notifications.show_limit_dialog.connect(self._show_limit_dialog)
+            self._protection_manager.notifications.show_website_limit_dialog.connect(self._show_website_limit_dialog)
 
         self.data_changed_signal.connect(self._refresh_current_page)
         self._active_nav_btn: Optional[QPushButton] = None
@@ -70,9 +73,47 @@ class MainWindow(QMainWindow):
         self._setup_ui()
         self._connect_tracker()
         self._setup_shortcuts()
-        
+        from settings.manager import SettingsManager
+        self._sm = SettingsManager()
+        self._name_dialog_active = False
+
         # Trigger initial Home page load without blocking UI layout
         QTimer.singleShot(0, self._refresh_current_page)
+        QTimer.singleShot(350, self._check_first_run_name_prompt)
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        if hasattr(self, "_sm") and not self._sm.name_prompt_completed:
+            QTimer.singleShot(350, self._check_first_run_name_prompt)
+
+    def _check_first_run_name_prompt(self) -> None:
+        import os
+        if os.environ.get("DW_TEST_MODE") == "1":
+            return
+        if not hasattr(self, "_sm"):
+            from settings.manager import SettingsManager
+            self._sm = SettingsManager()
+        if self._sm.name_prompt_completed:
+            return
+        if not self.isVisible():
+            return
+        if getattr(self, "_name_dialog_active", False):
+            return
+        self._name_dialog_active = True
+        try:
+            from ui.widgets.name_setup_dialog import NameSetupDialog
+            self._name_setup_dlg = NameSetupDialog(parent=self)
+            self._name_setup_dlg.name_configured.connect(self._on_name_configured)
+            self._name_setup_dlg.finished.connect(lambda: setattr(self, "_name_dialog_active", False))
+            self._name_setup_dlg.setWindowModality(Qt.WindowModality.ApplicationModal)
+            self._name_setup_dlg.show()
+            self._name_setup_dlg.raise_()
+            self._name_setup_dlg.activateWindow()
+        except Exception:
+            self._name_dialog_active = False
+
+    def _on_name_configured(self, name: str) -> None:
+        self.refresh_all_pages()
 
     def _setup_ui(self) -> None:
         from core.constants import APP_NAME, APP_VERSION
@@ -85,6 +126,7 @@ class MainWindow(QMainWindow):
         self.resize(1280, 800)
 
         central_widget = QWidget(self)
+        central_widget.setObjectName("central_widget")
         self.setCentralWidget(central_widget)
 
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
@@ -125,7 +167,10 @@ class MainWindow(QMainWindow):
         self._activity_page.request_historical_details.connect(self._navigate_to_screen_time_details)
         self._wellbeing_page = WellbeingPage(sleepguard=self._sleepguard)
         self._wellbeing_page.focus_completed.connect(self.focus_completed.emit)
-        self._app_locker_page = AppLockerPage()
+        from ui.pages.app_locker import AppLockerPage
+        self._app_locker_page = AppLockerPage(protection_manager=self._protection_manager)
+        from ui.pages.app_timer import AppTimerPage
+        self._app_timer_page = AppTimerPage(protection_manager=self._protection_manager)
         self._insights_page = InsightsPage()
         self._sleepguard_page = SleepGuardPage(sleepguard=self._sleepguard)
         self._history_page = HistoryPage()
@@ -133,43 +178,36 @@ class MainWindow(QMainWindow):
         self._settings_page.settings_changed.connect(self._on_settings_changed)
         self._settings_page.theme_changed_req.connect(self._animate_theme_change)
         self._settings_page.manual_update_requested.connect(self.manual_update_requested.emit)
+        self._settings_page.update_now_requested.connect(self.update_now_requested.emit)
+        self._settings_page.update_later_requested.connect(self.update_later_requested.emit)
         self._debug_page = DebugPage(tracker=self._tracker)
 
         self._stack.addWidget(self._dashboard_page)         # 0: Home
         self._stack.addWidget(self._activity_page)          # 1: Usage
         self._stack.addWidget(self._wellbeing_page)         # 2: Focus
         self._stack.addWidget(self._app_locker_page)        # 3: App Locker
-        self._stack.addWidget(self._insights_page)          # 4: Insights
-        self._stack.addWidget(self._sleepguard_page)        # 5: SleepGuard
-        self._stack.addWidget(self._history_page)           # 6: History
-        self._stack.addWidget(self._settings_page)          # 7: Settings
-        self._stack.addWidget(self._debug_page)             # 8: Dev Mode
-        self._stack.addWidget(self._screen_time_details_page) # 9: Screen Time Details
-        self._stack.addWidget(self._app_details_page)         # 10: App Details
+        self._stack.addWidget(self._app_timer_page)         # 4: App Timer
+        self._stack.addWidget(self._insights_page)          # 5: Insights
+        self._stack.addWidget(self._sleepguard_page)        # 6: SleepGuard
+        self._stack.addWidget(self._history_page)           # 7: History
+        self._stack.addWidget(self._settings_page)          # 8: Settings
+        self._stack.addWidget(self._debug_page)             # 9: Dev Mode
+        self._stack.addWidget(self._screen_time_details_page) # 10: Screen Time Details
+        self._stack.addWidget(self._app_details_page)         # 11: App Details
 
         # Wire App Locker lock events to auth dialog
         from protection.app_locker import AppLockerManager
         self._app_locker_mgr = AppLockerManager.instance()
         self._app_locker_mgr.lock_triggered.connect(self._show_lock_auth_dialog)
 
-        # Global Header
-        self._header_widget = QWidget()
-        header_layout = QHBoxLayout(self._header_widget)
-        header_layout.setContentsMargins(36, 16, 36, 0)
-        
-        self._global_status_lbl = QLabel("Ready")
-        self._global_status_lbl.setObjectName("global_status")
-        header_layout.addWidget(self._global_status_lbl)
-        header_layout.addStretch()
-        
-        # Add Header and Stack to a vertical layout
-        content_container = QWidget()
-        content_layout = QVBoxLayout(content_container)
-        content_layout.setContentsMargins(0, 0, 0, 0)
-        content_layout.addWidget(self._header_widget)
-        content_layout.addWidget(self._stack, 1)
+        # Wire Focus Manager app_blocked signal to feedback dialog
+        from protection.focus_manager import FocusManager
+        self._focus_mgr = FocusManager.instance()
+        self._focus_mgr.app_blocked.connect(self._show_blocked_app_dialog)
+        self._active_blocked_dialog = None
 
-        root_layout.addWidget(content_container, 1)
+        # Stack layout for main content
+        root_layout.addWidget(self._stack, 1)
         if self._nav_buttons:
             self._nav_buttons[0].click()
 
@@ -201,7 +239,7 @@ class MainWindow(QMainWindow):
     def _toggle_dev_mode(self) -> None:
         from core.logger import logger
         logger.info("[DEV MODE] Hidden developer shortcut Ctrl+Shift+D activated")
-        self._navigate(8)  # Dev Mode is now page 8
+        self._navigate(9)  # Dev Mode is now page 9
 
     def _show_shutdown_warning_dialog(self, countdown_s: int, action: str = "lock") -> None:
         from core.logger import logger
@@ -212,7 +250,9 @@ class MainWindow(QMainWindow):
         )
         # Instantiate with parent=None to ensure it is a true top-level window 
         # and doesn't inherit hidden state from MainWindow when minimized to tray.
-        dialog = ShutdownCountdownDialog(countdown_seconds=countdown_s, action=action, parent=None)
+        dialog = ShutdownCountdownDialog(countdown_seconds=countdown_s, action=action, parent=None, is_test=False)
+        self._active_warning_dialog = dialog
+        dialog.finished.connect(lambda: setattr(self, "_active_warning_dialog", None))
         dialog.shutdown_accepted.connect(self._sleepguard.execute_power_action)
         # Wrap the dialog.cancel connection to avoid recursive re-entry between UI and controller
         def _on_dialog_cancel():
@@ -240,18 +280,6 @@ class MainWindow(QMainWindow):
         dialog.raise_()
         dialog.activateWindow()
         logger.info("[SLEEPGUARD_UI] Dialog shown non-blocking (show + raise + activateWindow)")
-
-        action_label = action.title() if action else "Action"
-        # Always attempt to send a system notification as a backup warning
-        try:
-            from notifications.notifier import Notifier
-            Notifier().notify(
-                title=f"SleepGuard — {action_label} Warning",
-                message=f"{action_label} in {countdown_s}s — check the app to cancel.",
-                duration=7
-            )
-        except Exception as e:
-            logger.warning("Failed to send SleepGuard system notification: %s", e)
 
         # Log visibility shortly after showing
         QTimer.singleShot(200, lambda: logger.info(f"[SLEEPGUARD_UI] Post-show: dialog visible={dialog.isVisible()}"))
@@ -346,14 +374,14 @@ class MainWindow(QMainWindow):
         from datetime import date
         if isinstance(target_date, date):
             self._screen_time_details_page.refresh(target_date)
-            self._navigate(9)
+            self._navigate(10)
         else:
             self._screen_time_details_page.refresh()
-            self._navigate(9)
+            self._navigate(10)
 
     def _navigate_to_app_details(self, process_name: str) -> None:
         self._app_details_page.set_app(process_name)
-        self._navigate(10)
+        self._navigate(11)
 
     def _build_sidebar(self) -> QFrame:
         sidebar = QFrame()
@@ -367,27 +395,28 @@ class MainWindow(QMainWindow):
         # Brand Header
         logo_widget = QWidget()
         logo_layout = QHBoxLayout(logo_widget)
-        logo_layout.setContentsMargins(20, 32, 20, 24)
-        logo_layout.setSpacing(14)
+        logo_layout.setContentsMargins(20, 28, 20, 20)
+        logo_layout.setSpacing(12)
 
         icon_lbl = QLabel()
         icon_path = Path(__file__).parent.parent / "assets" / "icons" / "app_icon.png"
         pix = QPixmap(str(icon_path))
         if not pix.isNull():
-            icon_lbl.setPixmap(pix.scaled(64, 64, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+            icon_lbl.setPixmap(pix.scaled(40, 40, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
         
         brand_col = QVBoxLayout()
-        brand_col.setSpacing(2)
-        self._logo_lbl = QLabel("NYW")
+        brand_col.setSpacing(1)
+        self._logo_lbl = QLabel("NOTCH")
         self._logo_lbl.setObjectName("sidebar_logo_label")
         from core.constants import APP_VERSION
-        self._subtitle_lbl = QLabel(f"VERSION {APP_VERSION}")
+        self._subtitle_lbl = QLabel(f"BETA · v{APP_VERSION}")
         self._subtitle_lbl.setObjectName("sidebar_subtitle_label")
         brand_col.addWidget(self._logo_lbl)
         brand_col.addWidget(self._subtitle_lbl)
 
         logo_layout.addWidget(icon_lbl)
         logo_layout.addLayout(brand_col)
+        logo_layout.addStretch()
         layout.addWidget(logo_widget)
 
         self._separator = QFrame()
@@ -395,77 +424,97 @@ class MainWindow(QMainWindow):
         self._separator.setMaximumHeight(1)
         layout.addWidget(self._separator)
 
-        # Navigation Rail Items
+        # Navigation Rail Items (Scrollable)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         nav_container = QWidget()
         nav_layout = QVBoxLayout(nav_container)
-        nav_layout.setContentsMargins(0, 16, 0, 16)
-        nav_layout.setSpacing(6)
+        nav_layout.setContentsMargins(0, 8, 0, 8)
+        nav_layout.setSpacing(2)
         scroll.setWidget(nav_container)
         layout.addWidget(scroll, 1)
 
         from ui.icons import get_icon
 
-        self._home_btn = QPushButton("  Home")
-        self._home_btn.setIcon(get_icon("home"))
-        
-        self._activity_btn = QPushButton("  Usage")
-        self._activity_btn.setIcon(get_icon("usage"))
-        
-        self._focus_btn = QPushButton("  Focus")
-        self._focus_btn.setIcon(get_icon("focus"))
-        
-        self._locker_btn = QPushButton("  App Locker")
-        self._locker_btn.setIcon(get_icon("lock"))
-        
-        self._insights_btn = QPushButton("  Insights")
-        self._insights_btn.setIcon(get_icon("insights"))
-        
-        self._sleepguard_btn = QPushButton("  SleepGuard")
-        self._sleepguard_btn.setIcon(get_icon("sleepguard"))
-        
-        # Dev Mode button is intentionally removed from the production UI.
-        # It remains accessible via Ctrl+Shift+D shortcut.
-        self._debug_btn = QPushButton("  Dev Mode")
-        self._debug_btn.setVisible(False)
+        def _make_section_hdr(text: str) -> QLabel:
+            lbl = QLabel(text)
+            lbl.setObjectName("nav_section_header")
+            return lbl
 
-        self._nav_buttons = [
-            self._home_btn,       # idx 0 → page 0 (Home)
-            self._activity_btn,   # idx 1 → page 1 (Usage)
-            self._focus_btn,      # idx 2 → page 2 (Focus)
-            self._locker_btn,     # idx 3 → page 3 (Locker)
-            self._insights_btn,   # idx 4 → page 4 (Insights)
-            self._sleepguard_btn, # idx 5 → page 5 (SleepGuard)
-            self._debug_btn,      # idx 6 → page 8 (hidden Dev Mode)
-        ]
-
-        for i, btn in enumerate(self._nav_buttons):
+        def _make_nav_btn(text: str, icon_name: str, page_idx: int) -> QPushButton:
+            btn = QPushButton(f"  {text}")
+            btn.setIcon(get_icon(icon_name, size=18))
             btn.setObjectName("nav_btn")
-            # Map navigation index to the actual page index in the stack
-            page_map = {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 8}
-            btn.clicked.connect(lambda checked, idx=page_map[i]: self._navigate(idx))
-            nav_layout.addWidget(btn)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.clicked.connect(lambda: self._navigate(page_idx))
+            return btn
+
+        # ── OVERVIEW Section ────────────────────────────
+        nav_layout.addWidget(_make_section_hdr("OVERVIEW"))
+        self._home_btn = _make_nav_btn("Home", "home", 0)
+        self._activity_btn = _make_nav_btn("Usage", "usage", 1)
+        self._insights_btn = _make_nav_btn("Insights", "insights", 5)
+        nav_layout.addWidget(self._home_btn)
+        nav_layout.addWidget(self._activity_btn)
+        nav_layout.addWidget(self._insights_btn)
+
+        # ── CONTROL Section ─────────────────────────────
+        nav_layout.addSpacing(10)
+        nav_layout.addWidget(_make_section_hdr("CONTROL"))
+        self._focus_btn = _make_nav_btn("Focus", "focus", 2)
+        self._timer_btn = _make_nav_btn("App Timer", "clock", 4)
+        self._locker_btn = _make_nav_btn("App Locker", "lock", 3)
+        self._sleepguard_btn = _make_nav_btn("SleepGuard", "sleepguard", 6)
+        nav_layout.addWidget(self._focus_btn)
+        nav_layout.addWidget(self._timer_btn)
+        nav_layout.addWidget(self._locker_btn)
+        nav_layout.addWidget(self._sleepguard_btn)
 
         nav_layout.addStretch()
 
-        # Footer Area (Pinned to bottom)
+        # ── SYSTEM Section (Footer Pinned) ──────────────
         footer_widget = QWidget()
         footer_layout = QVBoxLayout(footer_widget)
-        footer_layout.setContentsMargins(0, 0, 0, 16)
-        footer_layout.setSpacing(12)
-        
-        self._settings_btn = QPushButton("  Settings")
-        self._settings_btn.setIcon(get_icon("settings"))
-        self._settings_btn.setObjectName("nav_btn")
-        self._settings_btn.clicked.connect(lambda: self._navigate(7))  # Settings is now page 7
+        footer_layout.setContentsMargins(0, 4, 0, 16)
+        footer_layout.setSpacing(2)
+        footer_layout.addWidget(_make_section_hdr("SYSTEM"))
+
+        self._settings_btn = _make_nav_btn("Settings", "settings", 8)
         footer_layout.addWidget(self._settings_btn)
-        
-        # Append to _nav_buttons for active-state tracking (index 7 in the list)
-        self._nav_buttons.insert(7, self._settings_btn)
+
+        self._debug_btn = _make_nav_btn("Dev Mode", "system", 9)
+        self._debug_btn.setVisible(False)
+        footer_layout.addWidget(self._debug_btn)
 
         layout.addWidget(footer_widget)
+
+        # Map stack page index to button for clean active-state pill management
+        self._page_to_nav_btn = {
+            0: self._home_btn,
+            1: self._activity_btn,
+            2: self._focus_btn,
+            3: self._locker_btn,
+            4: self._timer_btn,
+            5: self._insights_btn,
+            6: self._sleepguard_btn,
+            7: self._home_btn,
+            8: self._settings_btn,
+            9: self._debug_btn,
+        }
+
+        # Compatible list of nav buttons
+        self._nav_buttons = [
+            self._home_btn,
+            self._activity_btn,
+            self._focus_btn,
+            self._locker_btn,
+            self._timer_btn,
+            self._insights_btn,
+            self._sleepguard_btn,
+            self._debug_btn,
+            self._settings_btn,
+        ]
 
         return sidebar
 
@@ -473,27 +522,35 @@ class MainWindow(QMainWindow):
         from ui.theme import ThemeManager
         tm = ThemeManager.instance()
         
-        # OLED Black appearance with very subtle Mica bleed
-        sidebar_bg = "rgba(0, 0, 0, 0.4)" if tm.is_dark else "rgba(255, 255, 255, 0.4)"
-        hover_bg = "rgba(255, 255, 255, 0.05)" if tm.is_dark else "rgba(0, 0, 0, 0.04)"
-        active_bg = "rgba(255, 255, 255, 0.08)" if tm.is_dark else "rgba(0, 0, 0, 0.08)"
-        active_border = "rgba(255, 255, 255, 0.12)" if tm.is_dark else "rgba(0, 0, 0, 0.15)"
+        sidebar_bg = "rgba(10, 13, 18, 0.75)" if tm.is_dark else "rgba(241, 245, 249, 0.75)"
+        hover_bg = "rgba(255, 255, 255, 0.04)" if tm.is_dark else "rgba(0, 0, 0, 0.04)"
+        active_bg = "rgba(16, 185, 129, 0.12)" if tm.is_dark else "rgba(5, 150, 105, 0.10)"
+        active_border = "rgba(16, 185, 129, 0.28)" if tm.is_dark else "rgba(5, 150, 105, 0.25)"
+        active_color = "#10B981" if tm.is_dark else "#059669"
         
         self._sidebar.setStyleSheet(f"""
             QFrame#sidebar {{
                 background: {sidebar_bg};
                 border-right: 1px solid {tm.color('border')};
             }}
+            QLabel#nav_section_header {{
+                font-size: 10px;
+                font-weight: 700;
+                color: {tm.color('text_muted')};
+                letter-spacing: 1.5px;
+                text-transform: uppercase;
+                margin: 8px 18px 4px 18px;
+            }}
             QPushButton#nav_btn {{
                 background: transparent;
                 color: {tm.color('text_sub')};
                 border: 1px solid transparent;
-                border-radius: 8px;
-                padding: 10px 16px;
+                border-radius: 9px;
+                padding: 9px 14px;
                 text-align: left;
-                font-size: 14px;
+                font-size: 13px;
                 font-weight: 600;
-                margin: 2px 16px;
+                margin: 1px 12px;
             }}
             QPushButton#nav_btn:hover {{
                 background: {hover_bg};
@@ -502,21 +559,21 @@ class MainWindow(QMainWindow):
             }}
             QPushButton#nav_btn[active="true"] {{
                 background: {active_bg};
-                color: {tm.color('text_main')};
+                color: {active_color};
+                font-weight: 700;
                 border: 1px solid {active_border};
             }}
-            QLabel#global_status {{
-                color: {tm.color('text_sub')};
-                font-weight: 600;
-                font-size: 12px;
-            }}
+
         """)
         
-        self._logo_lbl.setStyleSheet(f"font-size: 16px; font-weight: 700; color: {tm.color('text_main')}; letter-spacing: -0.2px;")
-        self._subtitle_lbl.setStyleSheet(f"font-size: 11px; font-weight: 800; color: {tm.color('text_sub')}; letter-spacing: 0.5px;")
+        self._logo_lbl.setStyleSheet(f"font-size: 17px; font-weight: 800; color: {tm.color('text_main')}; letter-spacing: -0.3px;")
+        self._subtitle_lbl.setStyleSheet(f"font-size: 10px; font-weight: 700; color: {active_color}; letter-spacing: 1.2px;")
         self._separator.setStyleSheet(f"background: {tm.color('border')}; margin: 0 16px;")
         
-        
+        central = self.centralWidget()
+        if central:
+            central.setStyleSheet(f"QWidget#central_widget {{ background-color: {tm.color('bg')}; }}")
+
         # Repolish active button
         if self._active_nav_btn:
             self._active_nav_btn.style().unpolish(self._active_nav_btn)
@@ -527,7 +584,7 @@ class MainWindow(QMainWindow):
         if curr_idx == page_idx:
             return
 
-        if page_idx <= 7:
+        if page_idx <= 8:
             # Main sidebar navigation, clear history
             self._navigation_history.clear()
         else:
@@ -539,13 +596,13 @@ class MainWindow(QMainWindow):
             self._active_nav_btn.style().unpolish(self._active_nav_btn)
             self._active_nav_btn.style().polish(self._active_nav_btn)
 
-        # Highlight sidebar if applicable
-        if 0 <= page_idx < len(self._nav_buttons):
-            btn = self._nav_buttons[page_idx]
-            btn.setProperty("active", True)
-            btn.style().unpolish(btn)
-            btn.style().polish(btn)
-            self._active_nav_btn = btn
+        # Highlight sidebar button via mapping
+        target_btn = getattr(self, "_page_to_nav_btn", {}).get(page_idx)
+        if target_btn:
+            target_btn.setProperty("active", True)
+            target_btn.style().unpolish(target_btn)
+            target_btn.style().polish(target_btn)
+            self._active_nav_btn = target_btn
 
         self._stack.setCurrentIndexAnimated(page_idx)
 
@@ -558,12 +615,12 @@ class MainWindow(QMainWindow):
                 self._active_nav_btn.style().unpolish(self._active_nav_btn)
                 self._active_nav_btn.style().polish(self._active_nav_btn)
 
-            if 0 <= prev_idx < len(self._nav_buttons):
-                btn = self._nav_buttons[prev_idx]
-                btn.setProperty("active", True)
-                btn.style().unpolish(btn)
-                btn.style().polish(btn)
-                self._active_nav_btn = btn
+            target_btn = getattr(self, "_page_to_nav_btn", {}).get(prev_idx)
+            if target_btn:
+                target_btn.setProperty("active", True)
+                target_btn.style().unpolish(target_btn)
+                target_btn.style().polish(target_btn)
+                self._active_nav_btn = target_btn
                 
             self._stack.setCurrentIndexAnimated(prev_idx)
 
@@ -597,6 +654,104 @@ class MainWindow(QMainWindow):
         # When dialog is closed (for any reason), remove it from active set
         self._active_limit_dialogs.discard(process_name)
 
+    def _show_blocked_app_dialog(self, process_name: str, mode_name: str, seconds_remaining: int) -> None:
+        if getattr(self, "_active_blocked_dialog", None) is not None:
+            return  # Already showing an active feedback dialog, prevent stacking
+
+        from ui.widgets.blocked_app_dialog import BlockedAppFeedbackDialog
+        dlg = BlockedAppFeedbackDialog(process_name, mode_name, seconds_remaining, self)
+        self._active_blocked_dialog = dlg
+
+        def on_return_to_focus():
+            # Engage suppression so this app doesn't re-trigger an immediate popup loop
+            self._focus_mgr.suppress_blocked_app(process_name, duration=12.0)
+
+            # Minimize any remaining visible windows of the blocked app
+            try:
+                import win32gui, win32process, win32con, psutil
+                target_lower = process_name.lower()
+                def enum_min_cb(h, _):
+                    try:
+                        if win32gui.IsWindow(h) and win32gui.IsWindowVisible(h):
+                            _, wpid = win32process.GetWindowThreadProcessId(h)
+                            if wpid > 4:
+                                p = psutil.Process(wpid)
+                                if p.name().lower() == target_lower:
+                                    win32gui.ShowWindow(h, win32con.SW_MINIMIZE)
+                    except Exception:
+                        pass
+                    return True
+                win32gui.EnumWindows(enum_min_cb, None)
+            except Exception:
+                pass
+
+            if self.isHidden():
+                self.show()
+            self.raise_()
+            self.activateWindow()
+
+            # Forcefully assert foreground focus for Notch main window on Windows
+            try:
+                import win32gui, win32con
+                hwnd = int(self.winId())
+                win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+                win32gui.SetForegroundWindow(hwnd)
+                win32gui.BringWindowToTop(hwnd)
+            except Exception:
+                pass
+
+            # Switch to Focus page (page index 3 in sidebar)
+            focus_nav_btn = getattr(self, "_nav_buttons", [None]*4)[3]
+            if focus_nav_btn:
+                focus_nav_btn.click()
+
+        def on_cancel_focus():
+            if self._focus_mgr.is_strict:
+                from ui.widgets.pin_dialog import PinDialog
+                dialog = PinDialog(self._focus_mgr._pin_manager, self)
+                if dialog.exec():
+                    self._focus_mgr.stop_focus_after_pin_dialog()
+            else:
+                self._focus_mgr.stop_focus()
+
+        dlg.return_to_focus.connect(on_return_to_focus)
+        dlg.cancel_focus.connect(on_cancel_focus)
+        dlg.rejected.connect(lambda: self._focus_mgr.suppress_blocked_app(process_name, duration=8.0))
+        dlg.finished.connect(lambda _: setattr(self, "_active_blocked_dialog", None))
+        dlg.show()
+        dlg.raise_()
+        dlg.activateWindow()
+
+    def _show_website_limit_dialog(self, process_name: str, domain: str, limit_seconds: int) -> None:
+        key = f"{process_name}:{domain}"
+        if key in self._active_limit_dialogs:
+            return
+
+        self._active_limit_dialogs.add(key)
+
+        # Close the offending browser tab so the restricted site doesn't remain usable
+        from protection.process import ProcessController
+        ProcessController.close_browser_tab()
+
+        if self.isHidden():
+            self.show()
+            self.raise_()
+            self.activateWindow()
+
+        from ui.widgets.limit_dialog import LimitReachedDialog
+        dlg = LimitReachedDialog(domain, limit_seconds, self)
+
+        def on_override(dom: str):
+            from ui.widgets.limit_dialog import PinOverrideDialog
+            pin_dlg = PinOverrideDialog(dom, self._protection_manager.pin, self)
+            pin_dlg.override_granted.connect(lambda duration_m: self._protection_manager.add_website_override(domain, duration_m))
+            pin_dlg.exec()
+
+        dlg.override_requested.connect(on_override)
+        dlg.exec()
+
+        self._active_limit_dialogs.discard(key)
+
     def _refresh_current_page(self, index: int = -1) -> None:
         if index == -1:
             index = self._stack.currentIndex()
@@ -618,5 +773,10 @@ class MainWindow(QMainWindow):
         else:
             if self._owns_sleepguard and hasattr(self, "_sleepguard") and self._sleepguard:
                 self._sleepguard.stop()
+            try:
+                from protection.website_blocker import WebsiteBlocker
+                WebsiteBlocker().unblock_all()
+            except Exception:
+                pass
             event.accept()
             self.quit_requested.emit()

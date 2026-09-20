@@ -86,111 +86,119 @@ class ThemeManager(QObject):
     def _get_tokens(self, dark_mode: bool) -> Dict[str, str]:
         if dark_mode:
             return {
-                "bg": "transparent",
-                "window_bg": "transparent",      # Allows Mica to show through fully
-                "sidebar_bg": "rgba(28, 28, 28, 0.5)",  # Glass sidebar
-                "surface": "rgba(36, 36, 36, 0.65)",     # Translucent charcoal cards
-                "surface_elevated": "#2a2a2a",   # OPAQUE for dense data (settings, charts)
-                "surface_secondary": "rgba(45, 45, 45, 0.4)", # Soft secondary surface
-                "surface_hover": "rgba(45, 45, 45, 0.75)",
-                "surface_pressed": "rgba(32, 32, 32, 0.8)",
-                "card_bg": "rgba(36, 36, 36, 0.65)",
-                "card_hover": "rgba(45, 45, 45, 0.75)",
-                "card_pressed": "rgba(32, 32, 32, 0.8)",
-                "border": "rgba(255, 255, 255, 0.08)",   # Very subtle borders
+                "bg": "#080A0D",
+                "window_bg": "transparent",      # Allows Mica to show through or dark obsidian fallback
+                "sidebar_bg": "rgba(10, 13, 18, 0.75)",  # Deep frosted obsidian sidebar
+                "surface": "rgba(18, 22, 29, 0.65)",     # Translucent dark obsidian surface
+                "surface_elevated": "#11151C",           # Solid surface for dense data
+                "surface_secondary": "rgba(255, 255, 255, 0.03)", # Ultra soft secondary surface
+                "surface_hover": "rgba(255, 255, 255, 0.06)",
+                "surface_pressed": "rgba(255, 255, 255, 0.09)",
+                "card_bg": "rgba(18, 22, 29, 0.65)",
+                "card_hover": "rgba(24, 30, 40, 0.85)",
+                "card_pressed": "rgba(14, 18, 24, 0.95)",
+                "border": "rgba(255, 255, 255, 0.08)",   # Restrained hairline borders
                 "border_strong": "rgba(255, 255, 255, 0.15)",
-                "border_hover": "rgba(255, 255, 255, 0.2)",
-                "input_bg": "rgba(45, 45, 45, 0.6)",     # Slightly lighter translucent
-                "input_border": "rgba(255, 255, 255, 0.12)",
-                "input_hover": "rgba(79, 79, 79, 0.8)",
-                "text_main": "#F3F3F3",          # Readable white
-                "text_sub": "#A0A0A0",           # Soft gray
-                "text_muted": "#757575",
-                "accent": "#60CDFF",             # Standard Fluent Blue Dark
-                "accent_hover": "#54B9ED",
-                "accent_pressed": "#409CCB",
-                "track": "rgba(42, 42, 42, 0.8)",
+                "border_hover": "rgba(255, 255, 255, 0.22)",
+                "input_bg": "rgba(15, 18, 24, 0.85)",    # Dark translucent inputs
+                "input_border": "rgba(255, 255, 255, 0.10)",
+                "input_hover": "rgba(255, 255, 255, 0.18)",
+                "text_main": "#F8FAFC",                  # Crisp slate white
+                "text_sub": "#94A3B8",                   # Calm slate text
+                "text_muted": "#64748B",                 # Muted secondary
+                "accent": "#10B981",                     # NYW Brand Emerald (from canonical logo)
+                "accent_hover": "#059669",
+                "accent_pressed": "#047857",
+                "accent_amber": "#F59E0B",               # NYW Brand Amber (from canonical logo)
+                "accent_amber_hover": "#D97706",
+                "accent_amber_bg": "rgba(245, 158, 11, 0.12)",
+                "accent_emerald_bg": "rgba(16, 185, 129, 0.12)",
+                "track": "rgba(255, 255, 255, 0.06)",
                 "center_circle": "transparent",
-                "grid": "rgba(255, 255, 255, 0.05)",
+                "grid": "rgba(255, 255, 255, 0.04)",
                 
                 # Semantic
-                "success_bg": "rgba(34, 197, 94, 0.15)",
-                "success_border": "rgba(34, 197, 94, 0.3)",
-                "success_text": "#4ADE80",
+                "success_bg": "rgba(16, 185, 129, 0.12)",
+                "success_border": "rgba(16, 185, 129, 0.25)",
+                "success_text": "#10B981",
                 
-                "warning_bg": "rgba(245, 158, 11, 0.15)",
-                "warning_border": "rgba(245, 158, 11, 0.3)",
-                "warning_text": "#FBBF24",
+                "warning_bg": "rgba(245, 158, 11, 0.12)",
+                "warning_border": "rgba(245, 158, 11, 0.25)",
+                "warning_text": "#F59E0B",
                 
-                "danger_bg": "rgba(239, 68, 68, 0.15)",
-                "danger_border": "rgba(239, 68, 68, 0.3)",
+                "danger_bg": "rgba(239, 68, 68, 0.12)",
+                "danger_border": "rgba(239, 68, 68, 0.25)",
                 "danger_text": "#F87171",
                 
-                "info_bg": "rgba(56, 189, 248, 0.15)",
-                "info_border": "rgba(56, 189, 248, 0.3)",
-                "info_text": "#7DD3FC",
+                "info_bg": "rgba(56, 189, 248, 0.12)",
+                "info_border": "rgba(56, 189, 248, 0.25)",
+                "info_text": "#38BDF8",
                 
-                "indigo_bg": "rgba(99, 102, 241, 0.15)",
-                "indigo_border": "rgba(99, 102, 241, 0.3)",
+                "indigo_bg": "rgba(99, 102, 241, 0.12)",
+                "indigo_border": "rgba(99, 102, 241, 0.25)",
                 "indigo_text": "#818CF8",
                 
                 "window_gradient": "transparent",
-                "primary_btn_gradient": "rgba(255, 255, 255, 0.05)",
-                "primary_btn_hover": "rgba(255, 255, 255, 0.1)",
+                "primary_btn_gradient": "qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #10B981, stop:1 #059669)",
+                "primary_btn_hover": "qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #34D399, stop:1 #10B981)",
             }
         else:
             return {
-                "bg": "transparent",
-                "window_bg": "transparent",      # Allows Light Mica to show
-                "sidebar_bg": "rgba(249, 249, 249, 0.6)", # Translucent neutral
-                "surface": "rgba(255, 255, 255, 0.75)",   # Translucent white cards
-                "surface_elevated": "#FFFFFF",   # OPAQUE for dense data
-                "surface_secondary": "rgba(0, 0, 0, 0.04)", # Soft secondary surface
-                "surface_hover": "rgba(255, 255, 255, 0.9)",
-                "surface_pressed": "rgba(240, 240, 240, 0.9)",
-                "card_bg": "rgba(255, 255, 255, 0.75)",
-                "card_hover": "rgba(255, 255, 255, 0.9)",
-                "card_pressed": "rgba(240, 240, 240, 0.9)",
-                "border": "rgba(0, 0, 0, 0.08)", # Subtle border
-                "border_strong": "rgba(0, 0, 0, 0.15)",
-                "border_hover": "rgba(0, 0, 0, 0.2)",
-                "input_bg": "rgba(249, 249, 249, 0.8)",
-                "input_border": "rgba(0, 0, 0, 0.12)",
-                "input_hover": "rgba(230, 230, 230, 0.9)",
-                "text_main": "#1C1C1C",          # High contrast dark text
-                "text_sub": "#5E5E5E",           # Muted but readable
-                "text_muted": "#8C8C8C",
-                "accent": "#005FB8",             # Standard Fluent Blue Light
-                "accent_hover": "#0067C0",
-                "accent_pressed": "#004C87",
-                "track": "rgba(0, 0, 0, 0.06)",
+                "bg": "#F8FAFC",
+                "window_bg": "transparent",
+                "sidebar_bg": "rgba(248, 250, 252, 0.90)",
+                "surface": "rgba(255, 255, 255, 0.95)",
+                "surface_elevated": "#FFFFFF",
+                "surface_secondary": "rgba(0, 0, 0, 0.04)",
+                "surface_hover": "rgba(0, 0, 0, 0.06)",
+                "surface_pressed": "rgba(0, 0, 0, 0.09)",
+                "card_bg": "#FFFFFF",
+                "card_hover": "#F8FAFC",
+                "card_pressed": "#F1F5F9",
+                "border": "rgba(0, 0, 0, 0.09)",
+                "border_strong": "rgba(0, 0, 0, 0.16)",
+                "border_hover": "rgba(0, 0, 0, 0.25)",
+                "input_bg": "#FFFFFF",
+                "input_border": "rgba(0, 0, 0, 0.14)",
+                "input_hover": "rgba(0, 0, 0, 0.24)",
+                "text_main": "#0F172A",                  # Deep slate, maximum contrast
+                "text_sub": "#475569",                   # Rich slate, WCAG AAA compliant
+                "text_muted": "#64748B",                 # Clear secondary slate, never washed out
+                "accent": "#059669",
+                "accent_hover": "#047857",
+                "accent_pressed": "#065F46",
+                "accent_amber": "#D97706",
+                "accent_amber_hover": "#B45309",
+                "accent_amber_bg": "rgba(217, 119, 6, 0.12)",
+                "accent_emerald_bg": "rgba(5, 150, 105, 0.12)",
+                "track": "rgba(0, 0, 0, 0.07)",
                 "center_circle": "transparent",
-                "grid": "rgba(0, 0, 0, 0.04)",
+                "grid": "rgba(0, 0, 0, 0.05)",
                 
                 # Semantic
-                "success_bg": "rgba(22, 163, 74, 0.1)",
-                "success_border": "rgba(22, 163, 74, 0.25)",
-                "success_text": "#16A34A",
+                "success_bg": "rgba(5, 150, 105, 0.12)",
+                "success_border": "rgba(5, 150, 105, 0.28)",
+                "success_text": "#059669",
                 
-                "warning_bg": "rgba(217, 119, 6, 0.1)",
-                "warning_border": "rgba(217, 119, 6, 0.25)",
+                "warning_bg": "rgba(217, 119, 6, 0.12)",
+                "warning_border": "rgba(217, 119, 6, 0.28)",
                 "warning_text": "#D97706",
                 
-                "danger_bg": "rgba(220, 38, 38, 0.1)",
-                "danger_border": "rgba(220, 38, 38, 0.25)",
+                "danger_bg": "rgba(220, 38, 38, 0.12)",
+                "danger_border": "rgba(220, 38, 38, 0.28)",
                 "danger_text": "#DC2626",
                 
-                "info_bg": "rgba(2, 132, 199, 0.1)",
-                "info_border": "rgba(2, 132, 199, 0.25)",
+                "info_bg": "rgba(2, 132, 199, 0.12)",
+                "info_border": "rgba(2, 132, 199, 0.28)",
                 "info_text": "#0284C7",
                 
-                "indigo_bg": "rgba(79, 70, 229, 0.1)",
-                "indigo_border": "rgba(79, 70, 229, 0.2)",
+                "indigo_bg": "rgba(79, 70, 229, 0.12)",
+                "indigo_border": "rgba(79, 70, 229, 0.25)",
                 "indigo_text": "#4F46E5",
                 
                 "window_gradient": "transparent",
-                "primary_btn_gradient": "rgba(15, 23, 42, 0.04)",
-                "primary_btn_hover": "rgba(15, 23, 42, 0.08)",
+                "primary_btn_gradient": "qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #059669, stop:1 #047857)",
+                "primary_btn_hover": "qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #10B981, stop:1 #059669)",
             }
 
     def _apply_palette(self, app: QApplication, dark_mode: bool) -> None:
@@ -198,40 +206,40 @@ class ThemeManager(QObject):
         # By setting Window to transparent, we let the native Mica shine through
         palette.setColor(QPalette.ColorRole.Window, QColor(0, 0, 0, 0))
         if dark_mode:
-            palette.setColor(QPalette.ColorRole.WindowText, QColor("#FFFFFF"))
+            palette.setColor(QPalette.ColorRole.WindowText, QColor("#F8FAFC"))
             palette.setColor(QPalette.ColorRole.Base, QColor(0, 0, 0, 0))
-            palette.setColor(QPalette.ColorRole.AlternateBase, QColor(255, 255, 255, 10))
-            palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(30, 30, 30, 230))
-            palette.setColor(QPalette.ColorRole.ToolTipText, QColor("#FFFFFF"))
-            palette.setColor(QPalette.ColorRole.Text, QColor("#FFFFFF"))
-            palette.setColor(QPalette.ColorRole.Button, QColor(255, 255, 255, 15))
-            palette.setColor(QPalette.ColorRole.ButtonText, QColor("#FFFFFF"))
-            palette.setColor(QPalette.ColorRole.BrightText, QColor("#ffffff"))
-            palette.setColor(QPalette.ColorRole.Link, QColor("#60CDFF"))
-            palette.setColor(QPalette.ColorRole.Highlight, QColor("#60CDFF"))
-            palette.setColor(QPalette.ColorRole.HighlightedText, QColor("#000000"))
-            palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, QColor(255, 255, 255, 100))
-            palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor(255, 255, 255, 100))
+            palette.setColor(QPalette.ColorRole.AlternateBase, QColor(255, 255, 255, 8))
+            palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(17, 21, 28, 240))
+            palette.setColor(QPalette.ColorRole.ToolTipText, QColor("#F8FAFC"))
+            palette.setColor(QPalette.ColorRole.Text, QColor("#F8FAFC"))
+            palette.setColor(QPalette.ColorRole.Button, QColor(255, 255, 255, 12))
+            palette.setColor(QPalette.ColorRole.ButtonText, QColor("#F8FAFC"))
+            palette.setColor(QPalette.ColorRole.BrightText, QColor("#FFFFFF"))
+            palette.setColor(QPalette.ColorRole.Link, QColor("#10B981"))
+            palette.setColor(QPalette.ColorRole.Highlight, QColor("#10B981"))
+            palette.setColor(QPalette.ColorRole.HighlightedText, QColor("#FFFFFF"))
+            palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, QColor(255, 255, 255, 80))
+            palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor(255, 255, 255, 80))
         else:
-            palette.setColor(QPalette.ColorRole.WindowText, QColor("#1C1C1C"))
+            palette.setColor(QPalette.ColorRole.WindowText, QColor("#0F172A"))
             palette.setColor(QPalette.ColorRole.Base, QColor(255, 255, 255, 0))
-            palette.setColor(QPalette.ColorRole.AlternateBase, QColor(0, 0, 0, 10))
-            palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(255, 255, 255, 230))
-            palette.setColor(QPalette.ColorRole.ToolTipText, QColor("#1C1C1C"))
-            palette.setColor(QPalette.ColorRole.Text, QColor("#1C1C1C"))
-            palette.setColor(QPalette.ColorRole.Button, QColor(0, 0, 0, 15))
-            palette.setColor(QPalette.ColorRole.ButtonText, QColor("#1C1C1C"))
+            palette.setColor(QPalette.ColorRole.AlternateBase, QColor(0, 0, 0, 8))
+            palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(255, 255, 255, 240))
+            palette.setColor(QPalette.ColorRole.ToolTipText, QColor("#0F172A"))
+            palette.setColor(QPalette.ColorRole.Text, QColor("#0F172A"))
+            palette.setColor(QPalette.ColorRole.Button, QColor(0, 0, 0, 10))
+            palette.setColor(QPalette.ColorRole.ButtonText, QColor("#0F172A"))
             palette.setColor(QPalette.ColorRole.BrightText, QColor("#000000"))
-            palette.setColor(QPalette.ColorRole.Link, QColor("#005FB8"))
-            palette.setColor(QPalette.ColorRole.Highlight, QColor("#005FB8"))
-            palette.setColor(QPalette.ColorRole.HighlightedText, QColor("#ffffff"))
-            palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, QColor(0, 0, 0, 100))
-            palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor(0, 0, 0, 100))
+            palette.setColor(QPalette.ColorRole.Link, QColor("#059669"))
+            palette.setColor(QPalette.ColorRole.Highlight, QColor("#059669"))
+            palette.setColor(QPalette.ColorRole.HighlightedText, QColor("#FFFFFF"))
+            palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, QColor(0, 0, 0, 80))
+            palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor(0, 0, 0, 80))
         app.setPalette(palette)
 
     def _apply_global_stylesheet(self, app: QApplication, dark_mode: bool) -> None:
-        scroll_handle = "rgba(255, 255, 255, 0.15)" if dark_mode else "rgba(0, 0, 0, 0.15)"
-        scroll_hover = "rgba(255, 255, 255, 0.3)" if dark_mode else "rgba(0, 0, 0, 0.3)"
+        scroll_handle = "rgba(255, 255, 255, 0.12)" if dark_mode else "rgba(0, 0, 0, 0.12)"
+        scroll_hover = "rgba(255, 255, 255, 0.25)" if dark_mode else "rgba(0, 0, 0, 0.25)"
         
         glass_styles = f"""
         QWidget {{
@@ -247,12 +255,12 @@ class ThemeManager(QObject):
         
         /* ─── Scrollbars ───────────────────────────────────────────────────────── */
         QScrollArea {{ border: none; background: transparent; }}
-        QScrollBar:vertical {{ border: none; background: transparent; width: 8px; margin: 0px; }}
-        QScrollBar::handle:vertical {{ background: {scroll_handle}; min-height: 40px; border-radius: 4px; }}
+        QScrollBar:vertical {{ border: none; background: transparent; width: 6px; margin: 0px; }}
+        QScrollBar::handle:vertical {{ background: {scroll_handle}; min-height: 36px; border-radius: 3px; }}
         QScrollBar::handle:vertical:hover {{ background: {scroll_hover}; }}
         QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0px; }}
-        QScrollBar:horizontal {{ border: none; background: transparent; height: 8px; margin: 0px; }}
-        QScrollBar::handle:horizontal {{ background: {scroll_handle}; min-width: 40px; border-radius: 4px; }}
+        QScrollBar:horizontal {{ border: none; background: transparent; height: 6px; margin: 0px; }}
+        QScrollBar::handle:horizontal {{ background: {scroll_handle}; min-width: 36px; border-radius: 3px; }}
 
         /* ─── Shared Components ────────────────────────────────────────────────── */
         QFrame#v2_card, QFrame#stat_card {{
@@ -277,10 +285,10 @@ class ThemeManager(QObject):
         QComboBox, QSpinBox, QLineEdit {{
             background-color: {self.color('input_bg')};
             border: 1px solid {self.color('input_border')};
-            border-radius: 6px;
+            border-radius: 8px;
             padding: 8px 12px;
             color: {self.color('text_main')};
-            font-size: 14px;
+            font-size: 13px;
         }}
         QComboBox:hover, QSpinBox:hover, QLineEdit:hover, QComboBox:focus, QSpinBox:focus, QLineEdit:focus {{
             border-color: {self.color('accent')};
@@ -293,24 +301,53 @@ class ThemeManager(QObject):
             border: none;
         }}
         QComboBox::down-arrow {{
-            image: none; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid {self.color('text_sub')}; width: 0; height: 0; margin-right: 8px;
+            image: none; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid {self.color('text_sub')}; width: 0; height: 0; margin-right: 8px;
         }}
         QComboBox QAbstractItemView {{
             background-color: {self.color('surface_elevated')};
-            border: 1px solid {self.color('border')};
+            border: 1px solid {self.color('border_strong')};
             border-radius: 8px;
-            selection-background-color: rgba(99, 102, 241, 0.15);
+            selection-background-color: {self.color('accent_emerald_bg')};
             selection-color: {self.color('accent')};
             padding: 4px;
             outline: none;
+            color: {self.color('text_main')};
         }}
         QComboBox QAbstractItemView::item {{
             padding: 8px 12px;
             border-radius: 6px;
             color: {self.color('text_main')};
+            background-color: transparent;
         }}
         QComboBox QAbstractItemView::item:hover {{
-            background-color: rgba(99, 102, 241, 0.1);
+            background-color: {self.color('surface_hover')};
+            color: {self.color('text_main')};
+        }}
+        QComboBox QAbstractItemView::item:selected {{
+            background-color: {self.color('accent_emerald_bg')};
+            color: {self.color('accent')};
+        }}
+        QMenu {{
+            background-color: {self.color('surface_elevated')};
+            border: 1px solid {self.color('border_strong')};
+            border-radius: 8px;
+            padding: 4px;
+            color: {self.color('text_main')};
+        }}
+        QMenu::item {{
+            padding: 8px 20px;
+            border-radius: 6px;
+            color: {self.color('text_main')};
+            background-color: transparent;
+        }}
+        QMenu::item:hover, QMenu::item:selected {{
+            background-color: {self.color('surface_hover')};
+            color: {self.color('text_main')};
+        }}
+        QMenu::separator {{
+            height: 1px;
+            background-color: {self.color('border')};
+            margin: 4px 8px;
         }}
         QProgressBar {{
             background-color: {self.color('track')};
@@ -325,14 +362,14 @@ class ThemeManager(QObject):
         }}
         QCheckBox {{
             color: {self.color('text_main')};
-            spacing: 12px;
-            font-size: 14px;
+            spacing: 10px;
+            font-size: 13px;
             font-weight: 500;
         }}
         QCheckBox::indicator {{
-            width: 20px;
-            height: 20px;
-            border-radius: 6px;
+            width: 18px;
+            height: 18px;
+            border-radius: 5px;
             border: 1px solid {self.color('input_border')};
             background-color: {self.color('input_bg')};
         }}
