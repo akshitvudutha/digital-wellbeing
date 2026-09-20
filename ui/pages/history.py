@@ -178,8 +178,10 @@ class HistoryPage(QWidget):
     def on_data_changed(self):
         while self._inner_layout.count() > 1:
             item = self._inner_layout.takeAt(0)
-            if item.widget():
-                item.widget().hide()
-                item.widget().setParent(None)
-                item.widget().deleteLater()
+            if item is not None:
+                w = item.widget()
+                if w is not None:
+                    w.hide()
+                    w.setParent(None)
+                    w.deleteLater()
         self._build_timeline()
