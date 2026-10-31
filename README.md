@@ -15,6 +15,7 @@ Notch helps you understand and manage your screen time. It tracks active windows
 - Autostart with Windows (registry)
 - CSV reports export
 - Rotating log file
+- No analytics telemetry or external database; activity data stays on the device
 
 ## Screenshots
 *(Add screenshots of the application here once captured)*
