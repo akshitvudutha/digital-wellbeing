@@ -5,11 +5,12 @@ import ctypes.wintypes
 from pathlib import Path
 from typing import Optional
 
+from core.paths import get_data_dir
+
 
 def get_app_user_data_dir() -> Path:
-    path = Path.home() / "AppData" / "Local" / "DigitalWellbeing"
-    path.mkdir(parents=True, exist_ok=True)
-    return path
+    """Backward-compatible alias for the shared application data directory."""
+    return get_data_dir()
 
 
 def is_admin() -> bool:

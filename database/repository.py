@@ -9,14 +9,13 @@ from typing import Generator, List, Optional
 
 from core.constants import AppCategory
 from core.logger import logger
+from core.paths import get_database_path
 from database.models import AppInfo, AppSession, EventLogEntry, DailyStat, Setting, WebsiteSession
 from database.schema import ALL_DDL, DEFAULT_SETTINGS, MIGRATIONS
 
 
 def _get_db_path() -> Path:
-    app_data = Path.home() / "AppData" / "Local" / "DigitalWellbeing"
-    app_data.mkdir(parents=True, exist_ok=True)
-    return app_data / "digital_wellbeing.db"
+    return get_database_path()
 
 
 class Repository:
