@@ -5,14 +5,18 @@ test_ui_data_consistency.py — Tests for Final UI + Data Consistency Fix Pass:
 3. Usage & Trends date/range data consistency (Today matches Home, 7D, 30D).
 4. Hourly Screen Time Intensity chart & empty states.
 """
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from unittest.mock import MagicMock, patch
 import pytest
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
-from analytics.engine import AnalyticsEngine
+from analytics.engine import AnalyticsEngine, PeriodSummary
 from core.constants import AppCategory
+from database.models import AppSession
+from database.repository import Repository
 from tracker.sleepguard import SleepGuardController
+from ui.pages.app_details import AppDetailsPage
 from ui.pages.activity import ActivityPage
 from ui.widgets.charts import HourlyIntensityChart, DailyScreenTimeChart
 from ui.widgets.countdown_dialog import ShutdownCountdownDialog
@@ -39,6 +43,10 @@ def test_sleepguard_single_warning_dialog(monkeypatch):
     
     # Mock subprocess to prevent any system commands
     monkeypatch.setattr("subprocess.run", MagicMock())
+    # MainWindow starts SleepGuard on its own when no controller is supplied.
+    # This test covers dialog wiring; starting WinRT media polling is unrelated
+    # and can block in the headless Windows test environment.
+    monkeypatch.setattr(SleepGuardController, "start", lambda self: None)
     
     # Track any ctypes MessageBoxW calls
     mock_msgbox = MagicMock()
@@ -196,6 +204,96 @@ def test_usage_7d_and_30d_ranges():
     assert page._hourly_chart.isHidden()
     assert "30 DAYS" in page._chart._title_lbl.text()
     
+    page.close()
+
+
+def test_usage_page_keeps_51_second_app_and_category_entries(monkeypatch):
+    """Short but meaningful usage stays visible instead of being filtered before formatting."""
+    from ui.widgets.app_row import AppUsageRow
+
+    page = ActivityPage()
+    short_summary = PeriodSummary(
+        total_screen_time_s=51.0,
+        active_time_s=51.0,
+        idle_time_s=0.0,
+        average_daily_s=51.0,
+        longest_session_s=51.0,
+        longest_session_app="sample.exe",
+        top_apps=[
+            {
+                "process_name": "sample.exe",
+                "display_name": "Sample App",
+                "category": AppCategory.PRODUCTIVITY,
+                "total_s": 51.0,
+            }
+        ],
+        category_breakdown=[
+            {"category": AppCategory.PRODUCTIVITY, "total_s": 51.0}
+        ],
+        days_tracked=1,
+    )
+    monkeypatch.setattr(page._engine, "get_custom_summary", lambda _start, _end: short_summary)
+    monkeypatch.setattr("utils.icon_provider.AppIconProvider.get_icon", lambda _self, _name: QIcon())
+
+    page._update_lists(date.today(), date.today())
+
+    app_row = page._apps_layout.itemAt(0).widget()
+    category_card = page._category_grid.itemAt(0).widget()
+    assert isinstance(app_row, AppUsageRow)
+    assert app_row._dur_lbl.text() == "51s"
+    assert category_card._dur_lbl.text() == "51s"
+    page.close()
+
+
+def test_app_details_uses_repository_stats_and_excludes_idle_usage(monkeypatch):
+    """App Details uses the repository totals consistently instead of querying SQLite in the UI."""
+    repo = Repository()
+    today = date.today()
+    today_start = datetime.combine(today, datetime.min.time()).replace(hour=10)
+    yesterday_start = datetime.combine(today - timedelta(days=1), datetime.min.time()).replace(hour=10)
+
+    repo.insert_session(AppSession(
+        process_name="sample.exe",
+        window_title="Active today",
+        start_time=today_start,
+        end_time=today_start + timedelta(seconds=51),
+        duration_s=51.0,
+        category=AppCategory.PRODUCTIVITY,
+        is_idle=False,
+    ))
+    repo.insert_session(AppSession(
+        process_name="sample.exe",
+        window_title="Idle today",
+        start_time=today_start + timedelta(hours=1),
+        end_time=today_start + timedelta(hours=1, seconds=900),
+        duration_s=900.0,
+        category=AppCategory.PRODUCTIVITY,
+        is_idle=True,
+    ))
+    repo.insert_session(AppSession(
+        process_name="sample.exe",
+        window_title="Yesterday",
+        start_time=yesterday_start,
+        end_time=yesterday_start + timedelta(seconds=153),
+        duration_s=153.0,
+        category=AppCategory.PRODUCTIVITY,
+        is_idle=False,
+    ))
+    monkeypatch.setattr("utils.icon_provider.AppIconProvider.get_icon", lambda _self, _name: QIcon())
+
+    page = AppDetailsPage()
+    page.set_app("sample.exe")
+
+    assert page._stat_today.val_lbl.text() == AnalyticsEngine.format_duration_short(51.0)
+    assert page._stat_yesterday.val_lbl.text() == AnalyticsEngine.format_duration_short(153.0)
+    assert page._stat_sessions.val_lbl.text() == "1"
+    assert page._stat_weekly.title_lbl.text() == "Daily Average · This Week"
+    expected_week_total = 51.0 + (153.0 if today.weekday() > 0 else 0.0)
+    assert page._stat_weekly.val_lbl.text() == AnalyticsEngine.format_duration_short(
+        expected_week_total / (today.weekday() + 1)
+    )
+    today_hour = today_start.hour
+    assert page._chart._hourly_rows[today_hour]["total_s"] == 51.0
     page.close()
 
 

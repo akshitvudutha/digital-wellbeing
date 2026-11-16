@@ -85,13 +85,17 @@ def controller_factory(monkeypatch):
 
 def test_countdown_completes_on_the_tick_that_reaches_zero(qapp, monkeypatch):
     monkeypatch.setattr(idle_module, "get_idle_seconds", lambda: 60.0)
-    dialog = ShutdownCountdownDialog(countdown_seconds=1, action="shutdown")
+    now = [100.0]
+    dialog = ShutdownCountdownDialog(
+        countdown_seconds=1, action="shutdown", clock=lambda: now[0]
+    )
     accepted: list[str] = []
     cancelled: list[bool] = []
     dialog.shutdown_accepted.connect(accepted.append)
     dialog.shutdown_cancelled.connect(lambda: cancelled.append(True))
 
     dialog.start_countdown()
+    now[0] += 1
     dialog._on_tick()
 
     assert dialog._remaining_s == 0
@@ -109,10 +113,14 @@ def test_countdown_expiry_routes_to_fake_power_executor(qapp, monkeypatch, contr
     controller, _, executor = controller_factory("shutdown")
     monkeypatch.setattr(idle_module, "get_idle_seconds", lambda: 120.0)
     monkeypatch.setattr(sleepguard_module, "get_idle_seconds", lambda: 120.0)
-    dialog = ShutdownCountdownDialog(countdown_seconds=1, action="shutdown")
+    now = [100.0]
+    dialog = ShutdownCountdownDialog(
+        countdown_seconds=1, action="shutdown", clock=lambda: now[0]
+    )
     dialog.shutdown_accepted.connect(controller.execute_power_action)
 
     dialog.start_countdown()
+    now[0] += 1
     dialog._on_tick()
 
     assert executor.actions == ["shutdown"]

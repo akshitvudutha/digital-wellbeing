@@ -401,10 +401,17 @@ class TestSleepGuardRegression:
             assert ctrl.current_state == SleepGuardState.WARNING
             assert ctrl._warning_active.is_set()
 
-            dlg = ShutdownCountdownDialog(countdown_seconds=60, action="shutdown", is_test=False)
+            now = [100.0]
+            dlg = ShutdownCountdownDialog(
+                countdown_seconds=60,
+                action="shutdown",
+                is_test=False,
+                clock=lambda: now[0],
+            )
             dlg.start_countdown()
             assert dlg._remaining_s == 60
 
+            now[0] += 1
             dlg._on_tick()
             assert dlg._remaining_s == 59
             dlg.close()
@@ -443,7 +450,13 @@ class TestSleepGuardRegression:
         test_completed_mock = MagicMock()
         power_mock = MagicMock()
 
-        dialog = ShutdownCountdownDialog(countdown_seconds=60, action="shutdown", is_test=True)
+        now = [100.0]
+        dialog = ShutdownCountdownDialog(
+            countdown_seconds=60,
+            action="shutdown",
+            is_test=True,
+            clock=lambda: now[0],
+        )
         dialog.test_completed.connect(test_completed_mock)
         dialog.shutdown_accepted.connect(power_mock)
 
@@ -452,7 +465,7 @@ class TestSleepGuardRegression:
         assert dialog._is_test is True
 
         # Advance countdown to 0
-        dialog._remaining_s = 1
+        now[0] += 60
         dialog._on_tick()
         assert dialog._remaining_s == 0
         test_completed_mock.assert_called_once()

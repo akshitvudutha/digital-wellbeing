@@ -5,14 +5,17 @@ Purely derived from real tracked SQLite data. No fake scores or psychological cl
 from __future__ import annotations
 
 from datetime import date, timedelta
+from typing import Optional
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QScrollArea, QFrame, QSizePolicy, QGridLayout
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QScrollArea, QFrame, QSizePolicy, QGridLayout, QPushButton, QStackedWidget
 )
 from analytics.engine import AnalyticsEngine
+from database.repository import Repository
 from ui.theme import ThemeManager
 from ui.icons import get_icon
 from tracker.categorizer import display_name as get_friendly_name
+from ui.widgets.weekly_report_widget import WeeklyReportWidget
 
 
 class InsightHighlightCard(QFrame):
@@ -50,9 +53,9 @@ class InsightHighlightCard(QFrame):
 class InsightsPage(QWidget):
     """Synthesized analytics and behavioral insights page."""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, repo: Optional[Repository] = None):
         super().__init__(parent)
-        self._engine = AnalyticsEngine()
+        self._engine = AnalyticsEngine(repo=repo)
         self._setup_ui()
         
         ThemeManager.instance().theme_changed.connect(self._apply_theme)
@@ -69,7 +72,7 @@ class InsightsPage(QWidget):
         inner = QWidget()
         self._inner_layout = QVBoxLayout(inner)
         self._inner_layout.setContentsMargins(36, 28, 36, 32)
-        self._inner_layout.setSpacing(24)
+        self._inner_layout.setSpacing(20)
         scroll.setWidget(inner)
         layout.addWidget(scroll, 1)
 
@@ -83,6 +86,37 @@ class InsightsPage(QWidget):
         title_box.addWidget(title)
         title_box.addWidget(subtitle)
         self._inner_layout.addLayout(title_box)
+
+        # Top Sub-tab Navigation Pills
+        tab_row = QHBoxLayout()
+        tab_row.setSpacing(8)
+
+        self._btn_subtab_daily = QPushButton("Daily Insights")
+        self._btn_subtab_daily.setObjectName("subtab_active")
+        self._btn_subtab_daily.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_subtab_daily.setFocusPolicy(Qt.FocusPolicy.TabFocus)
+        self._btn_subtab_daily.clicked.connect(lambda: self._switch_subtab(0))
+
+        self._btn_subtab_weekly = QPushButton("Weekly Wellbeing Report")
+        self._btn_subtab_weekly.setObjectName("subtab_inactive")
+        self._btn_subtab_weekly.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_subtab_weekly.setFocusPolicy(Qt.FocusPolicy.TabFocus)
+        self._btn_subtab_weekly.clicked.connect(lambda: self._switch_subtab(1))
+
+        tab_row.addWidget(self._btn_subtab_daily)
+        tab_row.addWidget(self._btn_subtab_weekly)
+        tab_row.addStretch()
+        self._inner_layout.addLayout(tab_row)
+
+        # Stack for Sub-tabs
+        self._stack = QStackedWidget()
+        self._stack.setObjectName("insights_stack")
+
+        # ── TAB 0: Daily Insights View ───────────────────────────────────────
+        daily_widget = QWidget()
+        daily_layout = QVBoxLayout(daily_widget)
+        daily_layout.setContentsMargins(0, 4, 0, 0)
+        daily_layout.setSpacing(20)
 
         # 1. YOUR DIGITAL DAY Hero Card
         self._hero_card = QFrame()
@@ -108,12 +142,12 @@ class InsightsPage(QWidget):
         self._hero_narrative.setWordWrap(True)
         hero_layout.addWidget(self._hero_narrative)
 
-        self._inner_layout.addWidget(self._hero_card)
+        daily_layout.addWidget(self._hero_card)
 
         # 2. Key Metrics Row
         lbl_kpis = QLabel("CORE HIGHLIGHTS")
         lbl_kpis.setObjectName("section_header")
-        self._inner_layout.addWidget(lbl_kpis)
+        daily_layout.addWidget(lbl_kpis)
 
         self._metrics_row = QHBoxLayout()
         self._metrics_row.setSpacing(14)
@@ -126,21 +160,21 @@ class InsightsPage(QWidget):
         self._metrics_row.addWidget(self._card_active_time)
         self._metrics_row.addWidget(self._card_top_cat)
         self._metrics_row.addWidget(self._card_top_app)
-        self._inner_layout.addLayout(self._metrics_row)
+        daily_layout.addLayout(self._metrics_row)
 
         # 3. Category Distribution Donut
         lbl_dist = QLabel("CATEGORY DISTRIBUTION")
         lbl_dist.setObjectName("section_header")
-        self._inner_layout.addWidget(lbl_dist)
+        daily_layout.addWidget(lbl_dist)
 
         self._breakdown_container = QVBoxLayout()
         self._breakdown_container.setSpacing(12)
-        self._inner_layout.addLayout(self._breakdown_container)
+        daily_layout.addLayout(self._breakdown_container)
 
         # 4. Long-Term Habits & Trend Analysis
         lbl_trends = QLabel("HABIT PATTERNS & TRENDS")
         lbl_trends.setObjectName("section_header")
-        self._inner_layout.addWidget(lbl_trends)
+        daily_layout.addWidget(lbl_trends)
 
         self._patterns_grid = QGridLayout()
         self._patterns_grid.setSpacing(14)
@@ -153,11 +187,28 @@ class InsightsPage(QWidget):
         self._patterns_grid.addWidget(self._card_longest_session, 0, 1)
         self._patterns_grid.addWidget(self._card_avg_daily, 1, 0)
         self._patterns_grid.addWidget(self._card_streak, 1, 1)
-        self._inner_layout.addLayout(self._patterns_grid)
+        daily_layout.addLayout(self._patterns_grid)
 
-        self._inner_layout.addStretch()
+        daily_layout.addStretch()
+        self._stack.addWidget(daily_widget)
+
+        # ── TAB 1: Weekly Wellbeing Report View ──────────────────────────────
+        self._weekly_report = WeeklyReportWidget(repo=self._engine._repo)
+        self._stack.addWidget(self._weekly_report)
+
+        self._inner_layout.addWidget(self._stack, 1)
 
         self._refresh()
+
+    def _switch_subtab(self, idx: int) -> None:
+        self._stack.setCurrentIndex(idx)
+        self._btn_subtab_daily.setObjectName("subtab_active" if idx == 0 else "subtab_inactive")
+        self._btn_subtab_weekly.setObjectName("subtab_active" if idx == 1 else "subtab_inactive")
+        self._apply_theme(ThemeManager.instance().is_dark)
+        if idx == 0:
+            self._refresh()
+        else:
+            self._weekly_report.refresh()
 
     def _clear_layout(self, layout):
         while layout.count():
@@ -343,8 +394,38 @@ class InsightsPage(QWidget):
                 font-weight: 500;
                 color: {tm.color('text_sub')};
             }}
+            QPushButton#subtab_active {{
+                background-color: {tm.color('surface_elevated')};
+                border: 1px solid {tm.color('accent')};
+                border-radius: 8px;
+                color: {tm.color('text_main')};
+                font-weight: 700;
+                font-size: 13px;
+                padding: 6px 16px;
+            }}
+            QPushButton#subtab_active:focus {{
+                border: 2px solid {tm.color('focus_ring')};
+            }}
+            QPushButton#subtab_inactive {{
+                background-color: transparent;
+                border: 1px solid {tm.color('border')};
+                border-radius: 8px;
+                color: {tm.color('text_sub')};
+                font-weight: 600;
+                font-size: 13px;
+                padding: 6px 16px;
+            }}
+            QPushButton#subtab_inactive:hover {{
+                background-color: {tm.color('surface_hover')};
+                color: {tm.color('text_main')};
+            }}
+            QPushButton#subtab_inactive:focus {{
+                border: 2px solid {tm.color('focus_ring')};
+            }}
         """)
         self._refresh()
 
     def on_data_changed(self) -> None:
         self._refresh()
+        if hasattr(self, "_weekly_report"):
+            self._weekly_report.refresh()

@@ -18,7 +18,7 @@ from utils.win_utils import set_dpi_awareness
 
 
 class DigitalWellbeingApp:
-    def __init__(self, start_minimized: bool = False) -> None:
+    def __init__(self, start_minimized: bool = False, server_name: Optional[str] = None) -> None:
         set_dpi_awareness()
 
         self._app = QApplication.instance() or QApplication(sys.argv)
@@ -41,7 +41,7 @@ class DigitalWellbeingApp:
 
         # 1. Enforce single-instance execution via QLocalServer
         from PySide6.QtNetwork import QLocalServer, QLocalSocket, QAbstractSocket
-        self._server_name = "DigitalWellbeingUniqueLocalServerKey"
+        self._server_name = server_name or "DigitalWellbeingUniqueLocalServerKey"
         self._already_running = False
 
         import os
@@ -55,15 +55,21 @@ class DigitalWellbeingApp:
             logger.info(f"[SINGLE_INSTANCE] Attempting to connect to existing server '{self._server_name}'...")
             socket.connectToServer(self._server_name)
             
-            connected = socket.waitForConnected(200)
+            connected = socket.waitForConnected(500)
             if connected:
                 logger.info(f"[SINGLE_INSTANCE] Successfully connected to existing server. Socket state: {socket.state()}")
                 # An instance is already active. Notify and exit.
                 socket.write(b"show_window")
-                if socket.waitForBytesWritten(500):
-                    logger.info("[SINGLE_INSTANCE] Successfully wrote 'show_window' request to existing instance.")
+                socket.flush()
+                if socket.bytesToWrite() > 0:
+                    socket.waitForBytesWritten(1000)
+                if socket.bytesToWrite() == 0:
+                    logger.info("[SINGLE_INSTANCE] Successfully transmitted 'show_window' request to existing instance.")
                 else:
                     logger.warning("[SINGLE_INSTANCE] Failed to write to existing instance.")
+                socket.disconnectFromServer()
+                if socket.state() != QLocalSocket.LocalSocketState.UnconnectedState:
+                    socket.waitForDisconnected(500)
                 socket.close()
                 self._already_running = True
                 logger.info("Another active instance was detected. Sent show_window request and exiting.")
@@ -111,6 +117,14 @@ class DigitalWellbeingApp:
         from protection.core import ProtectionManager
         self._protection_manager = ProtectionManager(Repository())
         self._tracker.add_active_tick_callback(self._protection_manager.tick)
+
+        from protection.focus_scheduler import FocusScheduler
+        self._focus_scheduler = FocusScheduler.instance(Repository())
+        self._focus_scheduler.start()
+
+        from protection.budgets import BudgetManager
+        self._budget_manager = BudgetManager.instance(Repository(), protection_mgr=self._protection_manager)
+        self._budget_manager.start()
 
         self._window = MainWindow(self._tracker, self._sleepguard, self._protection_manager)
         # Connect the window's quit request signal to our controlled shutdown method.
@@ -285,25 +299,29 @@ class DigitalWellbeingApp:
             def take_screenshots():
                 import time
                 if self._window:
-                    base_path = r"C:\Users\akshi\.gemini\antigravity-ide\brain\2a916beb-1ca0-41a9-80f8-940c213c0137\scratch"
+                    base_path = os.environ.get("DW_SCREENSHOT_DIR")
+                    if not base_path:
+                        base_path = str(Path(__file__).resolve().parents[2] / "scratch")
+                    import os as _os
+                    _os.makedirs(base_path, exist_ok=True)
                     
                     # Dashboard
                     self._window._navigate(0)
                     self._app.processEvents()
                     time.sleep(0.2)
-                    self._window.grab().save(f"{base_path}\\real_home.png")
+                    self._window.grab().save(str(Path(base_path) / "real_home.png"))
                     
                     # Activity
                     self._window._navigate(1)
                     self._app.processEvents()
                     time.sleep(0.2)
-                    self._window.grab().save(f"{base_path}\\real_activity.png")
+                    self._window.grab().save(str(Path(base_path) / "real_activity.png"))
                     
                     # Settings
-                    self._window._navigate(4)
+                    self._window._navigate(8)
                     self._app.processEvents()
                     time.sleep(0.2)
-                    self._window.grab().save(f"{base_path}\\real_settings.png")
+                    self._window.grab().save(str(Path(base_path) / "real_settings.png"))
                     
                 self._app.quit()
             QTimer.singleShot(2000, take_screenshots)
@@ -318,9 +336,10 @@ class DigitalWellbeingApp:
     def _on_new_connection(self) -> None:
         conn = self._server.nextPendingConnection()
         if conn:
-            if conn.waitForReadyRead(500):
-                msg = conn.readAll().data().decode("utf-8")
-                if msg == "show_window":
+            if conn.bytesAvailable() > 0 or conn.waitForReadyRead(1000):
+                msg = conn.readAll().data().decode("utf-8", errors="ignore")
+                logger.info("[SINGLE_INSTANCE] Server received IPC message: '%s'", msg)
+                if "show_window" in msg:
                     self._show_window()
             conn.close()
 
@@ -363,17 +382,26 @@ class DigitalWellbeingApp:
         return QIcon()
 
     def _on_tray_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
-        if reason == QSystemTrayIcon.ActivationReason.DoubleClick:
+        if reason in (
+            QSystemTrayIcon.ActivationReason.Trigger,
+            QSystemTrayIcon.ActivationReason.DoubleClick,
+        ):
             self._show_window()
 
     def _show_window(self) -> None:
         if self._window:
             self._window.show()
+            self._window.showNormal()
             self._window.raise_()
             self._window.activateWindow()
-            self._window.setWindowState(
-                self._window.windowState() & ~Qt.WindowState.WindowMinimized | Qt.WindowState.WindowActive
-            )
+            hwnd = int(self._window.winId()) if self._window else 0
+            logger.info("[SINGLE_INSTANCE] Restored main window (winId=%d, isVisible=%s)", hwnd, self._window.isVisible())
+            try:
+                if hwnd:
+                    import ctypes
+                    ctypes.windll.user32.SetForegroundWindow(hwnd)
+            except Exception as exc:
+                logger.debug("Win32 SetForegroundWindow skipped: %s", exc)
 
     def _toggle_tracking(self) -> None:
         if self._tracker.is_running:
@@ -452,6 +480,14 @@ class DigitalWellbeingApp:
             logger.info("[LIFECYCLE] Stopping _sleepguard")
             self._sleepguard.stop()
 
+        if hasattr(self, "_focus_scheduler") and self._focus_scheduler:
+            logger.info("[LIFECYCLE] Stopping _focus_scheduler")
+            self._focus_scheduler.stop()
+
+        if hasattr(self, "_budget_manager") and self._budget_manager:
+            logger.info("[LIFECYCLE] Stopping _budget_manager")
+            self._budget_manager.stop()
+
         # 2b. Close repository connections for this (main) thread. Background threads
         # are responsible for closing their own thread-local connections on exit.
         try:
@@ -465,7 +501,7 @@ class DigitalWellbeingApp:
         if hasattr(self, "_server") and self._server:
             logger.info("[LIFECYCLE] Closing QLocalServer")
             self._server.close()
-            QLocalServer = type(self._server)
+            from PySide6.QtNetwork import QLocalServer
             QLocalServer.removeServer(self._server_name)
 
         # 4. Hide and destroy the tray icon immediately so it vanishes from the taskbar.

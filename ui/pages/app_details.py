@@ -5,7 +5,6 @@ app_details.py — Detailed Application View for Digital Wellbeing.
 from __future__ import annotations
 
 from typing import Callable, Optional
-from PySide6.QtCore import Qt, Signal
 from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QPushButton, QScrollArea,
@@ -13,6 +12,8 @@ from PySide6.QtWidgets import (
 )
 
 from analytics.engine import AnalyticsEngine
+from core.logger import logger
+from database.repository import Repository
 from ui.widgets.charts import HourlyIntensityChart
 from tracker.categorizer import display_name as get_display_name
 from utils.icon_provider import AppIconProvider
@@ -111,6 +112,7 @@ class AppDetailsPage(QWidget):
     def __init__(self, on_back: Optional[Callable[[], None]] = None, protection_manager=None, parent=None) -> None:
         super().__init__(parent)
         self._engine = AnalyticsEngine()
+        self._repo = Repository()
         self._protection_manager = protection_manager
         self._current_app: str = ""
         self._setup_ui()
@@ -155,6 +157,7 @@ class AppDetailsPage(QWidget):
         self.setStyleSheet(f"""
             QLabel#app_title {{ font-size: 32px; font-weight: 800; color: {tm.color('text_main')}; }}
             QLabel#app_cat {{ font-size: 15px; font-weight: 600; color: {tm.color('text_sub')}; }}
+            QLabel#app_override_status {{ color: {tm.color('warning_text')}; font-weight: 600; font-size: 13px; margin-top: 8px; }}
         """)
         
     def _setup_ui(self) -> None:
@@ -217,7 +220,7 @@ class AppDetailsPage(QWidget):
         
         self._stat_today = StatBox("Today's Usage", "0m")
         self._stat_yesterday = StatBox("Yesterday", "0m")
-        self._stat_weekly = StatBox("Weekly Average", "0m")
+        self._stat_weekly = StatBox("Daily Average · This Week", "0s")
         self._stat_sessions = StatBox("Session Count", "0")
         
         self._stats_grid.addWidget(self._stat_today, 0, 0)
@@ -242,18 +245,13 @@ class AppDetailsPage(QWidget):
             
             # Override Status
             self._override_lbl = QLabel("")
-            self._override_lbl.setStyleSheet("color: #EAB308; font-weight: 600; font-size: 13px; margin-top: 8px;")
+            self._override_lbl.setObjectName("app_override_status")
             self._inner_layout.addWidget(self._override_lbl)
             
             # Restriction Type Segmented Control
             self._restriction_type_combo = QComboBox()
             self._restriction_type_combo.addItems(["Entire Application", "Specific Websites"])
             self._restriction_type_combo.setFixedWidth(200)
-            self._restriction_type_combo.setStyleSheet("""
-                QComboBox {
-                    padding: 8px; border-radius: 6px; border: 1px solid #444; background: #222; color: white;
-                }
-            """)
             self._inner_layout.addWidget(QLabel("Restriction Mode:"))
             self._inner_layout.addWidget(self._restriction_type_combo)
             
@@ -315,61 +313,32 @@ class AppDetailsPage(QWidget):
         # Update Labels
         self._title_lbl.setText(get_display_name(process_name))
         
-        # Get Stats
-        import sqlite3
-        import os
-        from database.repository import _get_db_path
-        
-        db_path = str(_get_db_path())
-        today_s = 0.0
-        yesterday_s = 0.0
-        sessions = 0
-        
-        from datetime import date, timedelta
-        today_date = date.today().isoformat()
-        yesterday_date = (date.today() - timedelta(days=1)).isoformat()
-        
+        # Get statistics through the repository so UI code never opens the database directly.
         try:
-            with sqlite3.connect(db_path) as conn:
-                # Today
-                cur = conn.cursor()
-                cur.execute("SELECT SUM(duration_s) FROM app_sessions WHERE process_name=? AND date(start_time)=?", (process_name, today_date))
-                res = cur.fetchone()
-                today_s = res[0] or 0.0
-                
-                # Sessions today
-                cur.execute("SELECT COUNT(*) FROM app_sessions WHERE process_name=? AND date(start_time)=?", (process_name, today_date))
-                res = cur.fetchone()
-                sessions = res[0] or 0
-                
-                # Yesterday
-                cur.execute("SELECT SUM(duration_s) FROM app_sessions WHERE process_name=? AND date(start_time)=?", (process_name, yesterday_date))
-                res = cur.fetchone()
-                yesterday_s = res[0] or 0.0
-                
-                # Hourly today for chart
-                cur.execute("""
-                    SELECT strftime('%H', start_time) as hr, SUM(duration_s)
-                    FROM app_sessions
-                    WHERE process_name=? AND date(start_time)=?
-                    GROUP BY hr
-                """, (process_name, today_date))
-                
-                hourly_data = {str(i).zfill(2): 0.0 for i in range(24)}
-                for row in cur.fetchall():
-                    hourly_data[row[0]] = row[1]
-                    
-                hourly_rows = [{"hour": int(h), "total_s": s} for h, s in hourly_data.items()]
-                self._chart.update_data(hourly_rows)
-                
-        except Exception as e:
-            pass
+            stats = self._repo.get_app_detail_stats(process_name)
+        except Exception:
+            logger.exception("Could not load app detail statistics for %s", process_name)
+            stats = {
+                "today_s": 0.0,
+                "yesterday_s": 0.0,
+                "today_opens": 0,
+                "weekly_average_s": 0.0,
+                "hourly_chart_data": [
+                    {"hour": hour, "total_s": 0.0} for hour in range(24)
+                ],
+            }
+
+        today_s = float(stats.get("today_s", 0.0))
+        yesterday_s = float(stats.get("yesterday_s", 0.0))
+        sessions = int(stats.get("today_opens", 0))
+        self._chart.update_data(stats["hourly_chart_data"])
             
         self._stat_today.set_value(AnalyticsEngine.format_duration_short(today_s))
         self._stat_yesterday.set_value(AnalyticsEngine.format_duration_short(yesterday_s))
         self._stat_sessions.set_value(str(sessions))
-        # Weekly Average is a placeholder for now, just mock based on today/yesterday
-        self._stat_weekly.set_value(AnalyticsEngine.format_duration_short((today_s + yesterday_s) / 2.0))
+        self._stat_weekly.set_value(
+            AnalyticsEngine.format_duration_short(float(stats.get("weekly_average_s", 0.0)))
+        )
 
         if self._protection_manager:
             current_rule = self._protection_manager.limits.get_limit_rule(process_name)

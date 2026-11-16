@@ -255,7 +255,7 @@ class ProcessPickerDialog(QDialog):
                 font-size: 13px;
             }}
             QLineEdit#picker_search:focus {{
-                border-color: {tm.color('accent')};
+                border: 2px solid {tm.color('focus_ring')};
                 background-color: {tm.color('surface_elevated')};
             }}
             QListView#picker_list {{
@@ -265,7 +265,6 @@ class ProcessPickerDialog(QDialog):
                 color: {tm.color('text_main')};
                 font-size: 13px;
                 padding: 4px;
-                outline: none;
             }}
             QListView#picker_list::item {{
                 padding: 8px 12px;

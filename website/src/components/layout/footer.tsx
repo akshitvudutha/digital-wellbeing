@@ -35,7 +35,7 @@ export function Footer() {
 
             <div className="inline-flex items-center gap-2 pt-2 text-xs font-mono text-slate-600 dark:text-foreground/65">
               <ShieldCheck className="w-4 h-4 text-nyw-emerald" />
-              <span>100% Local-First · Zero Cloud Sync · No Telemetry</span>
+              <span>Local Activity Storage · No Cloud Sync · Limited Version Heartbeat</span>
             </div>
           </div>
 

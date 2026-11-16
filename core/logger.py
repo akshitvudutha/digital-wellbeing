@@ -12,6 +12,15 @@ def get_log_path() -> Path:
     return app_data / "digital_wellbeing.log"
 
 
+class SafeRotatingFileHandler(RotatingFileHandler):
+    """Windows-resilient RotatingFileHandler that avoids crashing if log rotation is temporarily locked."""
+    def doRollover(self) -> None:
+        try:
+            super().doRollover()
+        except (PermissionError, OSError):
+            pass
+
+
 def setup_logger(name: str = "digital_wellbeing", level: int = logging.DEBUG) -> logging.Logger:
     logger = logging.getLogger(name)
     if logger.handlers:
@@ -23,16 +32,19 @@ def setup_logger(name: str = "digital_wellbeing", level: int = logging.DEBUG) ->
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    file_handler = RotatingFileHandler(
-        get_log_path(),
-        maxBytes=5 * 1024 * 1024,
-        backupCount=3,
-        encoding="utf-8",
-    )
-    file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(formatter)
+    try:
+        file_handler = SafeRotatingFileHandler(
+            get_log_path(),
+            maxBytes=5 * 1024 * 1024,
+            backupCount=3,
+            encoding="utf-8",
+        )
+        file_handler.setLevel(logging.DEBUG)
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+    except Exception:
+        pass
 
-    logger.addHandler(file_handler)
     if not getattr(sys, "frozen", False):
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(logging.INFO)

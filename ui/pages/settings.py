@@ -264,6 +264,33 @@ class SettingsPage(QWidget):
         sg_layout.addWidget(sg_c_row)
         
         sg_layout.addSpacing(6)
+        sg_layout.addWidget(self._create_section_title("WARNING SOUNDS & AUDIO ALERTS"))
+
+        self._sg_sound_enable_check, r_sound = self._create_toggle_row(
+            "Warning Countdown Audio Alert",
+            "Play an audible acoustic chime when SleepGuard displays the power action countdown"
+        )
+        sg_layout.addWidget(r_sound)
+
+        self._sg_sound_remind_check, r_remind = self._create_toggle_row(
+            "Countdown Audio Reminders",
+            "Play additional reminder chimes at 30s and 10s remaining before action execution"
+        )
+        sg_layout.addWidget(r_remind)
+
+        sg_chime_row, self._sg_chime_combo = self._create_combo_row(
+            "Warning Sound Chime",
+            "System sound used for SleepGuard countdown alerts",
+            [
+                ("System Exclamation (Default Warning)", "SystemExclamation"),
+                ("System Hand (Critical Chime)", "SystemHand"),
+                ("System Asterisk (Gentle Chime)", "SystemAsterisk"),
+                ("System Question (Prompt Chime)", "SystemQuestion"),
+            ]
+        )
+        sg_layout.addWidget(sg_chime_row)
+
+        sg_layout.addSpacing(6)
         sg_layout.addWidget(self._create_section_title("MEDIA PLAYBACK AWARENESS"))
         
         sg_m_row, self._sg_mode_combo = self._create_combo_row(
@@ -500,13 +527,13 @@ class SettingsPage(QWidget):
         priv_l.setContentsMargins(20, 18, 20, 18)
         priv_l.setSpacing(10)
         
-        priv_title = QLabel("🛡️ Local-First Data Storage & Zero Telemetry")
+        priv_title = QLabel("🛡️ Local Activity Storage & Network Behavior")
         priv_title.setObjectName("privacy_guarantee_title")
         priv_desc = QLabel(
-            "Notch is engineered strictly as an offline, local-first Windows application.\n\n"
-            "• All screen time, application activity, and focus metrics are stored exclusively on your device in a local SQLite database.\n"
-            "• Zero network telemetry, zero behavioral profiling, zero third-party SDKs, and zero cloud synchronization.\n"
-            "• You maintain total data sovereignty: export your history to CSV or backup your database at any time."
+            "Screen-time history, focus sessions, and study plans are stored in a local SQLite database in your Windows profile.\n\n"
+            "• Notch does not sync activity history to a cloud service, and the SQLite file is not encrypted by Notch.\n"
+            "• The app sends a heartbeat with a random install ID and app version; it does not include your activity records.\n"
+            "• Automatic update checks may contact GitHub when enabled. Export your history or back up the database from this device."
         )
         priv_desc.setWordWrap(True)
         priv_desc.setObjectName("setting_desc")
@@ -736,7 +763,10 @@ class SettingsPage(QWidget):
                 background: transparent;
                 border: none;
                 padding: 0px;
-                outline: none;
+            }}
+            QListWidget#settings_sidebar:focus {{
+                border: 2px solid {tm.color('focus_ring')};
+                border-radius: 8px;
             }}
             QListWidget#settings_sidebar::item {{
                 background: transparent;
@@ -773,7 +803,7 @@ class SettingsPage(QWidget):
                 background-color: {tm.color('surface_elevated')};
             }}
             QLineEdit#settings_line_edit:focus {{
-                border: 1.5px solid {tm.color('accent')};
+                border: 2px solid {tm.color('focus_ring')};
                 background-color: {tm.color('surface_elevated')};
             }}
             QComboBox::drop-down, QSpinBox::up-button, QSpinBox::down-button {{
@@ -787,7 +817,6 @@ class SettingsPage(QWidget):
                 selection-color: {tm.color('accent')};
                 border-radius: 8px;
                 padding: 4px;
-                outline: none;
                 color: {tm.color('text_main')};
             }}
             QComboBox QAbstractItemView::item {{
@@ -880,6 +909,13 @@ class SettingsPage(QWidget):
         idx2 = self._sg_media_timeout_combo.findData(media_timeout)
         if idx2 >= 0:
             self._sg_media_timeout_combo.setCurrentIndex(idx2)
+
+        self._sg_sound_enable_check.setChecked(self._sm.sleepguard_sound_enabled)
+        self._sg_sound_remind_check.setChecked(self._sm.sleepguard_sound_reminders)
+        curr_chime = self._sm.sleepguard_sound_chime
+        idx_chime = self._sg_chime_combo.findData(curr_chime)
+        if idx_chime >= 0:
+            self._sg_chime_combo.setCurrentIndex(idx_chime)
             
         retention = self._sm.get_int("history_retention_days", 30)
         idx3 = self._retention_combo.findData(retention)
@@ -942,6 +978,10 @@ class SettingsPage(QWidget):
                 try:
                     repo = Repository()
                     repo.restore_database(Path(file_path))
+                    self._load_values()
+                    if self._tracker:
+                        self._tracker.reload_settings()
+                    self.settings_changed.emit()
                     self._data_status_lbl.setText(f"✓ Database restored successfully from: {Path(file_path).name}")
                     self._data_status_lbl.setStyleSheet("color: #10B981; font-weight: 600; font-size: 12px;")
                 except Exception as exc:
@@ -990,6 +1030,12 @@ class SettingsPage(QWidget):
         media_timeout_val = self._sg_media_timeout_combo.currentData()
         if media_timeout_val is not None:
             self._sm.media_idle_timeout_minutes = media_timeout_val
+
+        self._sm.sleepguard_sound_enabled = self._sg_sound_enable_check.isChecked()
+        self._sm.sleepguard_sound_reminders = self._sg_sound_remind_check.isChecked()
+        chime_val = self._sg_chime_combo.currentData()
+        if chime_val:
+            self._sm.sleepguard_sound_chime = chime_val
             
         self._sm.auto_update_enabled = self._auto_update_check.isChecked()
         self._sm.notify_updates = self._notify_update_check.isChecked()

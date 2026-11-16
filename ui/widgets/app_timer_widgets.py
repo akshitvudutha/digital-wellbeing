@@ -1,5 +1,5 @@
 from PySide6.QtCore import Qt, Signal, Property, QPropertyAnimation, QEasingCurve, QRectF, QPointF, QTimer
-from PySide6.QtGui import QPainter, QColor, QFont, QPen, QBrush, QMouseEvent, QWheelEvent
+from PySide6.QtGui import QPainter, QColor, QFont, QPen, QBrush, QKeyEvent, QMouseEvent, QWheelEvent
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, 
     QDialog, QFrame, QScrollArea, QGraphicsOpacityEffect, QSpinBox
@@ -15,7 +15,8 @@ class WheelPicker(QWidget):
     def __init__(self, items: list[str], parent=None):
         super().__init__(parent)
         self.setFixedSize(80, 160)
-        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setFocusPolicy(Qt.FocusPolicy.TabFocus)
+        self.setProperty("mouse_focus_clears", True)
         self._items = items
         self._current_index = 0
         self._scroll_offset = 0.0  # in pixels
@@ -94,6 +95,28 @@ class WheelPicker(QWidget):
             self._is_dragging = False
             self._snap_to_index()
 
+    def keyPressEvent(self, event: QKeyEvent):
+        key = event.key()
+        if key in (Qt.Key.Key_Up, Qt.Key.Key_Down, Qt.Key.Key_Home, Qt.Key.Key_End):
+            if key == Qt.Key.Key_Home:
+                target = 0
+            elif key == Qt.Key.Key_End:
+                target = len(self._items) - 1
+            else:
+                step = -1 if key == Qt.Key.Key_Up else 1
+                target = max(0, min(len(self._items) - 1, self._current_index + step))
+
+            start_offset = self._scroll_offset
+            self._current_index = target
+            self.value_changed.emit(target)
+            self._anim.stop()
+            self._anim.setStartValue(start_offset)
+            self._anim.setEndValue(target * self._item_height)
+            self._anim.start()
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -131,6 +154,12 @@ class WheelPicker(QWidget):
             rect = QRectF(-w/2, -self._item_height/2, w, self._item_height)
             painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, item)
             painter.restore()
+
+        if self.hasFocus():
+            pen = QPen(QColor(tm.color("focus_ring")), 2)
+            painter.setPen(pen)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawRoundedRect(QRectF(2, 2, w - 4, h - 4), 8, 8)
 
 
 class CircularChip(QPushButton):

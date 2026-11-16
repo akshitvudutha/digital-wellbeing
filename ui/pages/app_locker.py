@@ -200,22 +200,41 @@ class AppLockerPage(QWidget):
 
         card.layout().addLayout(row)
 
-        # Windows Hello availability badge
-        from protection.windows_hello import WindowsHelloAuth, HelloAvailability
-        avail = WindowsHelloAuth().check_availability()
-        if avail == HelloAvailability.AVAILABLE:
-            badge = QLabel("✓  Windows Hello biometric authentication active on this device")
-            badge.setObjectName("locker_hello_badge_ok")
-        elif avail == HelloAvailability.NOT_CONFIGURED:
-            badge = QLabel("⚠  Windows Hello not configured — Notch PIN fallback will be used")
-            badge.setObjectName("locker_hello_badge_warn")
-        else:
-            badge = QLabel("ℹ  Windows Hello unavailable — Notch PIN will be used for authentication")
-            badge.setObjectName("locker_hello_badge_info")
-        badge.setWordWrap(True)
-        card.layout().addWidget(badge)
+        # WinRT availability can block while initializing asyncio on Windows.
+        # Keep it off the UI thread so the window can paint and navigate first.
+        from protection.windows_hello import WindowsHelloAuth
+        self._hello_auth = WindowsHelloAuth()
+        self._hello_auth.availability_ready.connect(self._on_hello_availability_ready)
+        self._hello_badge_lbl = QLabel("Checking Windows Hello availability…")
+        self._hello_badge_lbl.setObjectName("locker_hello_badge_pending")
+        self._hello_badge_lbl.setWordWrap(True)
+        card.layout().addWidget(self._hello_badge_lbl)
+        QTimer.singleShot(0, self._hello_auth.request_availability)
 
         return card
+
+    def _on_hello_availability_ready(self, availability_value: int) -> None:
+        from protection.windows_hello import HelloAvailability
+
+        try:
+            availability = HelloAvailability(availability_value)
+        except ValueError:
+            availability = HelloAvailability.ERROR
+
+        if availability == HelloAvailability.AVAILABLE:
+            badge_name = "locker_hello_badge_ok"
+            message = "✓  Windows Hello authentication is available on this device"
+        elif availability == HelloAvailability.NOT_CONFIGURED:
+            badge_name = "locker_hello_badge_warn"
+            message = "⚠  Windows Hello is not configured — Notch PIN fallback will be used"
+        else:
+            badge_name = "locker_hello_badge_info"
+            message = "ℹ  Windows Hello is unavailable — Notch PIN will be used for authentication"
+
+        self._hello_badge_lbl.setText(message)
+        self._hello_badge_lbl.setObjectName(badge_name)
+        self._hello_badge_lbl.style().unpolish(self._hello_badge_lbl)
+        self._hello_badge_lbl.style().polish(self._hello_badge_lbl)
 
     # ── Locked apps section ───────────────────────────────────────────────────
 
@@ -562,6 +581,15 @@ class AppLockerPage(QWidget):
                 padding: 8px 14px;
             }}
             QLabel#locker_hello_badge_info {{
+                font-size: 12px;
+                font-weight: 600;
+                color: {tm.color('text_sub')};
+                background: {tm.color('surface_secondary')};
+                border: 1px solid {tm.color('border')};
+                border-radius: 8px;
+                padding: 8px 14px;
+            }}
+            QLabel#locker_hello_badge_pending {{
                 font-size: 12px;
                 font-weight: 600;
                 color: {tm.color('text_sub')};

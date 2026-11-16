@@ -4,7 +4,11 @@ from database.repository import Repository
 
 
 class SettingsManager:
-    _BOOL_KEYS = {"autostart", "dark_mode", "minimize_to_tray", "notifications_enabled", "debug_tracking", "auto_update_enabled", "notify_updates", "name_prompt_completed"}
+    _BOOL_KEYS = {
+        "autostart", "dark_mode", "minimize_to_tray", "notifications_enabled",
+        "debug_tracking", "auto_update_enabled", "notify_updates", "name_prompt_completed",
+        "sleepguard_sound_enabled", "sleepguard_sound_reminders",
+    }
     _INT_KEYS = {"idle_threshold_s", "daily_limit_minutes"}
 
     def __init__(self) -> None:
@@ -177,6 +181,35 @@ class SettingsManager:
     @bedtime_end.setter
     def bedtime_end(self, value: str) -> None:
         self.set("bedtime_end", value)
+
+    # SleepGuard Audio Alert Settings
+    @property
+    def sleepguard_sound_enabled(self) -> bool:
+        """Whether SleepGuard plays an audible alert during warning countdown."""
+        return self.get_bool("sleepguard_sound_enabled", True)
+
+    @sleepguard_sound_enabled.setter
+    def sleepguard_sound_enabled(self, value: bool) -> None:
+        self.set_bool("sleepguard_sound_enabled", value)
+
+    @property
+    def sleepguard_sound_reminders(self) -> bool:
+        """Whether SleepGuard plays additional reminder sounds at countdown thresholds (30s, 10s)."""
+        return self.get_bool("sleepguard_sound_reminders", True)
+
+    @sleepguard_sound_reminders.setter
+    def sleepguard_sound_reminders(self, value: bool) -> None:
+        self.set_bool("sleepguard_sound_reminders", value)
+
+    @property
+    def sleepguard_sound_chime(self) -> str:
+        """System sound alias played during warning countdown (e.g. SystemExclamation)."""
+        return self.get("sleepguard_sound_chime", "SystemExclamation")
+
+    @sleepguard_sound_chime.setter
+    def sleepguard_sound_chime(self, value: str) -> None:
+        val = value.strip() if value else "SystemExclamation"
+        self.set("sleepguard_sound_chime", val)
 
     @property
     def debug_tracking(self) -> bool:

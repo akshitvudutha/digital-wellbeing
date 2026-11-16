@@ -7,7 +7,7 @@ import { Play, Square, Check } from "lucide-react"
 export function FocusPreview() {
   const [isFocusing, setIsFocusing] = useState(true)
   const [seconds, setSeconds] = useState(1485) // 24m 45s
-  const [mode, setMode] = useState<"deep" | "pomodoro">("deep")
+  const mode: "deep" | "pomodoro" = "deep"
 
   useEffect(() => {
     if (!isFocusing) return

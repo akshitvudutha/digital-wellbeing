@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Replaced overlapping mouse-retained Qt button/tab focus rectangles with shared, theme-aware keyboard focus indicators while preserving selected-state styling.
+- Made Focus, Deep Work, and SleepGuard countdowns calculate remaining time from monotonic deadlines so delayed UI callbacks do not extend sessions.
+- Preserved exact remaining seconds when recurring Focus Schedules start or reconcile after wake.
+- Moved Windows Hello availability checks off the UI thread to prevent App Locker initialization from stalling application startup.
+- Preserved usage entries shorter than one minute and corrected App Details totals to use repository-backed active time and week-to-date averages.
+- Fully decoupled focus enforcement process checks and website inspections from the UI thread to maintain sub-millisecond dispatch latency and eliminate UI stutter.
+- Corrected low-contrast empty-state and placeholder labels in Usage, Focus, and Insights using centralized ThemeManager tokens compliant with WCAG AA in both dark and light modes.
+- Established canonical session-scoped Qt application fixture in automated test harness, eliminating PySide6 heap corruption during full test suite runs.
+
 ## [3.1.5] — 2026-08-30
 ### Added
 - **Insights & Analytics** — Substantially improved data visualization, usage metrics, and historical reporting pages.

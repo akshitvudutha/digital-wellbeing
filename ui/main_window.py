@@ -172,6 +172,8 @@ class MainWindow(QMainWindow):
         from ui.pages.app_timer import AppTimerPage
         self._app_timer_page = AppTimerPage(protection_manager=self._protection_manager)
         self._insights_page = InsightsPage()
+        from ui.pages.student_workspace import StudentWorkspacePage
+        self._student_page = StudentWorkspacePage(navigate_to_focus=lambda: self._navigate(2))
         self._sleepguard_page = SleepGuardPage(sleepguard=self._sleepguard)
         self._history_page = HistoryPage()
         self._settings_page = SettingsPage(tracker=self._tracker, protection_manager=self._protection_manager)
@@ -194,6 +196,7 @@ class MainWindow(QMainWindow):
         self._stack.addWidget(self._debug_page)             # 9: Dev Mode
         self._stack.addWidget(self._screen_time_details_page) # 10: Screen Time Details
         self._stack.addWidget(self._app_details_page)         # 11: App Details
+        self._stack.addWidget(self._student_page)             # 12: Student Workspace
 
         # Wire App Locker lock events to auth dialog
         from protection.app_locker import AppLockerManager
@@ -209,7 +212,7 @@ class MainWindow(QMainWindow):
         # Stack layout for main content
         root_layout.addWidget(self._stack, 1)
         if self._nav_buttons:
-            self._nav_buttons[0].click()
+            self._navigate(0)
 
         ThemeManager.instance().theme_changed.connect(self._apply_theme)
         self._apply_theme(ThemeManager.instance().is_dark)
@@ -444,9 +447,12 @@ class MainWindow(QMainWindow):
 
         def _make_nav_btn(text: str, icon_name: str, page_idx: int) -> QPushButton:
             btn = QPushButton(f"  {text}")
+            btn.setProperty("icon_name", icon_name)
+            btn.setProperty("page_idx", page_idx)
             btn.setIcon(get_icon(icon_name, size=18))
             btn.setObjectName("nav_btn")
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.setFocusPolicy(Qt.FocusPolicy.TabFocus)
             btn.clicked.connect(lambda: self._navigate(page_idx))
             return btn
 
@@ -470,6 +476,11 @@ class MainWindow(QMainWindow):
         nav_layout.addWidget(self._timer_btn)
         nav_layout.addWidget(self._locker_btn)
         nav_layout.addWidget(self._sleepguard_btn)
+
+        nav_layout.addSpacing(10)
+        nav_layout.addWidget(_make_section_hdr("STUDY"))
+        self._student_btn = _make_nav_btn("Student Workspace", "brain", 12)
+        nav_layout.addWidget(self._student_btn)
 
         nav_layout.addStretch()
 
@@ -501,6 +512,7 @@ class MainWindow(QMainWindow):
             7: self._home_btn,
             8: self._settings_btn,
             9: self._debug_btn,
+            12: self._student_btn,
         }
 
         # Compatible list of nav buttons
@@ -512,9 +524,13 @@ class MainWindow(QMainWindow):
             self._timer_btn,
             self._insights_btn,
             self._sleepguard_btn,
+            self._student_btn,
             self._debug_btn,
             self._settings_btn,
         ]
+
+        for btn in self._nav_buttons:
+            btn.setFocusPolicy(Qt.FocusPolicy.TabFocus)
 
         return sidebar
 
@@ -526,7 +542,7 @@ class MainWindow(QMainWindow):
         hover_bg = "rgba(255, 255, 255, 0.04)" if tm.is_dark else "rgba(0, 0, 0, 0.04)"
         active_bg = "rgba(16, 185, 129, 0.12)" if tm.is_dark else "rgba(5, 150, 105, 0.10)"
         active_border = "rgba(16, 185, 129, 0.28)" if tm.is_dark else "rgba(5, 150, 105, 0.25)"
-        active_color = "#10B981" if tm.is_dark else "#059669"
+        active_color = tm.color('accent')
         
         self._sidebar.setStyleSheet(f"""
             QFrame#sidebar {{
@@ -563,7 +579,12 @@ class MainWindow(QMainWindow):
                 font-weight: 700;
                 border: 1px solid {active_border};
             }}
-
+            QPushButton#nav_btn:focus {{
+                border: 2px solid {tm.color('focus_ring')};
+            }}
+            QPushButton#nav_btn[active="true"]:focus {{
+                border: 2px solid {tm.color('focus_ring')};
+            }}
         """)
         
         self._logo_lbl.setStyleSheet(f"font-size: 17px; font-weight: 800; color: {tm.color('text_main')}; letter-spacing: -0.3px;")
@@ -579,16 +600,34 @@ class MainWindow(QMainWindow):
             self._active_nav_btn.style().unpolish(self._active_nav_btn)
             self._active_nav_btn.style().polish(self._active_nav_btn)
 
+        self._update_sidebar_icons()
+
+    def _update_sidebar_icons(self) -> None:
+        """Update sidebar button icons to reflect active theme colors and selected state."""
+        from ui.icons import get_icon
+        from ui.theme import ThemeManager
+        tm = ThemeManager.instance()
+        active_color = tm.color('accent')
+        normal_color = tm.color('text_sub')
+
+        for btn in getattr(self, "_nav_buttons", []):
+            icon_name = btn.property("icon_name")
+            if not icon_name:
+                continue
+            is_active = (btn == self._active_nav_btn)
+            icon_col = active_color if is_active else normal_color
+            btn.setIcon(get_icon(icon_name, color=icon_col, size=18))
+
     def _navigate(self, page_idx: int) -> None:
         curr_idx = self._stack.currentIndex()
-        if curr_idx == page_idx:
+        if curr_idx == page_idx and self._active_nav_btn is not None:
             return
 
-        if page_idx <= 8:
-            # Main sidebar navigation, clear history
+        if page_idx in getattr(self, "_page_to_nav_btn", {}):
+            # Primary sidebar navigation, clear detail navigation history.
             self._navigation_history.clear()
         else:
-            # Drilling down into a detail page, push current index
+            # Drilling down into a detail page, push current index.
             self._navigation_history.append(curr_idx)
 
         if self._active_nav_btn:
@@ -604,6 +643,7 @@ class MainWindow(QMainWindow):
             target_btn.style().polish(target_btn)
             self._active_nav_btn = target_btn
 
+        self._update_sidebar_icons()
         self._stack.setCurrentIndexAnimated(page_idx)
 
     def _navigate_back(self) -> None:
@@ -621,7 +661,8 @@ class MainWindow(QMainWindow):
                 target_btn.style().unpolish(target_btn)
                 target_btn.style().polish(target_btn)
                 self._active_nav_btn = target_btn
-                
+
+            self._update_sidebar_icons()
             self._stack.setCurrentIndexAnimated(prev_idx)
 
 
@@ -700,8 +741,9 @@ class MainWindow(QMainWindow):
             except Exception:
                 pass
 
-            # Switch to Focus page (page index 3 in sidebar)
-            focus_nav_btn = getattr(self, "_nav_buttons", [None]*4)[3]
+            # Switch to Focus page via direct button reference (BUG-01 fix: was incorrectly
+            # using _nav_buttons[3] which is _locker_btn, not _focus_btn)
+            focus_nav_btn = getattr(self, "_focus_btn", None)
             if focus_nav_btn:
                 focus_nav_btn.click()
 
@@ -755,10 +797,21 @@ class MainWindow(QMainWindow):
     def _refresh_current_page(self, index: int = -1) -> None:
         if index == -1:
             index = self._stack.currentIndex()
-        if index >= 0 and index < self._stack.count():
-            page = self._stack.widget(index)
-            if hasattr(page, "on_data_changed") and callable(page.on_data_changed):
-                page.on_data_changed()
+        if index < 0 or index >= self._stack.count():
+            return
+
+        page = self._stack.widget(index)
+        refresh = getattr(page, "on_data_changed", None)
+        if not callable(refresh):
+            return
+
+        # Let Qt paint the newly selected page before its synchronous data refresh.
+        # Skip stale callbacks when the user navigates again before this runs.
+        def refresh_if_still_current() -> None:
+            if index == self._stack.currentIndex() and self._stack.widget(index) is page:
+                refresh()
+
+        QTimer.singleShot(0, refresh_if_still_current)
 
     def _connect_tracker(self) -> None:
         self._data_thread = DataUpdateThread(self._tracker, self)

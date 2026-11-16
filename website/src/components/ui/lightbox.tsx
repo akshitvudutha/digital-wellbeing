@@ -1,9 +1,13 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useSyncExternalStore } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import Image, { StaticImageData } from "next/image"
 import { X, ZoomIn, ZoomOut } from "lucide-react"
 import { createPortal } from "react-dom"
+
+const subscribeToMount = () => () => {}
+const getClientMountSnapshot = () => true
+const getServerMountSnapshot = () => false
 
 interface LightboxProps {
   src: string | StaticImageData
@@ -15,11 +19,11 @@ interface LightboxProps {
 export function ImageLightbox({ src, alt, className, priority = false }: LightboxProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isZoomed, setIsZoomed] = useState(false)
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  const mounted = useSyncExternalStore(
+    subscribeToMount,
+    getClientMountSnapshot,
+    getServerMountSnapshot,
+  )
 
   // Handle escape key
   useEffect(() => {

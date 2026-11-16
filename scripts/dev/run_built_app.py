@@ -5,7 +5,7 @@ import ctypes
 import os
 import sys
 
-exe = Path(__file__).parent.parent / 'dist' / 'DigitalWellbeing' / 'DigitalWellbeing.exe'
+exe = Path(__file__).resolve().parents[2] / 'dist' / 'DigitalWellbeing' / 'DigitalWellbeing.exe'
 if not exe.exists():
     print('EXE not found:', exe)
     sys.exit(2)

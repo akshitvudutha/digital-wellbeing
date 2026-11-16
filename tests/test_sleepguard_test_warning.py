@@ -64,9 +64,16 @@ def test_dialog_test_mode_does_not_cancel_on_active_user(qapp, monkeypatch):
     monkeypatch.setattr(idle_module, "get_idle_seconds", lambda: 0.1)
 
     # Test mode: should remain open across multiple ticks
-    test_dlg = ShutdownCountdownDialog(countdown_seconds=60, action="shutdown", is_test=True)
+    now = [100.0]
+    test_dlg = ShutdownCountdownDialog(
+        countdown_seconds=60,
+        action="shutdown",
+        is_test=True,
+        clock=lambda: now[0],
+    )
     test_dlg.start_countdown()
     for _ in range(5):
+        now[0] += 1
         test_dlg._on_tick()
 
     assert not test_dlg._cancelled, "Test dialog must not cancel on user activity"
@@ -75,8 +82,15 @@ def test_dialog_test_mode_does_not_cancel_on_active_user(qapp, monkeypatch):
     test_dlg.deleteLater()
 
     # Real mode: does not vanish on tick; cancels when controller triggers force_cancel
-    real_dlg = ShutdownCountdownDialog(countdown_seconds=60, action="shutdown", is_test=False)
+    real_now = [100.0]
+    real_dlg = ShutdownCountdownDialog(
+        countdown_seconds=60,
+        action="shutdown",
+        is_test=False,
+        clock=lambda: real_now[0],
+    )
     real_dlg.start_countdown()
+    real_now[0] += 1
     real_dlg._on_tick()
     assert not real_dlg._cancelled, "Real SleepGuard dialog must not vanish on ordinary tick"
     real_dlg.force_cancel()
@@ -91,11 +105,18 @@ def test_dialog_test_mode_completion_never_executes_power_action(qapp, monkeypat
     mock_power_action = MagicMock()
     test_completed_mock = MagicMock()
 
-    dialog = ShutdownCountdownDialog(countdown_seconds=1, action="shutdown", is_test=True)
+    now = [100.0]
+    dialog = ShutdownCountdownDialog(
+        countdown_seconds=1,
+        action="shutdown",
+        is_test=True,
+        clock=lambda: now[0],
+    )
     dialog.shutdown_accepted.connect(mock_power_action)
     dialog.test_completed.connect(test_completed_mock)
 
     dialog.start_countdown()
+    now[0] += 1
     dialog._on_tick()  # reaches 0
 
     assert dialog._remaining_s == 0

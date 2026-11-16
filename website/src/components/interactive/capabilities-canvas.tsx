@@ -12,12 +12,14 @@ import {
   Lock,
   Unlock,
   CheckCircle2,
+  BookOpen,
+  CalendarDays,
   Sliders,
   Bell,
   Fingerprint,
   Eye,
   Activity,
-  Check
+  type LucideIcon,
 } from "lucide-react"
 
 interface CapabilityTab {
@@ -26,7 +28,7 @@ interface CapabilityTab {
   tag: string
   headline: string
   summary: string
-  icon: any
+  icon: LucideIcon
   screenshot: string
   screenshotCaption: string
 }
@@ -41,7 +43,7 @@ const TABS: CapabilityTab[] = [
       "A blocker asks you to negotiate with yourself every ten minutes. Notch's Focus Mode removes the option entirely at the Windows process level with profile presets (Study, Work, Movie, Deep Focus, Custom) and reversible hosts-based website distraction blocking.",
     icon: Focus,
     screenshot: "/images/app/focus-dark.png",
-    screenshotCaption: "Focus configuration & allowlist profiles in Notch v3.1.6",
+    screenshotCaption: "Focus configuration & allowlist profiles in Notch",
   },
   {
     id: "timer",
@@ -99,15 +101,26 @@ const TABS: CapabilityTab[] = [
     screenshotCaption: "Insights analytics dashboard showing category distributions and daily trends",
   },
   {
+    id: "student",
+    label: "Student Workspace",
+    tag: "07 · STUDY PLANNING & SUBJECT INSIGHTS",
+    headline: "Turn study intentions into a workable week.",
+    summary:
+      "Plan recurring weekday blocks, organize assignments and exams, track revision topics from not started through revised, set time targets, and start subject-tagged Focus sessions. Weekly insights compare planned and completed work using sessions recorded on this device.",
+    icon: BookOpen,
+    screenshot: "/images/app/student-planner-dark.png",
+    screenshotCaption: "Student Workspace with study sessions, a weekly timetable, and deadlines",
+  },
+  {
     id: "privacy",
     label: "Local-First",
-    tag: "07 · ZERO TELEMETRY",
-    headline: "Your machine. Your hard drive. Nothing else.",
+    tag: "08 · LOCAL ACTIVITY DATA",
+    headline: "Your activity history stays on this device.",
     summary:
-      "Every tracking record is written strictly to an encrypted local SQLite database in your user profile. No telemetry servers, no cloud sync, no tracking pixels, and 100% offline functionality.",
+      "Usage and study records are stored in a local SQLite database. The app sends a small heartbeat containing a random installation ID and app version; it does not include activity records. Update checks can contact GitHub when enabled.",
     icon: Database,
     screenshot: "/images/app/settings-dark.png",
-    screenshotCaption: "Notch settings with display name personalization and local storage controls",
+    screenshotCaption: "Notch settings with local activity storage and network behavior details",
   },
 ]
 
@@ -134,6 +147,7 @@ export function CapabilitiesCanvas() {
               <button
                 key={tab.id}
                 onClick={() => setActiveId(tab.id)}
+                aria-pressed={isActive}
                 className={`relative px-4 py-2 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer flex items-center gap-2 whitespace-nowrap ${
                   isActive
                     ? "text-slate-900 dark:text-white font-semibold"
@@ -222,7 +236,7 @@ export function CapabilitiesCanvas() {
                   />
                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent p-3 pt-6 text-left">
                     <p className="text-xs text-white font-medium">{activeTab.screenshotCaption}</p>
-                    <p className="text-[10px] text-white/70 font-mono">Notch v3.1.6 · Windows 10 & 11</p>
+                    <p className="text-[10px] text-white/70 font-mono">Notch · Windows 10 & 11</p>
                   </div>
                 </div>
               ) : (
@@ -558,7 +572,68 @@ export function CapabilitiesCanvas() {
                     </div>
                   )}
 
-                  {/* 7. LOCAL-FIRST PRIVACY TAB */}
+                  {/* 7. STUDENT WORKSPACE TAB */}
+                  {activeTab.id === "student" && (
+                    <div className="space-y-5 text-left">
+                      <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/[0.06] pb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-nyw-emerald/10 border border-nyw-emerald/20 flex items-center justify-center text-nyw-emerald">
+                            <BookOpen className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                              Student Workspace
+                            </p>
+                            <p className="text-[11px] text-slate-600 dark:text-foreground/65 font-mono">
+                              Subjects · weekly plan · deadlines
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-xs font-mono px-2.5 py-1 rounded-full bg-nyw-emerald/15 text-nyw-emerald border border-nyw-emerald/30">
+                          EXAMPLE WEEK
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="p-4 rounded-xl bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08]">
+                          <div className="flex items-center gap-2 text-xs font-semibold text-slate-900 dark:text-white">
+                            <CalendarDays className="w-4 h-4 text-nyw-emerald" />
+                            Recurring study blocks
+                          </div>
+                          <p className="text-[11px] text-slate-600 dark:text-foreground/65 mt-2">
+                            Set a weekday, subject, duration, and intervals. Start a block from the planner.
+                          </p>
+                        </div>
+                        <div className="p-4 rounded-xl bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08]">
+                          <div className="flex items-center gap-2 text-xs font-semibold text-slate-900 dark:text-white">
+                            <CheckCircle2 className="w-4 h-4 text-nyw-amber" />
+                            Assignments and exams
+                          </div>
+                          <p className="text-[11px] text-slate-600 dark:text-foreground/65 mt-2">
+                            Add due dates and optional reminders, then mark tasks complete.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="p-4 rounded-xl bg-slate-900 text-slate-100 dark:bg-black/60 dark:text-slate-200 border border-slate-800 dark:border-white/10">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <div className="text-[10px] uppercase tracking-wider text-slate-300 font-mono">Subject target</div>
+                            <div className="text-sm font-semibold mt-1">Physics · 3h 20m of 5h this week</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-[10px] uppercase tracking-wider text-slate-300 font-mono">Sessions</div>
+                            <div className="text-sm font-semibold mt-1">4 planned · 3 completed</div>
+                          </div>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-white/15 mt-3 overflow-hidden">
+                          <div className="h-full w-2/3 rounded-full bg-nyw-emerald" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 8. LOCAL-FIRST PRIVACY TAB */}
                   {activeTab.id === "privacy" && (
                     <div className="space-y-6 text-left">
                       <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/[0.06] pb-4">
@@ -568,7 +643,7 @@ export function CapabilitiesCanvas() {
                           </div>
                           <div>
                             <p className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                              Local SQLite Architecture
+                              Local activity database
                             </p>
                             <p className="text-[11px] text-slate-600 dark:text-foreground/65 font-mono">
                               ~/.digital_wellbeing/digital_wellbeing.db
@@ -576,16 +651,16 @@ export function CapabilitiesCanvas() {
                           </div>
                         </div>
                         <span className="text-xs font-mono px-2.5 py-1 rounded-full bg-nyw-emerald/15 text-nyw-emerald border border-nyw-emerald/30">
-                          100% OFFLINE
+                          ACTIVITY STAYS LOCAL
                         </span>
                       </div>
 
                       <div className="p-4 rounded-xl bg-slate-900 text-slate-100 dark:bg-black/60 dark:text-slate-200 border border-slate-800 dark:border-white/10 font-mono text-xs space-y-1.5 shadow-sm">
-                        <div className="text-nyw-emerald font-semibold">// Zero Cloud Sync Protocol</div>
-                        <div>• Network socket listening: DISABLED</div>
-                        <div>• Outbound usage telemetries: 0 packets</div>
-                        <div>• Third-party data brokers: NONE</div>
-                        <div>• Database location: Local NVMe / SSD only</div>
+                        <div className="text-nyw-emerald font-semibold">Desktop app network details</div>
+                        <div>• Activity and study records: stored in local SQLite</div>
+                        <div>• App heartbeat: random install ID + version</div>
+                        <div>• Update checks: GitHub, when enabled</div>
+                        <div>• Database encryption: not provided by Notch</div>
                       </div>
                     </div>
                   )}

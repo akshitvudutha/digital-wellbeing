@@ -1,15 +1,15 @@
 """
 windows_hello.py — Windows Hello authentication bridge for NYW App Locker.
 
-Wraps the WinRT UserConsentVerifier API in a QThread so async WinRT calls
-never block the Qt main thread.  The caller connects to the `result_ready`
-signal emitted on the Qt main thread after authentication completes.
+Wraps the WinRT UserConsentVerifier API so availability and verification calls
+never block the Qt main thread. Callers use Qt signals for results.
 
 Usage (Qt main thread):
     from protection.windows_hello import WindowsHelloAuth, HelloResult, HelloAvailability
 
     auth = WindowsHelloAuth()
-    avail = auth.check_availability()          # synchronous, fast (~2 ms)
+    auth.availability_ready.connect(on_availability)
+    auth.request_availability()                # non-blocking
 
     def on_result(result: HelloResult) -> None:
         if result == HelloResult.VERIFIED:
@@ -21,6 +21,7 @@ Usage (Qt main thread):
 from __future__ import annotations
 
 import asyncio
+import threading
 from enum import IntEnum
 from typing import Optional
 
@@ -106,22 +107,37 @@ class WindowsHelloAuth(QObject):
     """
 
     result_ready = Signal(int)  # HelloResult value; connect before calling request_verification()
+    availability_ready = Signal(int)  # HelloAvailability value from request_availability()
 
     def __init__(self, parent: Optional[QObject] = None) -> None:
         super().__init__(parent)
         self._worker: Optional[_HelloWorker] = None
+        self._availability_thread: Optional[threading.Thread] = None
+        self._availability_lock = threading.Lock()
+
+    @staticmethod
+    def _map_availability(availability, available_value, not_configured_value) -> HelloAvailability:
+        """Translate WinRT's enum without requiring a live biometric device."""
+        if availability == available_value:
+            return HelloAvailability.AVAILABLE
+        if availability == not_configured_value:
+            return HelloAvailability.NOT_CONFIGURED
+        return HelloAvailability.UNAVAILABLE
 
     # ------------------------------------------------------------------
-    # Availability check (synchronous, returns quickly from cached state)
+    # Availability check
     # ------------------------------------------------------------------
 
     def check_availability(self) -> HelloAvailability:
         """Check whether Windows Hello is available on this machine.
 
-        Runs the WinRT async call synchronously via asyncio.run().
-        Typically completes in < 5 ms and is safe to call at startup.
-        Returns HelloAvailability enum.
+        Runs the WinRT async call synchronously. Do not call this from the Qt UI
+        thread; use request_availability() and availability_ready instead.
         """
+        return self._query_availability()
+
+    @staticmethod
+    def _query_availability() -> HelloAvailability:
         try:
             from winrt.windows.security.credentials.ui import (
                 UserConsentVerifier,
@@ -130,11 +146,11 @@ class WindowsHelloAuth(QObject):
 
             async def _check() -> HelloAvailability:
                 avail = await UserConsentVerifier.check_availability_async()
-                if avail == UserConsentVerifierAvailability.AVAILABLE:
-                    return HelloAvailability.AVAILABLE
-                if avail == UserConsentVerifierAvailability.NOT_CONFIGURED_FOR_USER:
-                    return HelloAvailability.NOT_CONFIGURED
-                return HelloAvailability.UNAVAILABLE
+                return WindowsHelloAuth._map_availability(
+                    avail,
+                    UserConsentVerifierAvailability.AVAILABLE,
+                    UserConsentVerifierAvailability.NOT_CONFIGURED_FOR_USER,
+                )
 
             return asyncio.run(_check())
 
@@ -144,6 +160,42 @@ class WindowsHelloAuth(QObject):
         except Exception as exc:
             logger.error("WindowsHello availability check error: %s", exc)
             return HelloAvailability.ERROR
+
+    def request_availability(self) -> bool:
+        """Start a non-blocking Windows Hello availability check.
+
+        The result is emitted through ``availability_ready``. A daemon worker
+        keeps WinRT/asyncio setup from blocking the UI and cannot hold process
+        shutdown open if the platform call fails to return.
+        """
+        with self._availability_lock:
+            if self._availability_thread and self._availability_thread.is_alive():
+                return False
+
+            self._availability_thread = threading.Thread(
+                target=self._run_availability_check,
+                name="WindowsHelloAvailability",
+                daemon=True,
+            )
+            self._availability_thread.start()
+            return True
+
+    def _run_availability_check(self) -> None:
+        try:
+            result = self._query_availability()
+        except Exception:
+            logger.exception("WindowsHello availability worker failed")
+            result = HelloAvailability.ERROR
+
+        try:
+            # Qt queues this signal to receivers with UI-thread affinity.
+            self.availability_ready.emit(int(result))
+        except RuntimeError:
+            # The owning page or dialog may have closed while the check ran.
+            logger.debug("WindowsHello availability result arrived after its owner closed")
+        finally:
+            with self._availability_lock:
+                self._availability_thread = None
 
     # ------------------------------------------------------------------
     # Asynchronous verification (non-blocking)

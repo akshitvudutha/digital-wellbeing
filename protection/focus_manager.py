@@ -11,6 +11,7 @@ Enforcement model:
 from __future__ import annotations
 
 import time
+import math
 import ctypes
 import ctypes.wintypes
 import threading
@@ -34,11 +35,27 @@ DEFAULT_MODE_WEBSITES = {
     "custom": ["instagram.com", "reddit.com"],
 }
 
+STUDENT_FOCUS_PROFILES = {
+    "study": "Study",
+    "exam_prep": "Exam Preparation",
+    "online_class": "Online Class",
+    "revision": "Revision",
+    "deep_work": "Deep Work",
+    "reading": "Reading",
+}
+for _student_profile in STUDENT_FOCUS_PROFILES:
+    if _student_profile != "study":
+        DEFAULT_MODE_WEBSITES[_student_profile] = list(DEFAULT_MODE_WEBSITES["study"])
+
 
 class FocusManager(QObject):
     focus_state_changed = Signal(bool)   # is_active
     tick = Signal(int)                   # seconds remaining
     focus_completed = Signal()
+    focus_paused = Signal()
+    focus_resumed = Signal()
+    focus_reset = Signal(int)
+    focus_cancelled = Signal()
     mode_changed = Signal(str)
     app_blocked = Signal(str, str, int)  # process_name, mode_name, seconds_remaining
 
@@ -52,13 +69,34 @@ class FocusManager(QObject):
             cls._instance = FocusManager(repo)
         return cls._instance
 
+    @classmethod
+    def run_elevated_action(cls, action: str, domains: str = "") -> bool:
+        """Privileged entrypoint called via --elevated-helper to manipulate hosts file."""
+        blocker = WebsiteBlocker()
+        action_clean = (action or "").strip().lower()
+        if action_clean in ("apply", "block"):
+            domain_list = [d.strip() for d in (domains or "").split(",") if d.strip()]
+            success, _ = blocker.block_websites(domain_list)
+            return success
+        elif action_clean in ("remove", "unblock", "clear"):
+            success, _ = blocker.unblock_all()
+            return success
+        logger.warning("[FOCUS] Unknown elevated helper action: %s", action)
+        return False
+
     def __init__(self, repo: Repository, parent=None):
         super().__init__(parent)
         self._repo = repo
         self._pin_manager = PINManager(repo)
         self._is_active = False
+        self._is_paused = False
         self._is_strict = False
         self._seconds_remaining = 0
+        self._configured_minutes = 25
+        self._total_duration_seconds = 25 * 60
+        self._deadline: Optional[float] = None
+        self._paused_remaining_seconds: Optional[float] = None
+        self._clock = time.monotonic
         
         self._last_blocked_feedback: Dict[str, float] = {}
         self._suppressed_blocked_apps: Dict[str, float] = {}
@@ -71,14 +109,19 @@ class FocusManager(QObject):
             "study": [],
             "work": [],
             "movie": [],
-            "deep": []
+            "deep": [],
+            **{mode: [] for mode in STUDENT_FOCUS_PROFILES if mode != "study"},
         }
         self._mode_websites: Dict[str, List[str]] = {
             "custom": [],
             "study": [],
             "work": [],
             "movie": [],
-            "deep": []
+            "deep": [],
+            **{
+                mode: list(DEFAULT_MODE_WEBSITES["study"])
+                for mode in STUDENT_FOCUS_PROFILES if mode != "study"
+            },
         }
 
         self._app_block_response: str = "close"
@@ -119,8 +162,21 @@ class FocusManager(QObject):
         return self._is_active
 
     @property
+    def is_paused(self) -> bool:
+        return self._is_paused
+
+    @property
     def is_strict(self) -> bool:
         return self._is_strict
+
+    @property
+    def total_duration_seconds(self) -> int:
+        duration = self._total_duration_seconds if self._total_duration_seconds > 0 else (self._configured_minutes * 60)
+        return math.ceil(duration)
+
+    @property
+    def configured_minutes(self) -> int:
+        return self._configured_minutes
 
     @property
     def app_block_response(self) -> str:
@@ -196,6 +252,45 @@ class FocusManager(QObject):
             self._mode_apps[mode] = [a.strip().lower() for a in apps if a.strip()]
             self._repo.set_setting(f"focus_mode_{mode}_apps", ",".join(self._mode_apps[mode]))
 
+    def suggest_mode_apps(self, mode: str) -> List[str]:
+        """Find suitable installed apps for productivity-oriented allowlist profiles."""
+        if mode not in ("study", "work", "movie") and mode not in STUDENT_FOCUS_PROFILES:
+            return []
+        from utils.win_utils import get_all_discoverable_applications
+
+        keywords = (
+            ["code", "word", "excel", "onenote", "edge", "chrome", "brave", "firefox", "notion", "slack", "teams", "zoom"]
+            if mode in ("study", "work") or mode in STUDENT_FOCUS_PROFILES
+            else ["vlc", "player", "spotify", "netflix", "chrome", "edge", "brave", "firefox"]
+        )
+        suggested: list[str] = []
+        try:
+            apps = get_all_discoverable_applications()
+        except Exception as exc:
+            logger.debug("Unable to discover apps for %s focus profile: %s", mode, exc)
+            return suggested
+
+        seen: set[str] = set()
+        for name, display, _path in apps:
+            normalized_name = name.lower()
+            normalized_display = display.lower()
+            if normalized_name in seen:
+                continue
+            if any(word in normalized_name or word in normalized_display for word in keywords):
+                seen.add(normalized_name)
+                suggested.append(normalized_name)
+        return suggested
+
+    def ensure_mode_app_suggestions(self, mode: str) -> List[str]:
+        """Populate an empty preset with the same suggestions offered by Focus UI."""
+        current = list(self._mode_apps.get(mode, []))
+        if current:
+            return current
+        suggested = self.suggest_mode_apps(mode)
+        if suggested:
+            self.save_mode_apps(mode, suggested)
+        return list(self._mode_apps.get(mode, []))
+
     def save_blocked_apps(self, apps: List[str]) -> None:
         # Legacy compat
         self.save_mode_apps(self._mode, apps)
@@ -223,7 +318,13 @@ class FocusManager(QObject):
     # Session control
     # ------------------------------------------------------------------
 
-    def start_focus(self, minutes: int = 25, strict_mode: bool = False, mode: Optional[str] = None) -> bool:
+    def start_focus(
+        self,
+        minutes: int = 25,
+        strict_mode: bool = False,
+        mode: Optional[str] = None,
+        duration_seconds: Optional[float] = None,
+    ) -> bool:
         if self._is_active:
             return False
 
@@ -234,10 +335,19 @@ class FocusManager(QObject):
             logger.warning("[FOCUS] Cannot start strict mode: PIN is not configured.")
             return False
 
+        minutes = max(1, int(minutes))
+        duration = float(minutes * 60) if duration_seconds is None else max(0.0, float(duration_seconds))
+        if duration <= 0:
+            return False
+        minutes = max(minutes, math.ceil(duration / 60.0))
+        self._configured_minutes = minutes
+        self._total_duration_seconds = duration
+        self._seconds_remaining = math.ceil(duration)
+        self._paused_remaining_seconds = None
         self._is_active = True
+        self._is_paused = False
         self._is_strict = strict_mode
-        self._deadline = time.monotonic() + minutes * 60
-        self._seconds_remaining = minutes * 60
+        self._deadline = self._clock() + duration
 
         logger.info(
             f"[FOCUS] Session started. mode={self._mode}, minutes={minutes}, strict={strict_mode}, "
@@ -254,6 +364,82 @@ class FocusManager(QObject):
 
         self._timer.start()
         self.focus_state_changed.emit(True)
+        self.tick.emit(self._seconds_remaining)
+        return True
+
+    def pause_focus(self, provided_pin: str = "") -> bool:
+        if not self._is_active or self._is_paused:
+            return False
+
+        if self._is_strict:
+            if not self._pin_manager.verify_pin(provided_pin):
+                logger.warning("[FOCUS] Pause denied: Invalid PIN.")
+                return False
+
+        if self._deadline is not None:
+            remaining = max(0.0, self._deadline - self._clock())
+            if remaining <= 0:
+                self._complete_focus()
+                return False
+            self._paused_remaining_seconds = remaining
+            self._seconds_remaining = math.ceil(remaining)
+        else:
+            self._paused_remaining_seconds = float(self._seconds_remaining)
+
+        self._is_paused = True
+        self._timer.stop()
+        self._website_blocker.unblock_all()
+        self.focus_paused.emit()
+        logger.info(f"[FOCUS] Session paused with {self._seconds_remaining}s remaining.")
+        return True
+
+    def resume_focus(self) -> bool:
+        if not self._is_active or not self._is_paused:
+            return False
+
+        remaining = self._paused_remaining_seconds
+        if remaining is None:
+            remaining = float(self._seconds_remaining)
+        if remaining <= 0:
+            self._is_paused = False
+            self._complete_focus()
+            return False
+
+        self._deadline = self._clock() + remaining
+        self._seconds_remaining = math.ceil(remaining)
+        self._paused_remaining_seconds = None
+        self._is_paused = False
+        if self.current_mode_websites:
+            self._website_blocker.block_websites(self.current_mode_websites)
+
+        self._timer.start()
+        self._run_enforcement_scan()
+        self.tick.emit(self._seconds_remaining)
+        self.focus_resumed.emit()
+        logger.info(f"[FOCUS] Session resumed with {self._seconds_remaining}s remaining.")
+        return True
+
+    def reset_focus(self, provided_pin: str = "") -> bool:
+        """Restores the session to the original configured duration."""
+        if self._is_active and self._is_strict:
+            if not self._pin_manager.verify_pin(provided_pin):
+                logger.warning("[FOCUS] Reset denied: Invalid PIN.")
+                return False
+
+        target_seconds = self._total_duration_seconds if self._total_duration_seconds > 0 else (self._configured_minutes * 60)
+        self._seconds_remaining = math.ceil(target_seconds)
+
+        if self._is_active:
+            self._deadline = self._clock() + target_seconds
+            self._paused_remaining_seconds = float(target_seconds) if self._is_paused else None
+            if not self._is_paused and not self._timer.isActive():
+                self._timer.start()
+            self.tick.emit(self._seconds_remaining)
+            self.focus_reset.emit(self._seconds_remaining)
+            logger.info(f"[FOCUS] Active session reset to {target_seconds}s.")
+        else:
+            self.focus_reset.emit(self._seconds_remaining)
+            logger.info(f"[FOCUS] Inactive timer reset to {target_seconds}s.")
         return True
 
     def stop_focus(self, provided_pin: str = "") -> bool:
@@ -265,7 +451,13 @@ class FocusManager(QObject):
                 logger.warning("[FOCUS] Stop denied: Invalid PIN.")
                 return False
 
-        return self._do_stop()
+        if not self._is_paused and self._deadline is not None and self._clock() >= self._deadline:
+            self._complete_focus()
+            return True
+
+        res = self._do_stop()
+        self.focus_cancelled.emit()
+        return res
 
     def cancel_focus(self) -> bool:
         """Alias for stop_focus for backward compatibility and API clarity."""
@@ -278,13 +470,21 @@ class FocusManager(QObject):
         """
         if not self._is_active:
             return True
-        return self._do_stop()
+        if not self._is_paused and self._deadline is not None and self._clock() >= self._deadline:
+            self._complete_focus()
+            return True
+        res = self._do_stop()
+        self.focus_cancelled.emit()
+        return res
 
     def _do_stop(self) -> bool:
         """Internal teardown — reset state."""
         self._is_active = False
+        self._is_paused = False
         self._is_strict = False
         self._seconds_remaining = 0
+        self._deadline = None
+        self._paused_remaining_seconds = None
         self._timer.stop()
         self._website_blocker.unblock_all()
         self.focus_state_changed.emit(False)
@@ -296,27 +496,30 @@ class FocusManager(QObject):
     # ------------------------------------------------------------------
 
     def _on_tick(self) -> None:
-        if not self._is_active:
+        if not self._is_active or self._is_paused:
             return
 
-        if self._seconds_remaining > 0:
-            # Derive remaining seconds from monotonic deadline, falling back to decrement for manual test ticks
-            if hasattr(self, "_deadline") and self._deadline is not None:
-                calc_rem = int(round(self._deadline - time.monotonic()))
-                if 0 <= calc_rem < self._seconds_remaining:
-                    self._seconds_remaining = calc_rem
-                else:
-                    self._seconds_remaining = max(0, self._seconds_remaining - 1)
-            else:
-                self._seconds_remaining = max(0, self._seconds_remaining - 1)
+        if self._deadline is not None:
+            self._seconds_remaining = max(0, math.ceil(self._deadline - self._clock()))
+        else:
+            self._seconds_remaining = max(0, self._seconds_remaining - 1)
 
+        if self._seconds_remaining <= 0:
+            self._complete_focus()
+        else:
             self.tick.emit(self._seconds_remaining)
             self._run_enforcement_scan()
-        else:
-            # Session completed naturally
-            self._do_stop()
-            self.focus_completed.emit()
-            logger.info("[FOCUS] Session completed naturally.")
+
+    def _complete_focus(self) -> bool:
+        """Complete an active session once, including when a UI callback is late."""
+        if not self._is_active:
+            return False
+        self._seconds_remaining = 0
+        self.tick.emit(0)
+        self._do_stop()
+        self.focus_completed.emit()
+        logger.info("[FOCUS] Session completed naturally at deadline.")
+        return True
 
     # ------------------------------------------------------------------
     # Enforcement scan — fast foreground check on tick, async deep scan
@@ -325,15 +528,13 @@ class FocusManager(QObject):
     def _run_enforcement_scan(self) -> None:
         """
         Scan active user-facing applications against the Focus mode policy.
+        Dispatches all process and window inspections asynchronously to eliminate UI thread blocking.
         """
         try:
             if not self._is_active:
                 return
 
-            # 1. Immediate foreground check on this tick (<0.1ms)
-            self._check_foreground_app_block()
-
-            # 2. Broader window and process scan in background thread to eliminate UI lag
+            # Broader window and process scan in background thread to eliminate UI lag
             if not getattr(self, "_scan_running", False):
                 self._scan_running = True
                 threading.Thread(target=self._async_enforcement_scan, daemon=True).start()
@@ -343,7 +544,10 @@ class FocusManager(QObject):
     def _async_enforcement_scan(self) -> None:
         try:
             if self._is_active:
+                self._check_foreground_app_block()
                 self._check_app_blocks()
+        except Exception as exc:
+            logger.debug(f"[FOCUS] Async enforcement scan error: {exc}")
         finally:
             self._scan_running = False
 

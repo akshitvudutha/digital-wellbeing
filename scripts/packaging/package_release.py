@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 
 def main():
-    root = Path(__file__).parent
+    root = Path(__file__).resolve().parents[2]
     dist_dir = root / "dist" / "DigitalWellbeing"
     output_zip = root / "dist" / "DigitalWellbeing.zip"
     iss_file = root / "installer.iss"

@@ -21,20 +21,29 @@ class QuickActionsRow(QWidget):
         layout.setSpacing(12)
 
         from ui.icons import get_icon
-        
-        btn_focus = FluentButton(" Start Focus", primary=True)
-        btn_focus.setIcon(get_icon("focus"))
-        btn_focus.clicked.connect(self.action_focus.emit)
-        
-        btn_locker = FluentButton(" App Locker", primary=False)
-        btn_locker.setIcon(get_icon("lock"))
-        btn_locker.clicked.connect(self.action_locker.emit)
-        
-        btn_settings = FluentButton(" Settings", primary=False)
-        btn_settings.setIcon(get_icon("settings"))
-        btn_settings.clicked.connect(self.action_settings.emit)
-        
-        layout.addWidget(btn_focus)
-        layout.addWidget(btn_locker)
-        layout.addWidget(btn_settings)
+        from ui.theme import ThemeManager
+
+        self._btn_focus = FluentButton(" Start Focus", primary=True)
+        self._btn_focus.clicked.connect(self.action_focus.emit)
+
+        self._btn_locker = FluentButton(" App Locker", primary=False)
+        self._btn_locker.clicked.connect(self.action_locker.emit)
+
+        self._btn_settings = FluentButton(" Settings", primary=False)
+        self._btn_settings.clicked.connect(self.action_settings.emit)
+
+        self._update_icons()
+        ThemeManager.instance().theme_changed.connect(self._update_icons)
+
+        layout.addWidget(self._btn_focus)
+        layout.addWidget(self._btn_locker)
+        layout.addWidget(self._btn_settings)
         layout.addStretch()
+
+    def _update_icons(self, is_dark: bool = None) -> None:
+        from ui.icons import get_icon
+        from ui.theme import ThemeManager
+        tm = ThemeManager.instance()
+        self._btn_focus.setIcon(get_icon("focus", color="#FFFFFF"))
+        self._btn_locker.setIcon(get_icon("lock", color=tm.color("text_main")))
+        self._btn_settings.setIcon(get_icon("settings", color=tm.color("text_main")))
