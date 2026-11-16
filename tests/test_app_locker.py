@@ -358,15 +358,21 @@ class TestWindowsHelloBridge:
             # May raise if no QApplication — acceptable in headless CI
             pass
 
-    def test_check_availability_returns_valid_enum(self):
-        """On this machine Windows Hello is confirmed available."""
+    def test_check_availability_maps_platform_result_without_live_winrt(self):
+        """Availability mapping is deterministic and does not query Windows Hello in CI."""
         from protection.windows_hello import WindowsHelloAuth, HelloAvailability
-        try:
-            auth = WindowsHelloAuth()
-            result = auth.check_availability()
-            assert isinstance(result, HelloAvailability)
-        except RuntimeError:
-            pytest.skip("No QApplication available in this test environment")
+
+        available = object()
+        not_configured = object()
+        assert WindowsHelloAuth._map_availability(
+            available, available, not_configured
+        ) == HelloAvailability.AVAILABLE
+        assert WindowsHelloAuth._map_availability(
+            not_configured, available, not_configured
+        ) == HelloAvailability.NOT_CONFIGURED
+        assert WindowsHelloAuth._map_availability(
+            object(), available, not_configured
+        ) == HelloAvailability.UNAVAILABLE
 
 
 if __name__ == "__main__":

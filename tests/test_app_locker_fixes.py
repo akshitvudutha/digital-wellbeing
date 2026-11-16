@@ -89,7 +89,7 @@ def test_is_user_facing_metadata_blocking(mock_get_session_id, mock_get_file_inf
     # "innocent.exe" has "proxy" in its metadata description
     assert is_user_facing_application(500, "C:\\App\\innocent.exe", "innocent.exe") is False
 
-def test_protection_section_requires_auth_on_disable(tmp_path):
+def test_protection_section_requires_auth_on_disable(qapp, tmp_path):
     import tempfile
     db_path = tmp_path / "focus_test.db"
     
@@ -106,21 +106,21 @@ def test_protection_section_requires_auth_on_disable(tmp_path):
         section = ProtectionSection(pm)
         
         # Mock AppLockerAuthDialog to return Rejected (simulating user canceling/failing auth)
-        with patch("ui.widgets.auth_dialog.AppLockerAuthDialog.exec") as mock_exec:
+        with patch("ui.widgets.auth_dialog.AppLockerAuthDialog") as mock_dialog_cls:
             from PySide6.QtWidgets import QDialog
-            mock_exec.return_value = QDialog.DialogCode.Rejected
+            mock_dialog_cls.return_value.exec.return_value = QDialog.DialogCode.Rejected
             
             # Click disable button
             section._on_disable()
             
             # Verify PIN is STILL enabled (because auth failed)
             assert pm.pin.is_enabled() is True
-            mock_exec.assert_called_once()
+            mock_dialog_cls.return_value.exec.assert_called_once()
             
         # Mock AppLockerAuthDialog to return Accepted (simulating successful auth)
-        with patch("ui.widgets.auth_dialog.AppLockerAuthDialog.exec") as mock_exec:
+        with patch("ui.widgets.auth_dialog.AppLockerAuthDialog") as mock_dialog_cls:
             from PySide6.QtWidgets import QDialog
-            mock_exec.return_value = QDialog.DialogCode.Accepted
+            mock_dialog_cls.return_value.exec.return_value = QDialog.DialogCode.Accepted
             
             with patch("ui.widgets.protection_section.QMessageBox.information"):
                 # Click disable button
@@ -128,9 +128,11 @@ def test_protection_section_requires_auth_on_disable(tmp_path):
                 
                 # Verify PIN is now disabled
                 assert pm.pin.is_enabled() is False
-                mock_exec.assert_called_once()
+                mock_dialog_cls.return_value.exec.assert_called_once()
     finally:
         if section is not None:
             section.deleteLater()
-        QApplication.processEvents()
+            section = None
+        if qapp is not None:
+            qapp.processEvents()
         Repository.set_db_path_override(None)

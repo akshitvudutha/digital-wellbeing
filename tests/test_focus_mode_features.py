@@ -359,20 +359,22 @@ class TestFocusTimer:
     """Tests timer start, tick decrement, and natural completion."""
 
     def test_focus_timer_still_works(self, focus_mgr):
+        now = [1000.0]
+        focus_mgr._clock = lambda: now[0]
         started = focus_mgr.start_focus(minutes=10, strict_mode=False)
         assert started is True
         assert focus_mgr.seconds_remaining == 600
 
-        # Simulate 1 tick
+        # Advance a real second on the controlled monotonic clock.
+        now[0] += 1.0
         focus_mgr._on_tick()
         assert focus_mgr.seconds_remaining == 599
 
-        # Simulate completion
+        # Complete at the actual deadline, not after a fixed number of ticks.
         completed_signals = []
         focus_mgr.focus_completed.connect(lambda: completed_signals.append(True))
-        focus_mgr._seconds_remaining = 1
-        focus_mgr._on_tick()  # decrements to 0
-        focus_mgr._on_tick()  # detects 0 -> completes
+        now[0] += 599.0
+        focus_mgr._on_tick()
 
         assert focus_mgr.is_active is False
         assert len(completed_signals) == 1
