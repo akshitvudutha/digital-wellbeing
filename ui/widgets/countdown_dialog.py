@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import logging
 import time
+import math
+from collections.abc import Callable
 
 from PySide6.QtCore import QTimer, Qt, Signal
 from PySide6.QtWidgets import (
@@ -52,6 +54,7 @@ class ShutdownCountdownDialog(QDialog):
         action: str = "lock",
         parent=None,
         is_test: bool = False,
+        clock: Callable[[], float] | None = None,
     ) -> None:
         super().__init__(parent)
         self._action = action.lower().strip() or "lock"
@@ -72,8 +75,12 @@ class ShutdownCountdownDialog(QDialog):
         self.setFixedSize(460, 270)
 
         self._remaining_s = countdown_seconds
+        self._initial_duration_s = countdown_seconds
+        self._clock = clock or time.monotonic
         self._cancelled = False
         self._completed = False
+        self._initial_sound_played = False
+        self._played_reminders: set[int] = set()
 
         logger.info(
             "[SLEEPGUARD_DIALOG] Constructed. countdown=%d, action='%s', is_test=%s",
@@ -129,6 +136,9 @@ class ShutdownCountdownDialog(QDialog):
                 background: {tm.color('accent_amber_hover')};
                 border-color: {tm.color('accent_amber_hover')};
             }}
+            QPushButton#primary_action_btn:focus {{
+                border: 2px solid {tm.color('focus_ring')};
+            }}
             QPushButton#secondary_action_btn {{
                 background-color: {tm.color('surface_secondary')};
                 color: {tm.color('text_sub')};
@@ -142,6 +152,9 @@ class ShutdownCountdownDialog(QDialog):
                 background-color: {tm.color('surface_hover')};
                 color: {tm.color('text_main')};
                 border-color: {tm.color('border_hover')};
+            }}
+            QPushButton#secondary_action_btn:focus {{
+                border: 2px solid {tm.color('focus_ring')};
             }}
         """)
 
@@ -209,6 +222,7 @@ class ShutdownCountdownDialog(QDialog):
         self._cancel_btn = QPushButton("Cancel")
         self._cancel_btn.setObjectName("secondary_action_btn")
         self._cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._cancel_btn.setFocusPolicy(Qt.FocusPolicy.TabFocus)
         self._cancel_btn.clicked.connect(self._on_cancel)
         btn_row.addWidget(self._cancel_btn)
 
@@ -216,40 +230,111 @@ class ShutdownCountdownDialog(QDialog):
             self._confirm_btn = QPushButton("Close Preview")
             self._confirm_btn.setObjectName("primary_action_btn")
             self._confirm_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            self._confirm_btn.setFocusPolicy(Qt.FocusPolicy.TabFocus)
             self._confirm_btn.clicked.connect(self._on_test_accept)
         else:
             self._confirm_btn = QPushButton(f"{self._action_label} Now")
             self._confirm_btn.setObjectName("primary_action_btn")
             self._confirm_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            self._confirm_btn.setFocusPolicy(Qt.FocusPolicy.TabFocus)
             self._confirm_btn.clicked.connect(self._on_accept)
         btn_row.addWidget(self._confirm_btn)
 
         layout.addLayout(btn_row)
 
-    def start_countdown(self) -> None:
-        self._deadline = time.monotonic() + self._remaining_s
+    def _play_sound(self, sound_alias: str) -> None:
+        """Asynchronously plays a Windows-native alert sound without blocking Qt UI thread."""
+        try:
+            from settings.manager import SettingsManager
+            sm = SettingsManager()
+            if not sm.sleepguard_sound_enabled:
+                return
+            import winsound
+            winsound.PlaySound(
+                sound_alias,
+                winsound.SND_ASYNC | winsound.SND_ALIAS | winsound.SND_NODEFAULT,
+            )
+        except Exception as exc:
+            logger.debug("[SLEEPGUARD_SOUND] PlaySound failed: %s", exc)
+            try:
+                import winsound
+                winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
+            except Exception:
+                pass
+
+    def _stop_sound(self) -> None:
+        """Immediately halts any continuing audio playback."""
+        try:
+            import winsound
+            winsound.PlaySound(None, winsound.SND_PURGE)
+        except Exception as exc:
+            logger.debug("[SLEEPGUARD_SOUND] SND_PURGE error: %s", exc)
+
+    def _trigger_initial_sound(self) -> None:
+        """Plays the initial audible warning alert exactly once per countdown dialog instance."""
+        if self._initial_sound_played or self._cancelled or self._completed:
+            return
+        self._initial_sound_played = True
+        try:
+            from settings.manager import SettingsManager
+            sm = SettingsManager()
+            sound = sm.sleepguard_sound_chime or "SystemExclamation"
+            self._play_sound(sound)
+            logger.info("[SLEEPGUARD_SOUND] Initial warning sound played ('%s').", sound)
+        except Exception as exc:
+            logger.debug("[SLEEPGUARD_SOUND] Initial sound trigger error: %s", exc)
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        self._trigger_initial_sound()
+
+    def start_countdown(self) -> bool:
+        if self._cancelled or self._completed or self._timer.isActive():
+            return False
+        self._deadline = self._clock() + max(0, self._remaining_s)
+        self._trigger_initial_sound()
+        if self._remaining_s <= 0:
+            self._on_tick()
+            return True
         self._timer.start()
         logger.info(
             "[SLEEPGUARD_DIALOG] Countdown started. action='%s', remaining=%ds, is_test=%s, timer_active=%s",
             self._action, self._remaining_s, self._is_test, self._timer.isActive(),
         )
+        return True
 
     def _on_tick(self) -> None:
+        if self._cancelled or self._completed:
+            return
         # User-activity detection is handled by SleepGuardController which
         # calls cancel_warning() and emits programmatic_shutdown_cancelled.
         if hasattr(self, "_deadline"):
-            calc_s = max(0, int(round(self._deadline - time.monotonic())))
-            if calc_s < self._remaining_s:
-                self._remaining_s = calc_s
-            else:
-                self._remaining_s = max(0, self._remaining_s - 1)
-                self._deadline = time.monotonic() + self._remaining_s
+            self._remaining_s = max(0, math.ceil(self._deadline - self._clock()))
         elif self._remaining_s > 0:
             self._remaining_s -= 1
 
         m, s = divmod(self._remaining_s, 60)
         self._timer_lbl.setText(f"{m:02d}:{s:02d}")
         logger.debug("[SLEEPGUARD_DIALOG] Tick: remaining=%ds", self._remaining_s)
+
+        # Check optional reminder sound thresholds (30s and 10s)
+        try:
+            from settings.manager import SettingsManager
+            sm = SettingsManager()
+            if sm.sleepguard_sound_enabled and sm.sleepguard_sound_reminders:
+                for threshold in (30, 10):
+                    if (
+                        self._initial_duration_s > threshold
+                        and self._remaining_s <= threshold
+                        and threshold not in self._played_reminders
+                    ):
+                        self._played_reminders.add(threshold)
+                        self._play_sound(sm.sleepguard_sound_chime or "SystemExclamation")
+                        logger.info(
+                            "[SLEEPGUARD_SOUND] Reminder sound played at %ds threshold.", threshold
+                        )
+        except Exception as exc:
+            logger.debug("[SLEEPGUARD_SOUND] Reminder check error: %s", exc)
 
         # Complete on the tick which displays 00:00.
         if self._remaining_s <= 0:
@@ -275,6 +360,7 @@ class ShutdownCountdownDialog(QDialog):
             return
         self._completed = True
         self._timer.stop()
+        self._stop_sound()
         logger.info(
             "[SLEEPGUARD_DIALOG] Countdown expired or action accepted. Executing action='%s'",
             self._action,
@@ -287,13 +373,17 @@ class ShutdownCountdownDialog(QDialog):
             return
         self._completed = True
         self._timer.stop()
+        self._stop_sound()
         logger.info("[SLEEPGUARD_DIALOG] Test preview finished safely. No power action performed.")
         self.test_completed.emit()
         self.accept()
 
     def _on_cancel(self) -> None:
+        if self._cancelled or self._completed:
+            return
         self._cancelled = True
         self._timer.stop()
+        self._stop_sound()
         logger.info("[SLEEPGUARD_DIALOG] User clicked Cancel.")
         self.shutdown_cancelled.emit()
         self.reject()
@@ -303,6 +393,7 @@ class ShutdownCountdownDialog(QDialog):
         if not self._cancelled and not self._completed:
             self._cancelled = True
             self._timer.stop()
+            self._stop_sound()
             logger.info("[SLEEPGUARD_DIALOG] Dialog closed via closeEvent — treating as cancel.")
             self.shutdown_cancelled.emit()
         super().closeEvent(event)
@@ -311,6 +402,7 @@ class ShutdownCountdownDialog(QDialog):
         if not getattr(self, "_logged_paint", False):
             logger.info("[SLEEPGUARD_DIALOG] First paintEvent — dialog is visible on screen.")
             self._logged_paint = True
+            self._trigger_initial_sound()
         super().paintEvent(event)
 
 

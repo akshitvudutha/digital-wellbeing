@@ -12,31 +12,24 @@ from PySide6.QtCore import Qt, Signal, QSize
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QScrollArea, QFrame, QMessageBox, QDialog, QProgressBar,
-    QSizePolicy, QGraphicsDropShadowEffect
+    QSizePolicy, QGraphicsDropShadowEffect, QStackedWidget
 )
 from PySide6.QtGui import QIcon, QColor
 
 from database.repository import Repository
+from database.models import ScreenTimeBudget
 from core.logger import logger
 from ui.theme import ThemeManager
 from ui.icons import get_icon
 from utils.icon_provider import AppIconProvider
+from ui.widgets.budget_card import BudgetCard
+from ui.widgets.budget_dialog import BudgetDialog
+from protection.budgets import BudgetManager
+from utils.time_format import format_duration
 
 
 def _format_time_short(seconds: float) -> str:
-    total_secs = int(max(0, seconds))
-    h, r = divmod(total_secs, 3600)
-    m, _ = divmod(r, 60)
-    if h > 0 and m > 0:
-        return f"{h}h {m}m"
-    elif h > 0:
-        return f"{h}h"
-    elif m > 0:
-        return f"{m}m"
-    elif total_secs > 0:
-        return f"{total_secs}s"
-    else:
-        return "0m"
+    return format_duration(seconds, compact=True)
 
 
 _KNOWN_WEBSITES: dict[str, str] = {
@@ -849,6 +842,11 @@ class AppTimerPage(QWidget):
         self._timer_rows: List[_UnifiedTimerRow] = []
         self._kpi_icons: List[tuple[QLabel, str]] = []
 
+        self._budget_mgr = BudgetManager.instance(self._repo, protection_mgr=self._pm)
+        self._budget_cards: List[BudgetCard] = []
+        self._budget_kpi_icons: List[tuple[QLabel, str]] = []
+        self._budget_mgr.budgets_updated.connect(self._refresh_budgets)
+
         self._setup_ui()
 
         ThemeManager.instance().theme_changed.connect(self._apply_theme)
@@ -867,33 +865,70 @@ class AppTimerPage(QWidget):
         inner.setObjectName("app_timer_inner")
         self._inner_layout = QVBoxLayout(inner)
         self._inner_layout.setContentsMargins(36, 28, 36, 32)
-        self._inner_layout.setSpacing(24)
+        self._inner_layout.setSpacing(20)
         scroll.setWidget(inner)
         root.addWidget(scroll, 1)
 
-        # Header Row: Title & Subtitle on Left, Add Timer on Right
-        header_row = QHBoxLayout()
-        header_row.setSpacing(16)
-
+        # Header Title
         title_box = QVBoxLayout()
         title_box.setSpacing(4)
-        title = QLabel("App Timer")
+        title = QLabel("Limits & Budgets")
         title.setObjectName("page_title")
-        subtitle = QLabel("Set daily active time limits for applications and websites.")
+        subtitle = QLabel("Set daily active limits and milestone budgets for applications and categories.")
         subtitle.setObjectName("page_subtitle")
         title_box.addWidget(title)
         title_box.addWidget(subtitle)
-        header_row.addLayout(title_box)
-        header_row.addStretch()
+        self._inner_layout.addLayout(title_box)
+
+        # Top Sub-tab Navigation Pills
+        tab_row = QHBoxLayout()
+        tab_row.setSpacing(8)
+
+        self._btn_subtab_timers = QPushButton("App & Web Timers")
+        self._btn_subtab_timers.setObjectName("subtab_active")
+        self._btn_subtab_timers.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_subtab_timers.clicked.connect(lambda: self._switch_subtab(0))
+
+        self._btn_subtab_budgets = QPushButton("Daily Budgets & Goals")
+        self._btn_subtab_budgets.setObjectName("subtab_inactive")
+        self._btn_subtab_budgets.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_subtab_budgets.clicked.connect(lambda: self._switch_subtab(1))
+
+        tab_row.addWidget(self._btn_subtab_timers)
+        tab_row.addWidget(self._btn_subtab_budgets)
+        tab_row.addStretch()
+        self._inner_layout.addLayout(tab_row)
+
+        # Stack for Sub-tabs
+        self._stack = QStackedWidget()
+        self._stack.setObjectName("timer_budget_stack")
+
+        # ── TAB 0: Application & Website Timers View ─────────────────────────
+        timers_widget = QWidget()
+        timers_layout = QVBoxLayout(timers_widget)
+        timers_layout.setContentsMargins(0, 4, 0, 0)
+        timers_layout.setSpacing(20)
+
+        # Timers Top Bar: Section Title + Add Timer Button
+        timer_top_h = QHBoxLayout()
+        timer_top_text = QVBoxLayout()
+        timer_top_text.setSpacing(2)
+        lbl_t_hdr = QLabel("Application & Website Timers")
+        lbl_t_hdr.setObjectName("section_title")
+        lbl_t_sub = QLabel("Hard daily screen-time limits enforced by process monitoring.")
+        lbl_t_sub.setObjectName("section_sub")
+        timer_top_text.addWidget(lbl_t_hdr)
+        timer_top_text.addWidget(lbl_t_sub)
+        timer_top_h.addLayout(timer_top_text)
+        timer_top_h.addStretch()
 
         self._add_btn = QPushButton("+  Add Timer")
         self._add_btn.setObjectName("timer_primary_add_btn")
         self._add_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._add_btn.setFixedHeight(40)
+        self._add_btn.setFixedHeight(36)
         self._add_btn.clicked.connect(self._on_add_timer)
-        header_row.addWidget(self._add_btn)
-
-        self._inner_layout.addLayout(header_row)
+        timer_top_h.addWidget(self._add_btn)
+        timers_layout.addLayout(timer_top_h)
 
         # Summary Bar (Active Limits, Tracking Status)
         summary_row = QHBoxLayout()
@@ -901,7 +936,7 @@ class AppTimerPage(QWidget):
         self._kpi_active_timers = self._create_kpi_card("ACTIVE TIMERS", "0 timers", "clock", summary_row)
         self._kpi_over_limit = self._create_kpi_card("LIMIT EXCEEDED", "0 timers", "shield", summary_row)
         self._kpi_resets = self._create_kpi_card("SCHEDULE", "Resets at Midnight", "hourglass", summary_row)
-        self._inner_layout.addLayout(summary_row)
+        timers_layout.addLayout(summary_row)
 
         # Section Header Row with Filter Pills
         section_row = QHBoxLayout()
@@ -936,12 +971,12 @@ class AppTimerPage(QWidget):
 
         self._btn_filter_all.setChecked(True)
         section_row.addWidget(self._filter_container)
-        self._inner_layout.addLayout(section_row)
+        timers_layout.addLayout(section_row)
 
         # Dynamic App & Website List Layout
         self._apps_layout = QVBoxLayout()
         self._apps_layout.setSpacing(12)
-        self._inner_layout.addLayout(self._apps_layout)
+        timers_layout.addLayout(self._apps_layout)
 
         # Empty State Card
         self._empty_frame = QFrame()
@@ -972,12 +1007,94 @@ class AppTimerPage(QWidget):
         empty_add.clicked.connect(self._on_add_timer)
         empty_layout.addWidget(empty_add, 0, Qt.AlignmentFlag.AlignCenter)
 
-        self._inner_layout.addWidget(self._empty_frame)
-        self._inner_layout.addStretch()
+        timers_layout.addWidget(self._empty_frame)
+        timers_layout.addStretch()
+
+        self._stack.addWidget(timers_widget)
+
+        # ── TAB 1: Daily Budgets & Goals View ────────────────────────────────
+        budgets_widget = QWidget()
+        budgets_layout = QVBoxLayout(budgets_widget)
+        budgets_layout.setContentsMargins(0, 4, 0, 0)
+        budgets_layout.setSpacing(20)
+
+        # Budgets Top Bar: Section Title + Add Budget Button
+        b_top_h = QHBoxLayout()
+        b_top_text = QVBoxLayout()
+        b_top_text.setSpacing(2)
+        lbl_b_hdr = QLabel("Daily Budgets & Screen-Time Goals")
+        lbl_b_hdr.setObjectName("section_title")
+        lbl_b_sub = QLabel("Set intentional caps with 50%, 80%, and 100% milestone toasts.")
+        lbl_b_sub.setObjectName("section_sub")
+        b_top_text.addWidget(lbl_b_hdr)
+        b_top_text.addWidget(lbl_b_sub)
+        b_top_h.addLayout(b_top_text)
+        b_top_h.addStretch()
+
+        self._btn_add_budget = QPushButton("+  Add Budget")
+        self._btn_add_budget.setObjectName("timer_primary_add_btn")
+        self._btn_add_budget.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_add_budget.setFixedHeight(36)
+        self._btn_add_budget.clicked.connect(self._on_add_budget)
+        b_top_h.addWidget(self._btn_add_budget)
+        budgets_layout.addLayout(b_top_h)
+
+        # Budget KPI Summary Bar
+        b_summary_row = QHBoxLayout()
+        b_summary_row.setSpacing(14)
+        self._kpi_active_budgets = self._create_kpi_card("ACTIVE BUDGETS", "0 budgets", "clock", b_summary_row, is_budget=True)
+        self._kpi_over_budget = self._create_kpi_card("BUDGET EXCEEDED", "0 budgets", "shield", b_summary_row, is_budget=True)
+        self._kpi_budget_resets = self._create_kpi_card("SCHEDULE", "Resets at Midnight", "hourglass", b_summary_row, is_budget=True)
+        budgets_layout.addLayout(b_summary_row)
+
+        lbl_b_list = QLabel("CONFIGURED BUDGETS")
+        lbl_b_list.setObjectName("section_header")
+        budgets_layout.addWidget(lbl_b_list)
+
+        # Cards Layout
+        self._budgets_cards_layout = QVBoxLayout()
+        self._budgets_cards_layout.setSpacing(12)
+        budgets_layout.addLayout(self._budgets_cards_layout)
+
+        # Budget Empty State Card
+        self._budget_empty_frame = QFrame()
+        self._budget_empty_frame.setObjectName("empty_state_frame")
+        b_empty_layout = QVBoxLayout(self._budget_empty_frame)
+        b_empty_layout.setContentsMargins(32, 36, 32, 36)
+        b_empty_layout.setSpacing(12)
+        b_empty_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self._budget_empty_icon = QLabel()
+        self._budget_empty_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        b_empty_layout.addWidget(self._budget_empty_icon)
+
+        b_empty_title = QLabel("No Screen-Time Budgets Configured")
+        b_empty_title.setObjectName("empty_title")
+        b_empty_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        b_empty_layout.addWidget(b_empty_title)
+
+        b_empty_sub = QLabel("Set daily budgets for total screen-time, categories, or apps with milestone warnings.")
+        b_empty_sub.setObjectName("empty_sub")
+        b_empty_sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        b_empty_layout.addWidget(b_empty_sub)
+
+        b_empty_add = QPushButton("Create First Budget")
+        b_empty_add.setObjectName("timer_primary_add_btn")
+        b_empty_add.setCursor(Qt.CursorShape.PointingHandCursor)
+        b_empty_add.setFixedHeight(38)
+        b_empty_add.clicked.connect(self._on_add_budget)
+        b_empty_layout.addWidget(b_empty_add, 0, Qt.AlignmentFlag.AlignCenter)
+
+        budgets_layout.addWidget(self._budget_empty_frame)
+        budgets_layout.addStretch()
+
+        self._stack.addWidget(budgets_widget)
+        self._inner_layout.addWidget(self._stack, 1)
 
         self._refresh_timers()
+        self._refresh_budgets()
 
-    def _create_kpi_card(self, title: str, default_val: str, icon_name: str, layout: QHBoxLayout) -> QLabel:
+    def _create_kpi_card(self, title: str, default_val: str, icon_name: str, layout: QHBoxLayout, is_budget: bool = False) -> QLabel:
         tm = ThemeManager.instance()
         card = QFrame()
         card.setObjectName("v2_card")
@@ -1001,9 +1118,86 @@ class AppTimerPage(QWidget):
         lbl_val.setObjectName("metric_val_success")
         l.addWidget(lbl_val)
         
-        self._kpi_icons.append((ico, icon_name))
+        if is_budget:
+            self._budget_kpi_icons.append((ico, icon_name))
+        else:
+            self._kpi_icons.append((ico, icon_name))
         layout.addWidget(card, 1)
         return lbl_val
+
+    def _switch_subtab(self, idx: int) -> None:
+        self._stack.setCurrentIndex(idx)
+        self._btn_subtab_timers.setObjectName("subtab_active" if idx == 0 else "subtab_inactive")
+        self._btn_subtab_budgets.setObjectName("subtab_active" if idx == 1 else "subtab_inactive")
+        self._apply_theme(ThemeManager.instance().is_dark)
+        if idx == 0:
+            self._refresh_timers()
+        else:
+            self._refresh_budgets()
+
+    def _refresh_budgets(self) -> None:
+        while self._budgets_cards_layout.count():
+            item = self._budgets_cards_layout.takeAt(0)
+            if item.widget():
+                w = item.widget()
+                w.setParent(None)
+                w.deleteLater()
+        self._budget_cards.clear()
+
+        budgets = self._budget_mgr._repo.get_budgets()
+        active_count = sum(1 for b in budgets if b.is_enabled)
+        exceeded_count = 0
+
+        if not budgets:
+            self._budget_empty_frame.setVisible(True)
+            self._kpi_active_budgets.setText("0 budgets")
+            self._kpi_over_budget.setText("0 budgets")
+            return
+
+        self._budget_empty_frame.setVisible(False)
+
+        for b in budgets:
+            status = self._budget_mgr.get_budget_status(b)
+            if status["is_exceeded"] and b.is_enabled:
+                exceeded_count += 1
+            card = BudgetCard(b, used_s=status["used_seconds"])
+            card.toggled.connect(self._on_budget_toggled)
+            card.edit_requested.connect(self._on_budget_edit)
+            card.delete_requested.connect(self._on_budget_delete)
+            self._budgets_cards_layout.addWidget(card)
+            self._budget_cards.append(card)
+
+        self._kpi_active_budgets.setText(f"{active_count} {'budget' if active_count == 1 else 'budgets'}")
+        self._kpi_over_budget.setText(f"{exceeded_count} {'budget' if exceeded_count == 1 else 'budgets'}")
+
+    def _on_add_budget(self) -> None:
+        dlg = BudgetDialog(parent=self)
+        if dlg.exec():
+            b = dlg.get_budget()
+            self._budget_mgr.add_or_update_budget(b)
+
+    def _on_budget_edit(self, budget_id: int) -> None:
+        b = self._budget_mgr._repo.get_budget(budget_id)
+        if not b:
+            return
+        dlg = BudgetDialog(budget=b, parent=self)
+        if dlg.exec():
+            updated = dlg.get_budget()
+            self._budget_mgr.add_or_update_budget(updated)
+
+    def _on_budget_toggled(self, budget_id: int, is_enabled: bool) -> None:
+        self._budget_mgr.toggle_budget(budget_id, is_enabled)
+
+    def _on_budget_delete(self, budget_id: int) -> None:
+        res = QMessageBox.question(
+            self,
+            "Delete Budget",
+            "Are you sure you want to delete this screen-time budget?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if res == QMessageBox.StandardButton.Yes:
+            self._budget_mgr.delete_budget(budget_id)
 
     def _set_filter(self, filter_type: str) -> None:
         self._filter_type = filter_type
@@ -1336,8 +1530,35 @@ class AppTimerPage(QWidget):
                 font-size: 13px;
                 color: {tm.color('text_sub')};
             }}
+            QPushButton#subtab_active {{
+                background-color: {tm.color('surface_elevated')};
+                border: 1px solid {tm.color('accent')};
+                border-radius: 8px;
+                color: {tm.color('text_main')};
+                font-weight: 700;
+                font-size: 13px;
+                padding: 6px 16px;
+            }}
+            QPushButton#subtab_inactive {{
+                background-color: transparent;
+                border: 1px solid {tm.color('border')};
+                border-radius: 8px;
+                color: {tm.color('text_sub')};
+                font-weight: 600;
+                font-size: 13px;
+                padding: 6px 16px;
+            }}
+            QPushButton#subtab_inactive:hover {{
+                background-color: {tm.color('surface_hover')};
+                color: {tm.color('text_main')};
+            }}
         """)
+
+        for lbl, icon_name in self._budget_kpi_icons:
+            lbl.setPixmap(get_icon(icon_name, color=tm.color("text_muted"), size=14).pixmap(14, 14))
 
     def on_data_changed(self) -> None:
         """Called by MainWindow refresh cycle."""
         self._refresh_timers()
+        if hasattr(self, "_budget_mgr"):
+            self._refresh_budgets()

@@ -189,6 +189,10 @@ class Notifier:
         self._send_fallback(title, message)
         return False
 
+    def send_notification(self, title: str, message: str, **kwargs) -> bool:
+        """Compatibility alias for notify() across protection engines."""
+        return self.notify(title, message, **kwargs)
+
     def _send_winrt_toast(
         self,
         title: str,

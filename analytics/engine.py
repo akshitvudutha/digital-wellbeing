@@ -7,6 +7,7 @@ from typing import List, Optional
 
 from database.models import DailyStat
 from database.repository import Repository
+from utils.time_format import format_duration
 import math
 
 
@@ -31,8 +32,8 @@ class DailyPoint:
 
 
 class AnalyticsEngine:
-    def __init__(self) -> None:
-        self._repo = Repository()
+    def __init__(self, repo: Optional[Repository] = None) -> None:
+        self._repo = repo or Repository()
 
     def get_today_summary(self) -> PeriodSummary:
         today = date.today()
@@ -252,22 +253,13 @@ class AnalyticsEngine:
 
     @staticmethod
     def format_duration(seconds: float) -> str:
-        total = int(seconds)
-        h, remainder = divmod(total, 3600)
-        m, s = divmod(remainder, 60)
-        if h:
-            return f"{h}h {m}m"
-        if m:
-            return f"{m}m {s}s"
-        return f"{s}s"
+        return format_duration(seconds)
 
     @staticmethod
     def format_duration_short(seconds: float) -> str:
-        total = int(seconds)
-        h, m = divmod(total // 60, 60)
-        if h:
-            return f"{h}h {m}m"
-        return f"{m}m"
+        # Compatibility name retained for existing compact UI call sites.
+        # Elapsed durations still include seconds so short sessions remain visible.
+        return format_duration(seconds, compact=True)
 
     def generate_daily_snapshot(self, target_date: date) -> None:
         """Computes and saves a historical snapshot for the given date."""

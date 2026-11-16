@@ -39,6 +39,7 @@ class FluentButton(QPushButton):
         super().__init__(text, parent)
         self.setObjectName("fluent_btn_primary" if primary else "fluent_btn_secondary")
         self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setFocusPolicy(Qt.FocusPolicy.TabFocus)
         self._primary = primary
         
         from ui.theme import ThemeManager
@@ -52,27 +53,8 @@ class FluentButton(QPushButton):
         if self._primary:
             self.setStyleSheet(f"""
                 QPushButton {{
-                    background-color: {tm.color('accent')};
-                    color: #FFFFFF; /* Primary button text is always white */
-                    border: none;
-                    border-radius: 6px;
-                    padding: 8px 16px;
-                    font-size: 14px;
-                    font-weight: 600;
-                }}
-                QPushButton:hover {{
-                    background-color: {tm.color('accent_hover')};
-                }}
-                QPushButton:pressed {{
-                    background-color: {tm.color('accent')};
-                    opacity: 0.8;
-                }}
-            """)
-        else:
-            self.setStyleSheet(f"""
-                QPushButton {{
-                    background-color: {tm.color('primary_btn_gradient')};
-                    color: {tm.color('text_main')};
+                    background: {tm.color('primary_btn_gradient')};
+                    color: #FFFFFF; /* Primary button text is always crisp white */
                     border: 1px solid {tm.color('border')};
                     border-radius: 6px;
                     padding: 8px 16px;
@@ -80,11 +62,35 @@ class FluentButton(QPushButton):
                     font-weight: 600;
                 }}
                 QPushButton:hover {{
-                    background-color: {tm.color('primary_btn_hover')};
-                    border: 1px solid {tm.color('border_hover')};
+                    background: {tm.color('primary_btn_hover')};
                 }}
                 QPushButton:pressed {{
-                    background-color: {tm.color('primary_btn_gradient')};
+                    background-color: {tm.color('accent_pressed')};
+                }}
+                QPushButton:focus {{
+                    border: 2px solid {tm.color('focus_ring')};
+                }}
+            """)
+        else:
+            self.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {tm.color('secondary_btn_bg')};
+                    color: {tm.color('secondary_btn_text')};
+                    border: 1px solid {tm.color('secondary_btn_border')};
+                    border-radius: 6px;
+                    padding: 8px 16px;
+                    font-size: 14px;
+                    font-weight: 600;
+                }}
+                QPushButton:hover {{
+                    background-color: {tm.color('secondary_btn_hover')};
+                    border: 1px solid {tm.color('border_strong')};
+                }}
+                QPushButton:pressed {{
+                    background-color: {tm.color('secondary_btn_pressed')};
+                }}
+                QPushButton:focus {{
+                    border: 2px solid {tm.color('focus_ring')};
                 }}
             """)
 

@@ -39,7 +39,15 @@ class TelemetryManager:
 
         try:
             # Short timeout so it doesn't block or linger silently
-            requests.post(self._endpoint, json=payload, timeout=5.0)
+            data = json.dumps(payload).encode("utf-8")
+            req = urllib.request.Request(
+                self._endpoint,
+                data=data,
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=5.0) as resp:
+                pass
             logger.info("Anonymous telemetry heartbeat sent successfully.")
         except Exception as e:
             # Swallow all exceptions to ensure offline capability

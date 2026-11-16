@@ -54,13 +54,11 @@ class AppLockerAuthDialog(QDialog):
         self._pin_manager = pin_manager
         self._auth_method = auth_method
 
-        self._hello = WindowsHelloAuth(self)
+        self._hello = WindowsHelloAuth()
         self._hello.result_ready.connect(self._on_hello_result)
-
-        self._hello_available = (
-            self._hello.check_availability() == HelloAvailability.AVAILABLE
-            and auth_method in ("hello", "hello_pin")
-        )
+        self._hello.availability_ready.connect(self._on_hello_availability_ready)
+        self._hello_check_pending = auth_method in ("hello", "hello_pin")
+        self._hello_available = False
 
         self._hello_timer = QTimer(self)
         self._hello_timer.setInterval(200)
@@ -86,6 +84,8 @@ class AppLockerAuthDialog(QDialog):
         apply_mica(int(self.winId()), ThemeManager.instance().is_dark)
 
         self._update_state_idle()
+        if self._hello_check_pending:
+            QTimer.singleShot(0, self._hello.request_availability)
 
     # ─── show event ──────────────────────────────────────────────────────────
 
@@ -177,7 +177,9 @@ class AppLockerAuthDialog(QDialog):
 
         # ── PIN section ────────────────────────────────────────────────────
         show_pin_initially = (
-            not self._hello_available or self._auth_method == "pin"
+            self._auth_method == "pin"
+            or (self._hello_check_pending and self._auth_method == "hello_pin")
+            or (not self._hello_check_pending and not self._hello_available)
         )
 
         self._pin_widget = QWidget()
@@ -341,12 +343,43 @@ class AppLockerAuthDialog(QDialog):
     # ─── State helpers ────────────────────────────────────────────────────────
 
     def _update_state_idle(self) -> None:
-        if self._hello_available:
+        if self._hello_check_pending:
+            self._status_lbl.setText("Checking Windows Hello availability…")
+        elif self._hello_available:
             self._status_lbl.setText("Use your face, fingerprint, or Windows Hello PIN.")
         elif self._pin_manager and self._pin_manager.is_enabled():
             self._status_lbl.setText("Enter your Notch PIN to unlock.")
         else:
             self._status_lbl.setText("No authentication method configured.")
+
+    def _on_hello_availability_ready(self, availability_value: int) -> None:
+        self._hello_check_pending = False
+        try:
+            availability = HelloAvailability(availability_value)
+        except ValueError:
+            availability = HelloAvailability.ERROR
+
+        self._hello_available = (
+            availability == HelloAvailability.AVAILABLE
+            and self._auth_method in ("hello", "hello_pin")
+        )
+        self._hello_btn.setVisible(self._hello_available)
+
+        if self._hello_available and self._auth_method == "hello_pin":
+            self._pin_toggle_btn.setVisible(True)
+            pin_in_use = bool(self._pin_input.text()) or self._pin_input.hasFocus()
+            self._pin_widget.setVisible(pin_in_use)
+            if pin_in_use:
+                self._pin_toggle_btn.setVisible(False)
+        elif self._hello_available and self._auth_method == "hello":
+            self._pin_widget.hide()
+            self._pin_toggle_btn.hide()
+        else:
+            self._pin_widget.show()
+            self._pin_toggle_btn.hide()
+
+        self._update_state_idle()
+        self.adjustSize()
 
     def _update_state_verifying(self) -> None:
         self._status_lbl.setText("Waiting for Windows Hello...\n\nThe native Windows security interface handles authentication.")
