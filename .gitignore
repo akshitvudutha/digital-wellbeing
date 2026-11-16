@@ -45,3 +45,7 @@ node_modules/
 *~
 *.bak
 *.swp
+
+# Local scratch and automation logs
+scratch/
+@AutomationLog.txt

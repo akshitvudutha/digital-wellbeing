@@ -1,6 +1,10 @@
 import sys
 import os
 from pathlib import Path
+
+# Add project root to sys.path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QTimer
 from core.logger import logger

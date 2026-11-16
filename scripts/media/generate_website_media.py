@@ -4,7 +4,7 @@ import time
 from pathlib import Path
 
 # Force UTF-8 and test mode
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 os.environ["DW_TEST_MODE"] = "1"
 os.environ["PYTHONIOENCODING"] = "utf-8"
 
