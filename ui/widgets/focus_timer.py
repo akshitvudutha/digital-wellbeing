@@ -8,7 +8,8 @@ from typing import List, Optional
 from PySide6.QtCore import QTimer, Qt, Signal
 from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget,
-    QScrollArea, QDialog, QStackedWidget, QProgressBar, QCheckBox, QSizePolicy, QLineEdit
+    QScrollArea, QDialog, QStackedWidget, QProgressBar, QCheckBox, QSizePolicy, QLineEdit,
+    QComboBox,
 )
 from ui.theme import ThemeManager
 from ui.icons import get_icon
@@ -279,9 +280,9 @@ class AddWebsiteDialog(QDialog):
                 background: {tm.color('accent_hover')};
             }}
             QPushButton#btn_start:disabled {{
-                background: rgba(255, 255, 255, 0.08);
-                border-color: rgba(255, 255, 255, 0.05);
-                color: rgba(255, 255, 255, 0.30);
+                background: {tm.color('surface_secondary')};
+                border: 1px solid {tm.color('border')};
+                color: {tm.color('text_muted')};
             }}
         """)
 
@@ -515,18 +516,25 @@ class FocusTimerWidget(QFrame):
     focus_completed = Signal()
     DEFAULT_FOCUS_M = 25
 
-    def __init__(self, parent=None) -> None:
+    def __init__(self, parent=None, focus_manager=None) -> None:
         super().__init__(parent)
         self.setObjectName("focus_cockpit_card")
         
-        from protection.focus_manager import FocusManager
-        self._fm = FocusManager.instance()
+        from protection.focus_manager import FocusManager, STUDENT_FOCUS_PROFILES
+        self._fm = focus_manager or FocusManager.instance()
+        self._student_focus_profiles = dict(STUDENT_FOCUS_PROFILES)
         self._fm.tick.connect(self._on_tick)
         self._fm.focus_state_changed.connect(self._on_state_changed)
-        self._fm.focus_completed.connect(self.focus_completed.emit)
+        self._fm.focus_completed.connect(self._on_focus_completed_internal)
+        self._fm.focus_paused.connect(self._on_focus_paused)
+        self._fm.focus_resumed.connect(self._on_focus_resumed)
+        self._fm.focus_reset.connect(self._on_focus_reset)
+        self._fm.focus_cancelled.connect(self._on_focus_cancelled)
+        self._fm.mode_changed.connect(self._on_focus_mode_changed)
         
         self._selected_minutes = self.DEFAULT_FOCUS_M
         self._session_total_seconds = self.DEFAULT_FOCUS_M * 60
+        self._just_completed = False
         
         self._setup_ui()
         
@@ -599,10 +607,27 @@ class FocusTimerWidget(QFrame):
             btn.setObjectName("mode_card_btn")
             btn.setCheckable(True)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.setFocusPolicy(Qt.FocusPolicy.TabFocus)
             btn.clicked.connect(lambda checked, mode=m: self._set_mode(mode))
             modes_row.addWidget(btn, 1)
             self._mode_btns[m] = btn
         layout.addLayout(modes_row)
+
+        student_profile_row = QHBoxLayout()
+        student_profile_row.setSpacing(10)
+        student_profile_label = QLabel("STUDENT SESSION PROFILE")
+        student_profile_label.setObjectName("section_eyebrow")
+        student_profile_row.addWidget(student_profile_label)
+        self._student_profile_combo = QComboBox()
+        self._student_profile_combo.setObjectName("student_focus_profile_combo")
+        self._student_profile_combo.setFocusPolicy(Qt.FocusPolicy.TabFocus)
+        self._student_profile_combo.addItem("Choose a student profile…", None)
+        for profile_key, profile_label in self._student_focus_profiles.items():
+            self._student_profile_combo.addItem(profile_label, profile_key)
+        self._student_profile_combo.currentIndexChanged.connect(self._on_student_profile_changed)
+        student_profile_row.addWidget(self._student_profile_combo)
+        student_profile_row.addStretch()
+        layout.addLayout(student_profile_row)
 
         # Main Inactive Body: 2 Columns
         body_grid = QHBoxLayout()
@@ -641,6 +666,7 @@ class FocusTimerWidget(QFrame):
             chip.setProperty("minutes", minutes)
             chip.setChecked(minutes == self._selected_minutes)
             chip.setCursor(Qt.CursorShape.PointingHandCursor)
+            chip.setFocusPolicy(Qt.FocusPolicy.TabFocus)
             chip.clicked.connect(lambda checked, m=minutes: self.set_preset(m))
             chips_row.addWidget(chip)
             self._chips.append(chip)
@@ -686,6 +712,7 @@ class FocusTimerWidget(QFrame):
         self._add_app_btn = QPushButton("+ Add Application")
         self._add_app_btn.setObjectName("action_pill_btn")
         self._add_app_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._add_app_btn.setFocusPolicy(Qt.FocusPolicy.TabFocus)
         self._add_app_btn.clicked.connect(self._open_app_picker)
         app_ctrl_row.addWidget(self._add_app_btn)
         app_ctrl_row.addStretch()
@@ -694,7 +721,7 @@ class FocusTimerWidget(QFrame):
         # Subtle divider
         divider = QFrame()
         divider.setFrameShape(QFrame.Shape.HLine)
-        divider.setStyleSheet("background-color: rgba(255, 255, 255, 0.08); max-height: 1px;")
+        divider.setObjectName("focus_divider")
         right_layout.addWidget(divider)
 
         # Section 2: Blocked Websites
@@ -741,6 +768,7 @@ class FocusTimerWidget(QFrame):
         self._add_website_btn = QPushButton("+ Add Website")
         self._add_website_btn.setObjectName("action_pill_btn")
         self._add_website_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._add_website_btn.setFocusPolicy(Qt.FocusPolicy.TabFocus)
         self._add_website_btn.clicked.connect(self._open_website_picker)
         web_ctrl_row.addWidget(self._add_website_btn)
         web_ctrl_row.addStretch()
@@ -756,6 +784,7 @@ class FocusTimerWidget(QFrame):
         self._start_btn = QPushButton("▶  Start Focus Session")
         self._start_btn.setObjectName("primary_start_btn")
         self._start_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._start_btn.setFocusPolicy(Qt.FocusPolicy.TabFocus)
         self._start_btn.setMinimumHeight(46)
         self._start_btn.clicked.connect(self._toggle_timer)
         action_row.addWidget(self._start_btn, 3)
@@ -763,6 +792,7 @@ class FocusTimerWidget(QFrame):
         self._reset_btn = QPushButton("↺ Reset")
         self._reset_btn.setObjectName("secondary_btn")
         self._reset_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._reset_btn.setFocusPolicy(Qt.FocusPolicy.TabFocus)
         self._reset_btn.setMinimumHeight(46)
         self._reset_btn.clicked.connect(self._stop_timer)
         action_row.addWidget(self._reset_btn, 1)
@@ -790,8 +820,8 @@ class FocusTimerWidget(QFrame):
         self._active_mode_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self._active_mode_lbl)
 
-        # Massive Countdown Display
-        self._active_time_display = QLabel("25:00")
+        # Massive Countdown Display (initialized with configured duration)
+        self._active_time_display = QLabel(self._format_time(self._selected_minutes * 60))
         self._active_time_display.setObjectName("active_countdown_display")
         self._active_time_display.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self._active_time_display)
@@ -813,7 +843,7 @@ class FocusTimerWidget(QFrame):
         prog_labels = QHBoxLayout()
         self._active_elapsed_lbl = QLabel("0m elapsed")
         self._active_elapsed_lbl.setObjectName("progress_subtext")
-        self._active_remaining_lbl = QLabel("25m remaining")
+        self._active_remaining_lbl = QLabel(f"{self._selected_minutes}m remaining")
         self._active_remaining_lbl.setObjectName("progress_subtext")
         self._active_remaining_lbl.setAlignment(Qt.AlignmentFlag.AlignRight)
         prog_labels.addWidget(self._active_elapsed_lbl)
@@ -849,15 +879,26 @@ class FocusTimerWidget(QFrame):
 
         layout.addWidget(apps_panel, 0, Qt.AlignmentFlag.AlignCenter)
 
-        # End Session Control
+        # End & Pause Session Controls
         btn_box = QHBoxLayout()
+        btn_box.setSpacing(12)
         btn_box.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self._active_pause_btn = QPushButton("❚❚  Pause")
+        self._active_pause_btn.setObjectName("active_pause_btn")
+        self._active_pause_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._active_pause_btn.setFocusPolicy(Qt.FocusPolicy.TabFocus)
+        self._active_pause_btn.setMinimumHeight(44)
+        self._active_pause_btn.setMinimumWidth(130)
+        self._active_pause_btn.clicked.connect(self._toggle_pause)
+        btn_box.addWidget(self._active_pause_btn)
 
         self._active_stop_btn = QPushButton("■  End Focus Session")
         self._active_stop_btn.setObjectName("active_stop_btn")
         self._active_stop_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._active_stop_btn.setFocusPolicy(Qt.FocusPolicy.TabFocus)
         self._active_stop_btn.setMinimumHeight(44)
-        self._active_stop_btn.setMinimumWidth(220)
+        self._active_stop_btn.setMinimumWidth(180)
         self._active_stop_btn.clicked.connect(self._stop_timer)
         btn_box.addWidget(self._active_stop_btn)
 
@@ -877,6 +918,10 @@ class FocusTimerWidget(QFrame):
                 border: 1px solid {tm.color('border')};
                 border-radius: 12px;
             }}
+            QFrame#focus_divider {{
+                background-color: {tm.color('border')};
+                max-height: 1px;
+            }}
             QLabel#section_eyebrow {{
                 font-size: 11px;
                 font-weight: 700;
@@ -888,6 +933,11 @@ class FocusTimerWidget(QFrame):
                 font-size: 12px;
                 font-weight: 500;
                 color: {tm.color('text_sub')};
+            }}
+            QLabel#empty_placeholder {{
+                font-size: 12px;
+                font-style: italic;
+                color: {tm.color('text_muted')};
             }}
             QCheckBox#strict_chk {{
                 color: {tm.color('danger_text')};
@@ -1072,6 +1122,33 @@ class FocusTimerWidget(QFrame):
                 border-color: #EF4444;
                 color: #FFFFFF;
             }}
+            QPushButton#active_stop_btn:focus {{
+                border: 2px solid {tm.color('focus_ring')};
+            }}
+            QPushButton#active_pause_btn {{
+                background: rgba(245, 158, 11, 0.12);
+                border: 1px solid rgba(245, 158, 11, 0.35);
+                border-radius: 10px;
+                color: #F59E0B;
+                font-size: 13px;
+                font-weight: 700;
+                padding: 10px 20px;
+            }}
+            QPushButton#active_pause_btn:hover {{
+                background: rgba(245, 158, 11, 0.22);
+                border-color: #F59E0B;
+                color: #FFFFFF;
+            }}
+            QPushButton#active_pause_btn:focus {{
+                border: 2px solid {tm.color('focus_ring')};
+            }}
+            QPushButton#timer_chip:focus,
+            QPushButton#mode_card_btn:focus,
+            QPushButton#action_pill_btn:focus,
+            QPushButton#primary_start_btn:focus,
+            QPushButton#secondary_btn:focus {{
+                border: 2px solid {tm.color('focus_ring')};
+            }}
         """)
 
     def set_preset(self, minutes: int) -> None:
@@ -1080,6 +1157,8 @@ class FocusTimerWidget(QFrame):
         self._selected_minutes = minutes
         self._session_total_seconds = minutes * 60
         self._time_display.setText(self._format_time(minutes * 60))
+        self._active_time_display.setText(self._format_time(minutes * 60))
+        self._active_remaining_lbl.setText(f"{minutes}m remaining")
         self._status_lbl.setText(f"Session set to {minutes} minutes")
         for chip in getattr(self, "_chips", []):
             chip.setChecked(chip.property("minutes") == minutes)
@@ -1088,47 +1167,41 @@ class FocusTimerWidget(QFrame):
         if self._fm.is_active:
             return
         self._fm.set_mode(mode)
-        self._sync_mode_buttons()
-        self._handle_dynamic_suggestions(mode)
-        self._refresh_blocklist_ui()
-        self._refresh_websites_ui()
 
     def _sync_mode_buttons(self) -> None:
         current = self._fm.current_mode
         for m, btn in self._mode_btns.items():
             btn.setChecked(m == current)
+        combo_index = self._student_profile_combo.findData(current)
+        if combo_index < 0:
+            combo_index = 0
+        self._student_profile_combo.blockSignals(True)
+        self._student_profile_combo.setCurrentIndex(combo_index)
+        self._student_profile_combo.blockSignals(False)
+
+    def _on_student_profile_changed(self, index: int) -> None:
+        profile = self._student_profile_combo.itemData(index)
+        if profile:
+            self._set_mode(str(profile))
+
+    def _on_focus_mode_changed(self, mode: str) -> None:
+        self._sync_mode_buttons()
+        self._handle_dynamic_suggestions(mode)
+        self._refresh_blocklist_ui()
+        self._refresh_websites_ui()
 
     def _handle_dynamic_suggestions(self, mode: str) -> None:
         apps = self._fm.current_mode_apps
         if apps:
             return
             
-        if mode in ("study", "work", "movie"):
-            suggested = self._get_suggestions(mode)
+        if mode in ("study", "work", "movie") or mode in self._student_focus_profiles:
+            suggested = self._fm.ensure_mode_app_suggestions(mode)
             if suggested:
-                self._fm.save_mode_apps(mode, suggested)
                 self._status_lbl.setText(f"Suggested apps populated for {mode.title()} mode.")
 
     def _get_suggestions(self, mode: str) -> List[str]:
-        if mode not in ("study", "work", "movie"):
-            return []
-        from utils.win_utils import get_all_discoverable_applications
-        suggested = []
-        kws = ["code", "word", "excel", "onenote", "edge", "chrome", "brave", "firefox", "notion", "slack", "teams", "zoom"] if mode in ("study", "work") else ["vlc", "player", "spotify", "netflix", "chrome", "edge", "brave", "firefox"]
-        try:
-            apps = get_all_discoverable_applications()
-            seen = set()
-            for name, display, _ in apps:
-                n_lower = name.lower()
-                d_lower = display.lower()
-                if n_lower in seen:
-                    continue
-                if any(k in n_lower for k in kws) or any(k in d_lower for k in kws):
-                    seen.add(n_lower)
-                    suggested.append(n_lower)
-        except Exception:
-            pass
-        return suggested
+        return self._fm.suggest_mode_apps(mode)
 
     def _refresh_blocklist_ui(self) -> None:
         while self._blocklist_layout.count():
@@ -1148,7 +1221,7 @@ class FocusTimerWidget(QFrame):
         
         if not items:
             placeholder = QLabel("No applications configured.")
-            placeholder.setStyleSheet("color: rgba(255, 255, 255, 0.35); font-style: italic; font-size: 12px;")
+            placeholder.setObjectName("empty_placeholder")
             self._blocklist_layout.addWidget(placeholder)
         else:
             for text in items:
@@ -1181,7 +1254,7 @@ class FocusTimerWidget(QFrame):
                 placeholder = QLabel(f"No sites matching '{search_q}'")
             else:
                 placeholder = QLabel("No websites blocked for this mode.")
-            placeholder.setStyleSheet("color: rgba(255, 255, 255, 0.35); font-style: italic; font-size: 12px;")
+            placeholder.setObjectName("empty_placeholder")
             self._websites_layout.addWidget(placeholder)
         else:
             for site in filtered_sites:
@@ -1246,7 +1319,29 @@ class FocusTimerWidget(QFrame):
 
     def _sync_ui_state(self):
         if self._fm.is_active:
-            self._session_total_seconds = self._selected_minutes * 60
+            self._selected_minutes = self._fm.configured_minutes
+            self._session_total_seconds = self._fm.total_duration_seconds or (self._selected_minutes * 60)
+            rem_s = self._fm.seconds_remaining
+            time_str = self._format_time(rem_s)
+            self._active_time_display.setText(time_str)
+
+            elapsed = max(0, self._session_total_seconds - rem_s)
+            pct = int((elapsed / max(self._session_total_seconds, 1)) * 100)
+            self._active_progress_bar.setValue(pct)
+            self._active_elapsed_lbl.setText(f"{elapsed // 60}m elapsed")
+            self._active_remaining_lbl.setText(f"{rem_s // 60}m remaining")
+
+            if self._fm.is_paused:
+                self._active_status_pill.setText("❚❚  FOCUS PAUSED")
+                self._active_status_pill.setStyleSheet("color: #F59E0B; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; padding: 5px 16px;")
+                if hasattr(self, "_active_pause_btn"):
+                    self._active_pause_btn.setText("▶  Resume")
+            else:
+                self._active_status_pill.setText("●  FOCUS ACTIVE")
+                self._active_status_pill.setStyleSheet("color: #10B981; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; padding: 5px 16px;")
+                if hasattr(self, "_active_pause_btn"):
+                    self._active_pause_btn.setText("❚❚  Pause")
+
             mode = self._fm.current_mode
             self._active_mode_lbl.setText(f"{mode.upper()} FOCUS MODE")
             
@@ -1265,10 +1360,10 @@ class FocusTimerWidget(QFrame):
         else:
             self._stack.setCurrentIndex(0)
             self._time_display.setText(self._format_time(self._selected_minutes * 60))
-            if self._time_display.text() == "00:00":
+            if self._fm.seconds_remaining == 0 and hasattr(self, "_just_completed") and self._just_completed:
                 self._status_lbl.setText("Session complete! Great work.")
             else:
-                self._status_lbl.setText("Ready to focus")
+                self._status_lbl.setText(f"Session set to {self._selected_minutes} minutes")
 
     def _toggle_timer(self) -> None:
         if not self._fm.is_active:
@@ -1290,14 +1385,29 @@ class FocusTimerWidget(QFrame):
                 return
                     
             self._session_total_seconds = self._selected_minutes * 60
+            self._just_completed = False
             self._fm.start_focus(self._selected_minutes, strict_mode=self._strict_chk.isChecked())
+
+    def _toggle_pause(self) -> None:
+        if not self._fm.is_active:
+            return
+        if self._fm.is_paused:
+            self._fm.resume_focus()
+        else:
+            if self._fm.is_strict:
+                from ui.widgets.pin_dialog import PinDialog
+                dialog = PinDialog(self._fm._pin_manager, self.window())
+                if dialog.exec():
+                    self._fm.pause_focus(provided_pin=dialog.get_pin())
+            else:
+                self._fm.pause_focus()
 
     def _stop_timer(self) -> None:
         if not self._fm.is_active:
-            self._selected_minutes = self.DEFAULT_FOCUS_M
-            self._session_total_seconds = self.DEFAULT_FOCUS_M * 60
+            # Reset countdown display back to currently configured duration
+            self._session_total_seconds = self._selected_minutes * 60
             self._time_display.setText(self._format_time(self._selected_minutes * 60))
-            self._status_lbl.setText("Ready to focus")
+            self._status_lbl.setText(f"Session set to {self._selected_minutes} minutes")
             return
             
         if self._fm.is_strict:
@@ -1306,7 +1416,26 @@ class FocusTimerWidget(QFrame):
             if dialog.exec():
                 self._fm.stop_focus_after_pin_dialog()
         else:
-            self._fm.stop_focus()
+            self._fm.cancel_focus()
+
+    def _on_focus_completed_internal(self) -> None:
+        self._just_completed = True
+        self._sync_ui_state()
+        self.focus_completed.emit()
+
+    def _on_focus_paused(self) -> None:
+        self._sync_ui_state()
+
+    def _on_focus_resumed(self) -> None:
+        self._sync_ui_state()
+
+    def _on_focus_reset(self, total_seconds: int) -> None:
+        self._session_total_seconds = total_seconds
+        self._sync_ui_state()
+
+    def _on_focus_cancelled(self) -> None:
+        self._just_completed = False
+        self._sync_ui_state()
 
     @staticmethod
     def _format_time(seconds: int) -> str:

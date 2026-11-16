@@ -7,7 +7,8 @@ from __future__ import annotations
 import json
 from datetime import date, timedelta, datetime
 from typing import Optional
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QEvent, QObject
+from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QPushButton,
     QScrollArea, QStackedWidget, QVBoxLayout, QWidget, QProgressBar,
@@ -106,15 +107,25 @@ class ActivityPage(QWidget):
         self._btn_today.setCheckable(True)
         self._btn_today.setChecked(True)
         self._btn_today.setObjectName("segment_btn_left")
+        self._btn_today.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_today.setFocusPolicy(Qt.FocusPolicy.TabFocus)
         
         self._btn_7d = QPushButton("7 Days")
         self._btn_7d.setCheckable(True)
         self._btn_7d.setObjectName("segment_btn_mid")
+        self._btn_7d.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_7d.setFocusPolicy(Qt.FocusPolicy.TabFocus)
         
         self._btn_30d = QPushButton("30 Days")
         self._btn_30d.setCheckable(True)
         self._btn_30d.setObjectName("segment_btn_right")
+        self._btn_30d.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_30d.setFocusPolicy(Qt.FocusPolicy.TabFocus)
         
+        self._range_buttons = [self._btn_today, self._btn_7d, self._btn_30d]
+        for btn in self._range_buttons:
+            btn.installEventFilter(self)
+
         self._range_group.addButton(self._btn_today, 1)
         self._range_group.addButton(self._btn_7d, 7)
         self._range_group.addButton(self._btn_30d, 30)
@@ -282,6 +293,7 @@ class ActivityPage(QWidget):
             QLabel#metric_hdr {{ color: {tm.color('text_muted')}; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }}
             QLabel#metric_val_success {{ font-size: 22px; font-weight: 800; color: {tm.color('text_main')}; letter-spacing: -0.5px; }}
             QLabel#section_header {{ font-size: 11px; font-weight: 700; color: {tm.color('text_muted')}; letter-spacing: 1.5px; text-transform: uppercase; margin-top: 6px; }}
+            QLabel#empty_state_label {{ font-size: 13px; font-weight: 500; color: {tm.color('text_muted')}; }}
             
             /* Segmented Control Buttons */
             QPushButton#segment_btn_left, QPushButton#segment_btn_mid, QPushButton#segment_btn_right {{
@@ -309,11 +321,19 @@ class ActivityPage(QWidget):
                 background: {tm.color('card_hover')};
                 color: {tm.color('text_main')};
             }}
+            QPushButton#segment_btn_left:focus, QPushButton#segment_btn_mid:focus, QPushButton#segment_btn_right:focus {{
+                border: 2px solid {tm.color('focus_ring')};
+                color: {tm.color('text_main')};
+            }}
             QPushButton#segment_btn_left:checked, QPushButton#segment_btn_mid:checked, QPushButton#segment_btn_right:checked {{
                 background: {tm.color('accent_emerald_bg')};
                 color: {tm.color('accent')};
                 font-weight: 700;
                 border: 1px solid {tm.color('accent')};
+            }}
+            QPushButton#segment_btn_left:checked:focus, QPushButton#segment_btn_mid:checked:focus, QPushButton#segment_btn_right:checked:focus {{
+                border: 2px solid {tm.color('focus_ring')};
+                padding: 6px 17px;
             }}
         """)
         
@@ -371,7 +391,7 @@ class ActivityPage(QWidget):
         cat_breakdown = summary.category_breakdown
         if not cat_breakdown:
             lbl = QLabel("No category data recorded.")
-            lbl.setStyleSheet("color: rgba(255, 255, 255, 0.4); font-size: 13px; font-weight: 500;")
+            lbl.setObjectName("empty_state_label")
             self._category_grid.addWidget(lbl, 0, 0)
         else:
             sorted_cats = sorted(cat_breakdown, key=lambda x: float(x.get("total_s", 0)), reverse=True)
@@ -379,7 +399,7 @@ class ActivityPage(QWidget):
             col_idx = 0
             for item in sorted_cats:
                 dur = float(item.get("total_s", 0))
-                if dur > 60:  # Only show > 1 min
+                if dur >= 1:
                     from ui.widgets.simple_category_row import ClickableCategoryCard
                     card = ClickableCategoryCard(item["category"], dur)
                     cat_val = item["category"].value if hasattr(item["category"], "value") else str(item["category"])
@@ -394,12 +414,12 @@ class ActivityPage(QWidget):
         top_apps = summary.top_apps
         if not top_apps:
             lbl = QLabel("No application data recorded.")
-            lbl.setStyleSheet("color: rgba(255, 255, 255, 0.4); font-size: 13px; font-weight: 500;")
+            lbl.setObjectName("empty_state_label")
             self._apps_layout.addWidget(lbl)
         else:
             max_dur = top_apps[0]["total_s"] if top_apps else 0
             for i, app in enumerate(top_apps[:10]):
-                if app["total_s"] > 60:
+                if float(app["total_s"]) >= 1:
                     row = AppUsageRow(
                         rank=i+1,
                         process_name=app["process_name"],
@@ -484,3 +504,26 @@ class ActivityPage(QWidget):
 
     def on_data_changed(self) -> None:
         self._refresh()
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        if event.type() == QEvent.Type.KeyPress and hasattr(self, "_range_buttons"):
+            if watched in self._range_buttons:
+                key = event.key()
+                idx = self._range_buttons.index(watched)
+                if key in (Qt.Key.Key_Right, Qt.Key.Key_Down):
+                    next_btn = self._range_buttons[(idx + 1) % len(self._range_buttons)]
+                    next_btn.setChecked(True)
+                    next_btn.setFocus(Qt.FocusReason.TabFocusReason)
+                    self._on_range_changed(self._range_group.id(next_btn))
+                    return True
+                elif key in (Qt.Key.Key_Left, Qt.Key.Key_Up):
+                    prev_btn = self._range_buttons[(idx - 1) % len(self._range_buttons)]
+                    prev_btn.setChecked(True)
+                    prev_btn.setFocus(Qt.FocusReason.TabFocusReason)
+                    self._on_range_changed(self._range_group.id(prev_btn))
+                    return True
+                elif key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+                    watched.setChecked(True)
+                    self._on_range_changed(self._range_group.id(watched))
+                    return True
+        return super().eventFilter(watched, event)

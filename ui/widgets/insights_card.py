@@ -78,10 +78,11 @@ class SmartInsightsCard(FluentCard):
 
         for tip, icon, color in tips:
             row = QFrame()
-            # Glassmorphism styling with colored accent strip
+            bg_col = "rgba(255, 255, 255, 0.03)" if tm.is_dark else "rgba(0, 0, 0, 0.03)"
+            border_col = "rgba(255, 255, 255, 0.05)" if tm.is_dark else "rgba(0, 0, 0, 0.06)"
             row.setStyleSheet(
-                f"background-color: rgba(255, 255, 255, 0.03); "
-                f"border: 1px solid rgba(255, 255, 255, 0.05); "
+                f"background-color: {bg_col}; "
+                f"border: 1px solid {border_col}; "
                 f"border-left: 4px solid {color}; "
                 f"border-radius: 8px;"
             )

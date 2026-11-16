@@ -7,7 +7,18 @@
 QWidget {
     font-family: "Segoe UI Variable Display", "Segoe UI", "Inter", -apple-system, sans-serif;
     color: #F8FAFC;
-    outline: none;
+}
+
+/* ─── Keyboard Focus Indicators ────────────────────────────────────────── */
+QAbstractButton:focus,
+QWidget[mouse_focus_clears="true"]:focus {
+    border: 2px solid #10B981;
+}
+QTabBar::tab:focus {
+    border-bottom: 2px solid #10B981;
+}
+QLineEdit:focus, QSpinBox:focus, QComboBox:focus {
+    border: 2px solid #10B981;
 }
 
 QMainWindow, QDialog, QWidget#content_area {
@@ -69,6 +80,14 @@ QPushButton#nav_btn[active="true"] {
     border: 1px solid rgba(16, 185, 129, 0.28);
     color: #10B981;
     font-weight: 700;
+}
+
+QPushButton#nav_btn:focus {
+    border: 2px solid #10B981;
+}
+
+QPushButton#nav_btn[active="true"]:focus {
+    border: 2px solid #10B981;
 }
 
 /* ─── Typography Headers & Contrast Hierarchy ──────────────────────────── */

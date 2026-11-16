@@ -50,25 +50,80 @@ ICONS = {
     "browser": '<rect x="2" y="3" width="20" height="18" rx="2"></rect><line x1="2" y1="9" x2="22" y2="9"></line><circle cx="6" cy="6" r="1"></circle><circle cx="10" cy="6" r="1"></circle>'
 }
 
+_pixmap_cache: dict[tuple[str, str, int], QPixmap] = {}
+
+
+def clear_icon_cache() -> None:
+    """Clear cached rendered pixmaps on theme changes."""
+    _pixmap_cache.clear()
+
+
+# Automatically invalidate the pixmap cache whenever the theme changes
+try:
+    ThemeManager.instance().theme_changed.connect(lambda _: clear_icon_cache())
+except Exception:
+    pass
+
+
 def get_pixmap(name: str, color: str = None, size: int = 24) -> QPixmap:
+    tm = ThemeManager.instance()
     if color is None:
-        color = ThemeManager.instance().color('text_main')
-        if not color or color == 'transparent':
-            color = '#FFFFFF'
-        
+        color = tm.color('text_main')
+    elif color in tm._get_tokens(tm.is_dark):
+        color = tm.color(color)
+
+    if not color or color == 'transparent':
+        color = '#F8FAFC' if tm.is_dark else '#0F172A'
+
+    cache_key = (name, color, size)
+    if cache_key in _pixmap_cache:
+        return _pixmap_cache[cache_key]
+
     path_data = ICONS.get(name, "")
-    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{path_data}</svg>"""
-    
+    qc = QColor(color)
+    if qc.isValid():
+        stroke_color = qc.name()
+        stroke_opacity = f"{qc.alphaF():.2f}"
+    else:
+        stroke_color = color
+        stroke_opacity = "1.0"
+
+    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{stroke_color}" stroke-opacity="{stroke_opacity}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{path_data}</svg>"""
+
     renderer = QSvgRenderer(QByteArray(svg.encode("utf-8")))
     pixmap = QPixmap(size, size)
     pixmap.fill(Qt.GlobalColor.transparent)
-    
+
     painter = QPainter(pixmap)
     painter.setRenderHint(QPainter.RenderHint.Antialiasing)
     renderer.render(painter)
     painter.end()
+
+    _pixmap_cache[cache_key] = pixmap
     return pixmap
 
+
 def get_icon(name: str, color: str = None, size: int = 24) -> QIcon:
+    """Return a QIcon generated for the given icon name and color."""
     return QIcon(get_pixmap(name, color, size))
 
+
+def get_theme_icon(name: str, size: int = 24, active_color: str = None, normal_color: str = None) -> QIcon:
+    """Return a multi-state QIcon that supports normal and selected/active color states."""
+    tm = ThemeManager.instance()
+    normal_col = normal_color if normal_color else tm.color('text_sub')
+    if not normal_col or normal_col == 'transparent':
+        normal_col = '#94A3B8' if tm.is_dark else '#475569'
+
+    if active_color is None:
+        active_color = tm.color('accent')
+    elif active_color in tm._get_tokens(tm.is_dark):
+        active_color = tm.color(active_color)
+    if not active_color or active_color == 'transparent':
+        active_color = '#10B981' if tm.is_dark else '#047857'
+
+    icon = QIcon()
+    icon.addPixmap(get_pixmap(name, color=normal_col, size=size), QIcon.Mode.Normal)
+    icon.addPixmap(get_pixmap(name, color=active_color, size=size), QIcon.Mode.Selected)
+    icon.addPixmap(get_pixmap(name, color=active_color, size=size), QIcon.Mode.Active)
+    return icon
