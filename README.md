@@ -1,87 +1,79 @@
 # Notch — Digital Wellbeing for Windows
 
-Digital wellbeing for Windows.
+Notch helps people understand their screen time, manage distractions, and make room for focused work. Student features are optional and use the same local Focus and timer systems as the rest of the application.
 
-## Overview
-Notch helps you understand and manage your screen time. It tracks active windows, idle time, and provides detailed analytics and insights into your daily, weekly, and monthly computer usage habits. It is designed to be lightweight, running as a background service and providing a beautiful, modern Windows 11 Fluent style interface when you want to review your data.
+## What Notch does
 
-## Features
-- Real-time foreground application tracking (process name, executable path, window title)
-- Idle detection via `GetLastInputInfo` (wraparound-safe)
-- Lock/Unlock and Sleep/Resume/Shutdown detection via native Win32 window message loop
-- Crash-safe tracking with a 30s heartbeat DB synchronization
-- System tray integration with background tracking
-- Light and Dark mode options (Windows 11 Fluent style)
-- Autostart with Windows (registry)
-- CSV reports export
-- Rotating log file
+- Tracks foreground application use, idle time, and daily activity history.
+- Shows dashboard, usage, Insights, and weekly wellbeing reports with CSV or report export.
+- Provides Focus profiles, deadline-based focus sessions, Deep Work intervals, website blocking, and recurring focus schedules.
+- Supports App Timers, daily screen-time budgets, App Locker, and SleepGuard.
+- Offers an optional Student Workspace with subject-tagged sessions, daily and weekly subject targets, recurring study blocks, assignment and exam reminders, exam topic progress, revision targets, and weekly study insights.
+- Stores ordinary screen-time history separately from explicitly started study sessions.
 
 ## Screenshots
-*(Add screenshots of the application here once captured)*
-- **Dashboard:** `![Dashboard Screenshot](docs/screenshots/dashboard.png)`
-- **Timeline:** `![Timeline Screenshot](docs/screenshots/timeline.png)`
-- **Analytics:** `![Analytics Screenshot](docs/screenshots/analytics.png)`
 
-## Installation
+![Notch dashboard in dark theme](website/public/images/app/home-dark.png)
+
+![Notch Student Workspace in dark theme](website/public/images/app/student-planner-dark.png)
+
+## Privacy and storage
+
+Activity history, Focus sessions, and study plans are stored in a local SQLite database under the current Windows user profile. Notch does not upload those records or sync them to a cloud account. The SQLite file is not encrypted by Notch.
+
+The desktop app sends a heartbeat containing a random installation ID and the app version; the heartbeat does not include activity records. When automatic update checks are enabled, Notch contacts GitHub to check for releases. The marketing website uses Vercel Analytics and Speed Insights for website visits; those measurements are separate from desktop activity data.
+
+## Run from source
+
+Requirements: Windows 10 or 11, Python 3.11 or newer, and the dependencies in `requirements.txt`.
 
 ```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-```
-
-## Running
-
-Launch the main GUI application:
-```powershell
 python main.py
 ```
 
-Launch minimized to the system tray (ideal for startup / task scheduler):
+Optional startup modes:
+
 ```powershell
 python main.py --background
-```
-
-Run as a headless background tracking service (ultra-low CPU/memory, no GUI instantiated):
-```powershell
 python main.py --service
 ```
 
-## Building Executable
+## Tests
+
+Run focused desktop regressions:
 
 ```powershell
-pyinstaller digital_wellbeing.spec
+pytest -q tests/test_focus_outline_cleanup.py tests/test_focus_timer_reliability.py tests/test_student_workspace.py
 ```
 
-The built executable will be in `dist/DigitalWellbeing/`.
+Run the full desktop suite:
 
-## Technologies Used
-- **Python 3.13+**: Core programming language.
-- **PySide6 (Qt for Python)**: UI framework for the desktop application.
-- **PyQtGraph**: For high-performance charting and analytics data visualization.
-- **SQLite**: Local, crash-safe database using WAL-mode for robust data storage.
-- **Win32 API**: Native Windows API calls for tracking window focus and idle times.
-- **PyInstaller**: For packaging into a standalone Windows executable.
-
-## Project Structure
-
-```
-digital_wellbeing/
-├── main.py               # Entry point (handles CLI service & background arguments)
-├── core/                 # Constants, logging
-├── database/             # Schema, models, repository (WAL-mode transaction management)
-├── tracker/              # Foreground, idle, session, categorizer, manager
-├── analytics/            # Aggregation engine
-├── settings/             # Settings manager
-├── notifications/        # Windows toast notifications
-├── ui/                   # PySide6 UI (main window, pages, widgets)
-└── utils/                # Autostart, CSV export, Windows utils
+```powershell
+pytest tests
 ```
 
-## Future Roadmap
-- [ ] Implement goal setting and app limits with notifications
-- [ ] Add support for cloud syncing across multiple devices
-- [ ] Export reports as PDF documents
-- [ ] Provide AI-driven insights on productivity patterns
-- [ ] Add more comprehensive categorization rules
+Run website checks from the `website/` directory:
+
+```powershell
+npm run lint
+npm test
+npx tsc --noEmit
+npm run build
+```
+
+## Project layout
+
+- `core/`, `database/`, `tracker/`, `protection/`, `analytics/`, `notifications/`, and `settings/` contain application services and data handling.
+- `ui/` contains the PySide6 application shell, pages, shared widgets, and theme system.
+- `tests/` contains automated desktop tests; interactive QA harnesses live under `tests/manual/`.
+- `scripts/` contains capture, diagnostics, media, and packaging helpers.
+- `website/` contains the independent Next.js marketing and distribution site.
+
+See [AGENTS.md](AGENTS.md) for architecture and contribution boundaries.
 
 ## License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE).
