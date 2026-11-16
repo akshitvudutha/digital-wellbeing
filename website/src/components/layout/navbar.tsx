@@ -1,12 +1,36 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useSyncExternalStore } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { siteConfig } from "@/config/site"
 import { Sun, Moon, Download } from "lucide-react"
 
+type WebsiteTheme = "dark" | "light"
+
+function getThemeSnapshot(): WebsiteTheme {
+  if (typeof window === "undefined") return "dark"
+  const saved = localStorage.getItem("notch-website-theme") || localStorage.getItem("nyw-website-theme")
+  if (saved === "dark" || saved === "light") return saved
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+}
+
+function subscribeToTheme(callback: () => void) {
+  if (typeof window === "undefined") return () => {}
+  const observer = new MutationObserver(callback)
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] })
+  window.addEventListener("storage", callback)
+  return () => {
+    observer.disconnect()
+    window.removeEventListener("storage", callback)
+  }
+}
+
+function getServerThemeSnapshot(): WebsiteTheme {
+  return "dark"
+}
+
 export function Navbar() {
-  const [theme, setTheme] = useState<"dark" | "light">("dark")
+  const theme = useSyncExternalStore(subscribeToTheme, getThemeSnapshot, getServerThemeSnapshot)
 
   const applyTheme = (t: "dark" | "light") => {
     if (t === "light") {
@@ -20,16 +44,8 @@ export function Navbar() {
     }
   }
 
-  useEffect(() => {
-    const saved = (localStorage.getItem("notch-website-theme") || localStorage.getItem("nyw-website-theme")) as "dark" | "light" | null
-    const initial = saved || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
-    setTheme(initial)
-    applyTheme(initial)
-  }, [])
-
   const toggleTheme = () => {
     const next = theme === "dark" ? "light" : "dark"
-    setTheme(next)
     localStorage.setItem("notch-website-theme", next)
     applyTheme(next)
   }
@@ -83,6 +99,12 @@ export function Navbar() {
           >
             Privacy
           </Link>
+          <Link
+            href="#faq"
+            className="hover:text-slate-950 dark:hover:text-foreground transition-colors duration-200"
+          >
+            FAQ
+          </Link>
         </div>
 
         {/* Right: Theme Toggle & CTA Pill */}
@@ -113,7 +135,7 @@ export function Navbar() {
           <a
             href="/api/download"
             className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold transition-all duration-200 cursor-pointer bg-slate-900 text-white dark:bg-foreground dark:text-background hover:opacity-90 shadow-md glow-emerald"
-            title="Download Notch v3.1.6 for Windows"
+            title={`Download Notch v${siteConfig.version} for Windows`}
           >
             <Download className="w-3.5 h-3.5" />
             <span>Download</span>

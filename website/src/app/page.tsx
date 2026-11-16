@@ -2,6 +2,7 @@
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
+import { siteConfig } from "@/config/site"
 import { FocusPreview } from "@/components/interactive/focus-preview"
 import { CapabilitiesCanvas } from "@/components/interactive/capabilities-canvas"
 import {
@@ -20,7 +21,7 @@ import {
 export default function Home() {
   const [heroTheme, setHeroTheme] = useState<"dark" | "light">("dark")
   const [themeSectionMode, setThemeSectionMode] = useState<"dark" | "light">("dark")
-  const [themeSectionScreen, setThemeSectionScreen] = useState<"home" | "usage" | "focus" | "insights" | "settings">("home")
+  const [themeSectionScreen, setThemeSectionScreen] = useState<"home" | "usage" | "focus" | "insights" | "settings" | "student">("home")
 
   const themeScreens = {
     home: {
@@ -53,6 +54,12 @@ export default function Home() {
       dark: "/images/app/settings-dark.png",
       light: "/images/app/settings-light.png",
     },
+    student: {
+      title: "Student Workspace & Study Planner",
+      desc: "Start focused study sessions, organize weekly study blocks, track assignment and exam deadlines, and review study time alongside digital wellbeing.",
+      dark: "/images/app/student-planner-dark.png",
+      light: "/images/app/student-planner-light.png",
+    },
   }
 
   return (
@@ -76,7 +83,7 @@ export default function Home() {
               {/* Category Pill Tag */}
               <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-slate-100/80 dark:bg-surface border border-slate-200 dark:border-border text-[11px] font-mono uppercase tracking-[0.2em] text-slate-800 dark:text-foreground/80 backdrop-blur-md">
                 <span className="w-1.5 h-1.5 rounded-full bg-nyw-emerald animate-pulse" />
-                <span>Beta Release · Windows 10 & 11 (v3.1.6)</span>
+                <span>Windows 10 & 11 · v{siteConfig.version}</span>
               </div>
 
               {/* Bold, Calm Headline */}
@@ -89,7 +96,7 @@ export default function Home() {
 
               {/* Subtext */}
               <p className="text-base sm:text-xl text-slate-700 dark:text-foreground/75 max-w-2xl mx-auto leading-relaxed font-normal">
-                Notch is a digital wellbeing and attention-control app for Windows. Engineered to remove digital clutter at the process level, leaving you with only the work that matters.
+                Notch helps Windows users understand screen time, protect deep focus, set daily app limits, and build intentional computing habits.
               </p>
 
               {/* Primary Download CTA */}
@@ -97,10 +104,10 @@ export default function Home() {
                 <a
                   href="/api/download"
                   className="inline-flex items-center gap-3 px-8 py-4 rounded-full text-sm sm:text-base font-semibold transition-all duration-200 bg-slate-900 text-white dark:bg-foreground dark:text-background hover:opacity-90 shadow-xl glow-emerald cursor-pointer group"
-                  title="Download Notch v3.1.6 for Windows"
+                  title={`Download Notch v${siteConfig.version} for Windows`}
                 >
                   <Download className="w-5 h-5 transition-transform duration-200 group-hover:-translate-y-0.5" />
-                  <span>Download Notch v3.1.6 for Windows</span>
+                  <span>Download Notch v{siteConfig.version} for Windows</span>
                 </a>
                 <p className="text-xs font-mono text-slate-600 dark:text-foreground/60">
                   Windows 10 / 11 (64-bit) · ~73.5 MB installer · Free &amp; local-first
@@ -122,13 +129,13 @@ export default function Home() {
           <div className="container mx-auto px-6 max-w-5xl">
             <div className="text-center max-w-2xl mx-auto mb-10 space-y-3">
               <span className="text-[11px] font-mono tracking-[0.2em] text-nyw-emerald uppercase font-semibold">
-                NATIVE OS INTEGRATION · v3.1.6
+                NATIVE OS INTEGRATION · v{siteConfig.version}
               </span>
               <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-slate-900 dark:text-foreground">
                 A calm, silent presence on Windows.
               </h2>
               <p className="text-sm md:text-base text-slate-700 dark:text-foreground/75 leading-relaxed">
-                Built natively with PySide6 and the Win32 API. No Electron bloat, no resource hogging, and zero intrusive popups.
+                Built with PySide6 and Windows APIs, with local activity history, explicit focus sessions, and practical controls for everyday computer use.
               </p>
             </div>
 
@@ -186,7 +193,7 @@ export default function Home() {
               <div className="pt-4 px-3 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-600 dark:text-foreground/65 font-mono">
                 <div className="flex items-center gap-2">
                   <Cpu className="w-3.5 h-3.5 text-nyw-emerald" />
-                  <span>Sub-25MB RAM Footprint · 0% Idle CPU Usage</span>
+                  <span>PySide6 desktop application · local SQLite activity history</span>
                 </div>
                 <span>Native Windows Mica Acrylic Foundation · {heroTheme === "dark" ? "Dark Obsidian" : "Light Theme"}</span>
               </div>
@@ -238,7 +245,7 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6 p-2 rounded-2xl glass-card border border-slate-200 dark:border-border shadow-sm">
               {/* Screen Tabs */}
               <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar w-full sm:w-auto">
-                {(["home", "usage", "focus", "insights", "settings"] as const).map((scr) => (
+                {(["home", "usage", "focus", "insights", "settings", "student"] as const).map((scr) => (
                   <button
                     key={scr}
                     onClick={() => setThemeSectionScreen(scr)}
@@ -386,46 +393,105 @@ export default function Home() {
           <div className="container mx-auto px-6 max-w-5xl">
             <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
               <span className="text-[11px] font-mono tracking-[0.2em] text-nyw-emerald uppercase font-semibold">
-                PRIVACY FIRST · LOCAL ONLY
+                PRIVACY FIRST · LOCAL ACTIVITY STORAGE
               </span>
               <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-slate-900 dark:text-foreground">
-                Your data never leaves your hard drive.
+                Your activity history stays on this device.
               </h2>
               <p className="text-sm md:text-base text-slate-700 dark:text-foreground/75 leading-relaxed">
-                Privacy is not a feature we toggle on. It is the fundamental architecture of Notch.
+                Usage and study records are stored in a local SQLite database. Notch does not upload those records or sync them to a cloud account.
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
               <div className="p-6 rounded-2xl glass-card border border-slate-200 dark:border-border space-y-3">
                 <HardDrive className="w-6 h-6 text-nyw-emerald" />
-                <h4 className="text-base font-bold text-slate-900 dark:text-foreground">100% Local SQLite</h4>
+                <h4 className="text-base font-bold text-slate-900 dark:text-foreground">Local activity storage</h4>
                 <p className="text-xs text-slate-700 dark:text-foreground/75 leading-relaxed">
-                  Every application timestamp and session event is committed directly to a local SQLite database in your user folder.
+                  Application history, focus sessions, and study plans are stored in a SQLite database on your PC. Notch does not upload this activity data.
                 </p>
               </div>
 
               <div className="p-6 rounded-2xl glass-card border border-slate-200 dark:border-border space-y-3">
                 <EyeOff className="w-6 h-6 text-nyw-amber" />
-                <h4 className="text-base font-bold text-slate-900 dark:text-foreground">No Telemetry or Tracking</h4>
+                <h4 className="text-base font-bold text-slate-900 dark:text-foreground">Limited app heartbeat</h4>
                 <p className="text-xs text-slate-700 dark:text-foreground/75 leading-relaxed">
-                  No telemetry pings, no usage beacons, no analytics servers, and no third-party data broker partnerships.
+                  The desktop app sends a heartbeat with a random installation ID and app version only. It does not contain usage or study records.
                 </p>
               </div>
 
               <div className="p-6 rounded-2xl glass-card border border-slate-200 dark:border-border space-y-3">
                 <ShieldCheck className="w-6 h-6 text-indigo-500" />
-                <h4 className="text-base font-bold text-slate-900 dark:text-foreground">No Account Required</h4>
+                <h4 className="text-base font-bold text-slate-900 dark:text-foreground">No account or cloud sync</h4>
                 <p className="text-xs text-slate-700 dark:text-foreground/75 leading-relaxed">
-                  The desktop app functions completely offline without sign-in, cloud sync, or remote dependencies.
+                  Core features do not require sign-in or cloud sync. When automatic update checks are enabled, Notch contacts GitHub to check for releases.
                 </p>
               </div>
+            </div>
+
+            <p className="mt-8 text-xs text-slate-600 dark:text-foreground/65 leading-relaxed text-center max-w-3xl mx-auto">
+              Notch does not encrypt its local SQLite database. This marketing website uses Vercel Analytics and Speed Insights for website visits; those website measurements are separate from desktop activity data.
+            </p>
+          </div>
+        </section>
+
+        {/* ===================================================
+            SECTION 07: FREQUENTLY ASKED QUESTIONS
+        =================================================== */}
+        <section id="faq" className="scroll-mt-28 py-24 md:py-28 border-t border-slate-200 dark:border-border bg-slate-50/60 dark:bg-[#07090c] relative">
+          <div className="container mx-auto px-6 max-w-4xl">
+            <div className="text-center max-w-2xl mx-auto mb-12 space-y-3">
+              <span className="text-[11px] font-mono tracking-[0.2em] text-nyw-emerald uppercase font-semibold">
+                COMMON QUESTIONS
+              </span>
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 dark:text-foreground">
+                A few useful details.
+              </h2>
+            </div>
+
+            <div className="space-y-3">
+              <details className="group p-5 rounded-2xl glass-card border border-slate-200 dark:border-border">
+                <summary className="cursor-pointer list-none text-sm font-semibold text-slate-900 dark:text-foreground flex items-center justify-between gap-4">
+                  What can I plan in Student Workspace?
+                  <span className="text-nyw-emerald text-lg" aria-hidden="true">+</span>
+                </summary>
+                <p className="mt-3 text-sm text-slate-700 dark:text-foreground/75 leading-relaxed">
+                  Organize subjects and weekly study targets, create recurring weekday blocks, track assignment and exam due dates, break exams into revision topics with progress and time targets, set optional reminders, and review study sessions recorded in Notch.
+                </p>
+              </details>
+              <details className="group p-5 rounded-2xl glass-card border border-slate-200 dark:border-border">
+                <summary className="cursor-pointer list-none text-sm font-semibold text-slate-900 dark:text-foreground flex items-center justify-between gap-4">
+                  Does Notch send my screen-time or study history?
+                  <span className="text-nyw-emerald text-lg" aria-hidden="true">+</span>
+                </summary>
+                <p className="mt-3 text-sm text-slate-700 dark:text-foreground/75 leading-relaxed">
+                  No. Those records stay in the local SQLite database. The app heartbeat contains a random installation ID and app version; update checks may contact GitHub when enabled.
+                </p>
+              </details>
+              <details className="group p-5 rounded-2xl glass-card border border-slate-200 dark:border-border">
+                <summary className="cursor-pointer list-none text-sm font-semibold text-slate-900 dark:text-foreground flex items-center justify-between gap-4">
+                  Is the local database encrypted?
+                  <span className="text-nyw-emerald text-lg" aria-hidden="true">+</span>
+                </summary>
+                <p className="mt-3 text-sm text-slate-700 dark:text-foreground/75 leading-relaxed">
+                  Notch does not encrypt the SQLite file. Protect the Windows account and device where the file is stored.
+                </p>
+              </details>
+              <details className="group p-5 rounded-2xl glass-card border border-slate-200 dark:border-border">
+                <summary className="cursor-pointer list-none text-sm font-semibold text-slate-900 dark:text-foreground flex items-center justify-between gap-4">
+                  Do I need an account or an internet connection?
+                  <span className="text-nyw-emerald text-lg" aria-hidden="true">+</span>
+                </summary>
+                <p className="mt-3 text-sm text-slate-700 dark:text-foreground/75 leading-relaxed">
+                  No account or cloud sync is required. The app can use its local features offline; heartbeat and enabled update checks use the network.
+                </p>
+              </details>
             </div>
           </div>
         </section>
 
         {/* ===================================================
-            SECTION 07: GET NOTCH / DOWNLOAD CTA
+            SECTION 08: GET NOTCH / DOWNLOAD CTA
         =================================================== */}
         <section className="py-24 md:py-36 border-t border-slate-200 dark:border-border bg-slate-50/60 dark:bg-[#07090c] relative overflow-hidden text-center">
           <div className="container mx-auto px-6 max-w-3xl space-y-8">
@@ -452,13 +518,13 @@ export default function Home() {
               <a
                 href="/api/download"
                 className="inline-flex items-center gap-3 px-8 py-4 rounded-full text-sm sm:text-base font-semibold transition-all duration-200 bg-slate-900 text-white dark:bg-foreground dark:text-background hover:opacity-90 shadow-xl glow-emerald cursor-pointer group"
-                title="Download Notch v3.1.6 for Windows"
+                title={`Download Notch v${siteConfig.version} for Windows`}
               >
                 <Download className="w-5 h-5 transition-transform duration-200 group-hover:-translate-y-0.5" />
-                <span>Download Notch v3.1.6 for Windows</span>
+                <span>Download Notch v{siteConfig.version} for Windows</span>
               </a>
               <p className="text-[11px] font-mono text-slate-600 dark:text-foreground/65 font-medium">
-                Windows 10 / Windows 11 (64-bit) · Independent Software · v3.1.6
+                Windows 10 / Windows 11 (64-bit) · Independent Software · v{siteConfig.version}
               </p>
             </div>
           </div>

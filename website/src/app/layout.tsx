@@ -1,13 +1,10 @@
 import type { Metadata, Viewport } from "next"
-import { Inter } from "next/font/google"
 import "./globals.css"
 import { siteConfig } from "@/config/site"
 import { Navbar } from "@/components/layout/navbar"
 import { Footer } from "@/components/layout/footer"
 import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/next"
-
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 
 export const viewport: Viewport = {
   themeColor: "#080a0d",
@@ -34,8 +31,11 @@ export const metadata: Metadata = {
     "app locker Windows",
     "attention control app",
     "productivity Windows",
+    "student study planner Windows",
+    "study session timer Windows",
+    "exam and revision planning",
     "local-first wellbeing",
-    "privacy-first screen time",
+    "local screen time history",
   ],
   authors: [{ name: siteConfig.developer }],
   alternates: {
@@ -51,7 +51,7 @@ export const metadata: Metadata = {
     url: "https://notch1.vercel.app/",
     title: "Notch — Digital Wellbeing for Windows",
     description:
-      "Understand your computer usage. Block distractions. Set limits. Protect your attention with Notch.",
+      "Understand your computer usage, plan focused study sessions, track subjects, and protect your attention with Notch for Windows.",
     siteName: "Notch",
     images: [
       {
@@ -66,7 +66,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Notch — Digital Wellbeing for Windows",
     description:
-      "Understand your computer usage. Block distractions. Set limits. Protect your attention with Notch.",
+      "Understand your computer usage, plan focused study sessions, track subjects, and protect your attention with Notch for Windows.",
     images: ["/notch-logo.png"],
   },
 }
@@ -123,7 +123,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
         />
       </head>
-      <body className={`${inter.variable} min-h-screen bg-background font-sans antialiased text-foreground selection:bg-nyw-emerald/20 selection:text-white`}>
+      <body className="min-h-screen bg-background font-sans antialiased text-foreground selection:bg-nyw-emerald/20 selection:text-white">
         <Navbar />
         {children}
         <Footer />
