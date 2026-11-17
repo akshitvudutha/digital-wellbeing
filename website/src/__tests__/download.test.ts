@@ -22,18 +22,18 @@ describe('Notch Public Release & Distribution System', () => {
     assert.equal(response.status, 307);
     assert.equal(
       response.headers.get('location'),
-      'https://github.com/akshitvudutha/digital-wellbeing/releases/download/v3.6.2/NotchSetup-3.6.2.exe'
+      'https://github.com/akshitvudutha/digital-wellbeing/releases/download/v3.6.4/NotchSetup-3.6.4.exe'
     );
   });
 
   it('2. /api/download respects NOTCH_DOWNLOAD_URL environment variable override', async () => {
-    process.env.NOTCH_DOWNLOAD_URL = 'https://custom-cdn.example.com/NotchSetup-3.6.2.exe';
+    process.env.NOTCH_DOWNLOAD_URL = 'https://custom-cdn.example.com/NotchSetup-3.6.4.exe';
 
     const response = await downloadRoute();
     assert.equal(response.status, 307);
     assert.equal(
       response.headers.get('location'),
-      'https://custom-cdn.example.com/NotchSetup-3.6.2.exe'
+      'https://custom-cdn.example.com/NotchSetup-3.6.4.exe'
     );
   });
 
@@ -43,7 +43,7 @@ describe('Notch Public Release & Distribution System', () => {
 
     const data = await response.json();
     assert.equal(data.project, 'Notch — Digital Wellbeing for Windows');
-    assert.equal(data.version, '3.6.2');
+    assert.equal(data.version, '3.6.4');
     assert.equal(data.stagedVersion, '3.6.4');
     assert.equal(data.stage, 'Public Release');
     assert.equal(
@@ -52,9 +52,9 @@ describe('Notch Public Release & Distribution System', () => {
     );
   });
 
-  it('4. siteConfig is aligned with Public Release v3.6.2 and staged v3.6.4', () => {
+  it('4. siteConfig is aligned with Public Release v3.6.4 and staged v3.6.4', () => {
     assert.equal(siteConfig.name, 'Notch');
-    assert.equal(siteConfig.version, '3.6.2');
+    assert.equal(siteConfig.version, '3.6.4');
     assert.equal(siteConfig.stagedVersion, '3.6.4');
     assert.equal(siteConfig.stage, 'Public Release');
     assert.equal(
@@ -68,7 +68,7 @@ describe('Notch Public Release & Distribution System', () => {
     assert.equal(response.status, 307);
     assert.equal(
       response.headers.get('location'),
-      'https://github.com/akshitvudutha/digital-wellbeing/releases/download/v3.6.2/NotchSetup-3.6.2.exe'
+      'https://github.com/akshitvudutha/digital-wellbeing/releases/download/v3.6.4/NotchSetup-3.6.4.exe'
     );
   });
 });
